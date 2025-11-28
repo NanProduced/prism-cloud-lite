@@ -38,7 +38,7 @@ import java.util.function.Function;
  *
  * oauth2_authorization表结构变更：
  * <ol>
- *     <li>添加seesion_id列 - 记录当前认证信息对应OP端session id</li>
+ *     <li>添加session_id列 - 记录当前认证信息对应OP端session id</li>
  *     <li>添加login_state列 - 记录当前认证信息是否已登出</li>
  * </ol>
  */

@@ -3,6 +3,7 @@ package nan.produced.prism.auth.security;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
+import org.springframework.core.io.Resource;
 
 @Data
 @RefreshScope
@@ -14,6 +15,10 @@ public class SecurityProps {
     private Login login = new Login();
 
     private Oauth2 oauth2 = new Oauth2();
+
+    private Jwt jwt = new Jwt();
+
+    private Slo slo = new Slo();
 
     private WhiteList whiteList = new WhiteList();
 
@@ -67,6 +72,23 @@ public class SecurityProps {
 
             }
         }
+    }
+
+    @Data
+    public static class Jwt {
+
+        private Resource rsaPublicKey;
+
+        private Resource rsaPrivateKey;
+    }
+
+    @Data
+    public static class Slo {
+
+        private boolean enabled = true;
+
+        private String defaultLogoutRedirectUri = "/logout_status";
+
     }
 
     @Data

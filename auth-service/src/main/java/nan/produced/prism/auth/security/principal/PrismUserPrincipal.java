@@ -5,7 +5,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -72,16 +71,6 @@ public final class PrismUserPrincipal implements UserDetails {
                 .password(entity.getPasswordHash())
                 .authorities(toAuthorities(roles))
                 .build();
-    }
-
-    public AuthClaims claims() {
-        return new AuthClaims(
-                publicId,
-                displayName,
-                userType,
-                authorities.stream().map(GrantedAuthority::getAuthority).collect(Collectors.toSet()),
-                subscriptionTier,
-                subscriptionExpiresAt);
     }
 
     @Override

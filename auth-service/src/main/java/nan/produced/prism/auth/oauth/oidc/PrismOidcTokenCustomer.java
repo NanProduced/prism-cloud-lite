@@ -1,0 +1,93 @@
+package nan.produced.prism.auth.oauth.oidc;
+
+import nan.produced.prism.auth.security.principal.PrismUserPrincipal;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.oauth2.core.oidc.StandardClaimNames;
+import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
+import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;
+import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static nan.produced.prism.auth.oauth.oidc.OidcClaimsConstant.CLAIM_ROLES;
+import static nan.produced.prism.auth.oauth.oidc.OidcClaimsConstant.CLAIM_SESSION_ID;
+
+/**
+ * OIDC令牌定制器
+ *
+ * @author Nan
+ */
+public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncodingContext> {
+
+    @Override
+    public void customize(JwtEncodingContext context) {
+        OAuth2TokenType tokenType = context.getTokenType();
+        if (tokenType == null) {
+            return;
+        }
+        if (OAuth2TokenType.ACCESS_TOKEN.equals(tokenType)) {
+            extendAccessToken(context);
+        }
+        else if (OAuth2TokenType.REFRESH_TOKEN.equals(tokenType)) {
+            extendRefreshToken(context);
+        }
+        else if (OidcParameterNames.ID_TOKEN.equals(tokenType.getValue())) {
+            extendIdToken(context);
+        }
+    }
+
+    private void extendAccessToken(JwtEncodingContext context) {
+        Map<String, Object> claims = buildSessionAndRoleClaims(context);
+        claims.forEach((key, value) -> context.getClaims().claim(key, value));
+    }
+
+    private void extendRefreshToken(JwtEncodingContext context) {
+
+    }
+
+    private void extendIdToken(JwtEncodingContext context) {
+        Map<String, Object> claims = buildSessionAndRoleClaims(context);
+        String displayName = resolveDisplayName(context.getPrincipal());
+        if (displayName != null) {
+            claims.put(StandardClaimNames.NAME, displayName);
+        }
+        claims.forEach((key, value) -> context.getClaims().claim(key, value));
+    }
+
+    private Map<String, Object> buildSessionAndRoleClaims(JwtEncodingContext context) {
+        Map<String, Object> claims = new HashMap<>();
+        Authentication authentication = context.getPrincipal();
+        if (authentication != null) {
+            List<String> authorities = authentication.getAuthorities() == null ? new ArrayList<>()
+                    : authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority)
+                    .sorted().collect(Collectors.toList());
+            if (!authorities.isEmpty()) {
+                claims.put(CLAIM_ROLES, authorities);
+            }
+        }
+        OAuth2Authorization authorization = context.getAuthorization();
+        if (authorization != null) {
+            claims.put(CLAIM_SESSION_ID, authorization.getAttribute(CLAIM_SESSION_ID));
+        }
+        return claims;
+    }
+
+    private String resolveDisplayName(Authentication authentication) {
+        if (authentication == null) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof PrismUserPrincipal prismUserPrincipal) {
+            return prismUserPrincipal.getDisplayName();
+        }
+        return null;
+    }
+}
