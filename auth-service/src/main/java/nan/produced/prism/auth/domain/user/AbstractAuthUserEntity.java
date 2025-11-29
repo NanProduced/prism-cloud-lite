@@ -12,6 +12,8 @@ import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Shared fields for any authenticated identity stored by the auth service.
@@ -61,8 +63,9 @@ public abstract class AbstractAuthUserEntity {
     private UserStatus status = UserStatus.ACTIVE;
 
     /** Additional attributes serialized as JSON. */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", nullable = false, columnDefinition = "jsonb")
-    private String metadata = "{}";
+    private String metadata;
 
     /** Creation timestamp. */
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -83,6 +86,9 @@ public abstract class AbstractAuthUserEntity {
         if (this.publicId == null) {
             this.publicId = UUID.randomUUID().toString();
         }
+        if (this.metadata == null) {
+            this.metadata = "{}";
+        }
         if (this.userType == null) {
             this.userType = defaultUserType();
         }
@@ -91,5 +97,8 @@ public abstract class AbstractAuthUserEntity {
     @PreUpdate
     void onUpdate() {
         this.updatedAt = Instant.now();
+        if (this.metadata == null) {
+            this.metadata = "{}";
+        }
     }
 }

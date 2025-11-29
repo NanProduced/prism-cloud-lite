@@ -5,5 +5,6 @@ package nan.produced.prism.auth.domain.user;
  */
 public enum UserType {
     END_USER,
-    ADMIN
+    ADMIN,
+    MANAGER
 }

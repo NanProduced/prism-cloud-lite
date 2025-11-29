@@ -97,25 +97,13 @@ public class SecurityProps {
         /**
          * 忽略的URL
          */
-        private String rsaPublicKey = "/rsa/publicKey";
+        private String rsaPublicKey = "/oauth2/jwks";
 
         private String actuator = "/actuator/**";
 
         private String[] ignoreUrls = new String[]{
                 "/",
-                "/error",
-                "/favicon.ico",
-                "/**/*.html",
-                "/**/*.css",
-                "/**/*.js",
-                "/**/*.png",
-                "/**/*.jpg",
-                "/**/*.jpeg",
-                "/**/*.gif",
-                "/**/*.svg",
-                "/**/*.ico",
-                "/**/*.ttf",
-                "/**/*.woff",
+                "/error"
         };
     }
 

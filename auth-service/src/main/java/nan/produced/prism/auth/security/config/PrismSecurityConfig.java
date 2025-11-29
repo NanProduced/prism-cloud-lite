@@ -4,6 +4,7 @@ import nan.produced.prism.auth.security.SecurityProps;
 import nan.produced.prism.auth.security.login.PrismLoginInterface;
 import nan.produced.prism.auth.security.login.config.PrismLoginAuthenticationSecurityConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
@@ -30,6 +31,7 @@ public class PrismSecurityConfig {
                 .with(new PrismLoginAuthenticationSecurityConfig(loginService, securityProps, requestCache), Customizer.withDefaults())
                 .authorizeHttpRequests(request ->  request
                         .requestMatchers(securityProps.getLogin().getLoginPageUrl()).permitAll()
+                        .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
                         .requestMatchers(securityProps.getWhiteList().getRsaPublicKey()).permitAll()
                         .requestMatchers(securityProps.getWhiteList().getActuator()).permitAll()
                         .requestMatchers(securityProps.getWhiteList().getIgnoreUrls()).permitAll()

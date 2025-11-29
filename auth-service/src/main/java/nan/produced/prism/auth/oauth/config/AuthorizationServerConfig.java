@@ -50,8 +50,6 @@ public class AuthorizationServerConfig {
 
     private final PrismOidcUserInfoMapper oidcUserInfoMapper;
 
-    private final BackChannelLogoutHandler backChannelLogoutHandler;
-
     /**
      * 授权服务器安全过滤链
      * <p>
@@ -64,7 +62,7 @@ public class AuthorizationServerConfig {
      */
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
-    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http, BackChannelLogoutHandler backChannelLogoutHandler) throws Exception {
 
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
 
@@ -105,7 +103,7 @@ public class AuthorizationServerConfig {
     @Bean
     public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
         JdbcRegisteredClientRepository jdbcRegisteredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
-        if (null == jdbcRegisteredClientRepository.findByClientId("gateway-service-client")) {
+        if (null == jdbcRegisteredClientRepository.findByClientId(securityProps.getOauth2().getClient().getPrismGatewayClient().getClientId())) {
             jdbcRegisteredClientRepository.save(createDefaultGatewayClient(passwordEncoder));
         }
         return jdbcRegisteredClientRepository;
