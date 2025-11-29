@@ -1,5 +1,6 @@
 package nan.produced.prism.auth.oauth.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
@@ -49,6 +50,8 @@ public class AuthorizationServerConfig {
     private final SecurityProps securityProps;
 
     private final PrismOidcUserInfoMapper oidcUserInfoMapper;
+
+    private final ObjectMapper prismSecurityObjectMapper;
 
     /**
      * 授权服务器安全过滤链
@@ -148,7 +151,20 @@ public class AuthorizationServerConfig {
      */
     @Bean
     public OidcAuthorizationService authorizationService(JdbcTemplate jdbcTemplate, RegisteredClientRepository repository) {
-        return new JdbcOidcAuthorizationService(jdbcTemplate, repository);
+        JdbcOidcAuthorizationService authorizationService = new JdbcOidcAuthorizationService(jdbcTemplate, repository);
+
+        ObjectMapper authorizationObjectMapper = prismSecurityObjectMapper.copy();
+        JdbcOidcAuthorizationService.OAuth2AuthorizationRowMapper rowMapper =
+                new JdbcOidcAuthorizationService.OAuth2AuthorizationRowMapper(repository);
+        rowMapper.setObjectMapper(authorizationObjectMapper);
+        authorizationService.setAuthorizationRowMapper(rowMapper);
+
+        JdbcOidcAuthorizationService.OAuth2AuthorizationParametersMapper parametersMapper =
+                new JdbcOidcAuthorizationService.OAuth2AuthorizationParametersMapper();
+        parametersMapper.setObjectMapper(authorizationObjectMapper);
+        authorizationService.setAuthorizationParametersMapper(parametersMapper);
+
+        return authorizationService;
     }
 
     /**

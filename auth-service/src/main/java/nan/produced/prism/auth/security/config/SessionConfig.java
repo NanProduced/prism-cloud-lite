@@ -1,5 +1,6 @@
 package nan.produced.prism.auth.security.config;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
@@ -11,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializer;
 import org.springframework.security.jackson2.SecurityJackson2Modules;
+import org.springframework.security.oauth2.server.authorization.jackson2.OAuth2AuthorizationServerJackson2Module;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 
 @Configuration
@@ -19,28 +21,31 @@ public class SessionConfig implements BeanClassLoaderAware {
     private ClassLoader loader;
 
     @Bean
-    public RedisSerializer<Object> springSessionDefaultSerializer() {
-        return new GenericJackson2JsonRedisSerializer(objectMapper());
-    }
-
-    private ObjectMapper objectMapper() {
+    public ObjectMapper prismSecurityObjectMapper() {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModules(SecurityJackson2Modules.getModules(this.loader));
+        objectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());
         objectMapper.addMixIn(PrismUserPrincipal.class, UserPrincipalMixin.class);
         objectMapper.activateDefaultTyping(polymorphicTypeValidator(), ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
         return objectMapper;
+    }
+
+    @Bean
+    public RedisSerializer<Object> springSessionDefaultSerializer(ObjectMapper prismSecurityObjectMapper) {
+        return new GenericJackson2JsonRedisSerializer(prismSecurityObjectMapper);
     }
 
     private PolymorphicTypeValidator polymorphicTypeValidator() {
         return BasicPolymorphicTypeValidator.builder()
                 .allowIfSubType("org.springframework.security.core")
                 .allowIfSubType("org.springframework.security.web")
-                .allowIfSubType("org.springframework.security.web.savedrequest")
-                .allowIfSubType("org.nan.produced.prism.auth.security")
+                .allowIfSubType("nan.produced.prism.auth")
                 .allowIfSubType("org.springframework.security.authentication")
+                .allowIfSubType("org.springframework.security.oauth2")
                 .allowIfSubType("java.lang")
                 .allowIfSubType("java.util")
                 .allowIfSubType("java.time")
+                .allowIfSubType("java.net")
                 .build();
     }
 
@@ -55,6 +60,7 @@ public class SessionConfig implements BeanClassLoaderAware {
     }
 
     @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static abstract class UserPrincipalMixin {
     }
 }
