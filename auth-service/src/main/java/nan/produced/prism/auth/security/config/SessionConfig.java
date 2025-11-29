@@ -30,8 +30,14 @@ public class SessionConfig implements BeanClassLoaderAware {
         return objectMapper;
     }
 
-    @Bean
-    public RedisSerializer<Object> springSessionDefaultSerializer(ObjectMapper prismSecurityObjectMapper) {
+    /**
+     * 替换默认的Redis序列化器
+     *
+     * @param prismSecurityObjectMapper   ObjectMapper
+     * @return Redis序列化器
+     */
+    @Bean("springSessionDefaultRedisSerializer")
+    public RedisSerializer<Object> springSessionDefaultRedisSerializer(ObjectMapper prismSecurityObjectMapper) {
         return new GenericJackson2JsonRedisSerializer(prismSecurityObjectMapper);
     }
 
