@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: core-service
+  threads:
+    virtual:
+      enabled: true
+server:
+  port: 8080
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "health,info"
+logging:
+  level:
+    nan.produced.prism.core: INFO
