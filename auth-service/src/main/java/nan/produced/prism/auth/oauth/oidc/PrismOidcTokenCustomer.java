@@ -68,7 +68,7 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
         if (authentication != null) {
             List<String> authorities = authentication.getAuthorities() == null ? new ArrayList<>()
                     : authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority)
-                    .sorted().collect(Collectors.toList());
+                    .sorted().toList();
             if (!authorities.isEmpty()) {
                 claims.put(CLAIM_ROLES, authorities);
             }

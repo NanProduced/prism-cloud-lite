@@ -1,22 +1,30 @@
 package nan.produced.prism.gateway.security.config;
 
 import lombok.RequiredArgsConstructor;
+import nan.produced.prism.gateway.security.authentication.RefreshTokenErrorMapClientManager;
+import nan.produced.prism.gateway.security.filter.RemoveJwtFilter;
 import nan.produced.prism.gateway.security.handler.SaveRequestOAuth2AuthorizationRequestResolver;
+import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 
 @Configuration
 @EnableConfigurationProperties(GatewaySecurityProps.class)
@@ -58,6 +66,27 @@ public class GatewaySecurityConfig {
                 .build();
     }
 
+    @Bean
+    @Order(1)
+    public SecurityFilterChain backendServiceFilterChain(HttpSecurity http,
+                                                         GatewaySecurityProps gatewaySecurityProps,
+                                                         AuthorizationManager<RequestAuthorizationContext> authorizationManager,
+                                                         RemoveJwtFilter removeJwtFilter) throws Exception {
+        return http
+                .csrf(AbstractHttpConfigurer::disable)
+                .exceptionHandling(exception -> exception
+                        .accessDeniedHandler(accessDeniedHandler)
+                        .authenticationEntryPoint(authenticationEntryPoint))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(PathRequest.toStaticResources().atCommonLocations()).permitAll()
+                        .requestMatchers(gatewaySecurityProps.getWhiteList().getUrls().toArray(String[]::new)).permitAll()
+                        .anyRequest().access(authorizationManager))
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .jwt(Customizer.withDefaults()))
+                .addFilterAfter(removeJwtFilter, BearerTokenAuthenticationFilter.class)
+                .build();
+    }
 
     @Bean
     @Primary
@@ -74,4 +103,13 @@ public class GatewaySecurityConfig {
         handler.setDefaultTargetUrl(gatewaySecurityProps.getOauth2().getClient().getLogoutRedirectUri());
         return handler;
     }
+
+    @Bean
+    @Primary
+    public OAuth2AuthorizedClientManager auth2AuthorizedClientManager(ClientRegistrationRepository clientRegistrationRepository,
+                                                                      OAuth2AuthorizedClientRepository authorizedClientRepository) {
+        return new RefreshTokenErrorMapClientManager(clientRegistrationRepository, authorizedClientRepository);
+    }
+
+
 }

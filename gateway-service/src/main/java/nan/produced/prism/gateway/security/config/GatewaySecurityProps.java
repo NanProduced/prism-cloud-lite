@@ -4,6 +4,8 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 
+import java.util.List;
+
 @Data
 @RefreshScope
 @ConfigurationProperties(prefix = GatewaySecurityProps.PROPS_PREFIX)
@@ -12,6 +14,8 @@ public class GatewaySecurityProps {
     public static final String PROPS_PREFIX = "prism.security";
 
     private Oauth2 oauth2 = new Oauth2();
+
+    private WhiteList whiteList = new WhiteList();
 
     @Data
     public static class Oauth2 {
@@ -61,5 +65,14 @@ public class GatewaySecurityProps {
 
             private String logoutEndpoint = "http://localhost:8081/logout";
         }
+    }
+
+    @Data
+    public static class WhiteList {
+
+        private List<String> urls = List.of(
+                "/logout",
+                "/logout_status"
+        );
     }
 }

@@ -34,7 +34,7 @@ import java.io.IOException;
  */
 @Component
 @RequiredArgsConstructor
-public class PrismGatewayAuthenticationEntryPoint implements AuthenticationEntryPoint {
+public class GatewayAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final GatewaySecurityProps gatewaySecurityProps;
 
@@ -86,10 +86,6 @@ public class PrismGatewayAuthenticationEntryPoint implements AuthenticationEntry
 
         // 检查 X-Requested-With (jQuery 等库的标准头)
         String xRequestedWith = request.getHeader("X-Requested-With");
-        if (StringUtils.hasText(xRequestedWith) && "XMLHttpRequest".equals(xRequestedWith)) {
-            return true;
-        }
-
-        return false;
+        return StringUtils.hasText(xRequestedWith) && "XMLHttpRequest".equals(xRequestedWith);
     }
 }
