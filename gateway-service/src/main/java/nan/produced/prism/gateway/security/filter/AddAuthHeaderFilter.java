@@ -6,35 +6,50 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.gateway.utils.JsonUtils;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.*;
-
 import static nan.produced.prism.gateway.security.AuthClaimsConstant.CLAIM_ROLES;
 import static nan.produced.prism.gateway.security.AuthClaimsConstant.CLAIM_TIER;
+import static nan.produced.prism.gateway.security.AuthClaimsConstant.CLAIM_USER_ID;
 
 @Component
 @Slf4j
 @Order(1)
+@RequiredArgsConstructor
 public class AddAuthHeaderFilter extends OncePerRequestFilter {
+
+    private final OAuth2AuthorizedClientRepository authorizedClientRepository;
+    private final JwtDecoder jwtDecoder;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        Map<String, Object> claims = extractClaims(authentication);
+        Map<String, Object> claims = extractClaims(authentication, request);
 
         if (claims != null && !claims.isEmpty()) {
             try {
@@ -50,32 +65,57 @@ public class AddAuthHeaderFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * 提取claims
-     * @param authentication
-     * @return
-     */
-    private Map<String, Object> extractClaims(Authentication authentication) {
+    private Map<String, Object> extractClaims(Authentication authentication, HttpServletRequest request) {
 
-        return switch (authentication) {
+        if (authentication instanceof JwtAuthenticationToken jwt) {
+            return new HashMap<>(jwt.getToken().getClaims());
+        }
 
-            // Bearer Token API调用
-            case JwtAuthenticationToken jwt -> jwt.getToken().getClaims();
+        if (authentication instanceof OAuth2AuthenticationToken oidc && oidc.getPrincipal() instanceof DefaultOidcUser oidcUser) {
+            Map<String, Object> result = new HashMap<>(oidcUser.getClaims());
+            Map<String, Object> accessTokenClaims = resolveAccessTokenClaims(oidc, request);
+            if (!accessTokenClaims.isEmpty()) {
+                result.putAll(accessTokenClaims);
+            }
+            return result;
+        }
 
+        return Collections.emptyMap();
+    }
 
-            // OIDC Login 前端SPA调用
-            case OAuth2AuthenticationToken oidc when oidc.getPrincipal() instanceof DefaultOidcUser oidcUser ->
-                    oidcUser.getClaims();
-
-            case null, default -> Collections.emptyMap();
-        };
-
+    private Map<String, Object> resolveAccessTokenClaims(OAuth2AuthenticationToken authenticationToken, HttpServletRequest request) {
+        if (authorizedClientRepository == null) {
+            return Collections.emptyMap();
+        }
+        try {
+            OAuth2AuthorizedClient client = authorizedClientRepository.loadAuthorizedClient(
+                    authenticationToken.getAuthorizedClientRegistrationId(), authenticationToken, request);
+            if (client == null || client.getAccessToken() == null) {
+                return Collections.emptyMap();
+            }
+            Jwt jwt = jwtDecoder.decode(client.getAccessToken().getTokenValue());
+            return new HashMap<>(jwt.getClaims());
+        } catch (JwtException ex) {
+            log.warn("AddAuthHeader - Failed to decode access token", ex);
+            return Collections.emptyMap();
+        } catch (Exception ex) {
+            log.warn("AddAuthHeader - Failed to resolve access token claims", ex);
+            return Collections.emptyMap();
+        }
     }
 
     private String buildUserHeader(Map<String, Object> claims) {
         ObjectNode jsonNode = JsonUtils.getObjectMapper().createObjectNode();
 
-        jsonNode.put("publicId", claims.get("sub").toString());
+        String publicId = asString(claims.get("sub"));
+        if (publicId != null) {
+            jsonNode.put("publicId", publicId);
+        }
+
+        String userUuid = asString(claims.get(CLAIM_USER_ID));
+        if (userUuid != null) {
+            jsonNode.put("userUuid", userUuid);
+        }
 
         Object rolesObj = claims.get(CLAIM_ROLES);
         if (rolesObj != null) {
@@ -85,9 +125,16 @@ public class AddAuthHeaderFilter extends OncePerRequestFilter {
             jsonNode.putArray(CLAIM_ROLES);
         }
 
-        jsonNode.put(CLAIM_TIER, claims.get(CLAIM_TIER).toString());
+        String tier = asString(claims.get(CLAIM_TIER));
+        if (tier != null) {
+            jsonNode.put(CLAIM_TIER, tier);
+        }
 
         return Base64.getUrlEncoder().withoutPadding().encodeToString(jsonNode.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String asString(Object value) {
+        return value != null ? value.toString() : null;
     }
 
     private static class CloudAuthRequestWrapper extends HttpServletRequestWrapper {
@@ -116,7 +163,7 @@ public class AddAuthHeaderFilter extends OncePerRequestFilter {
 
         @Override
         public Enumeration<String> getHeaderNames() {
-            List<String> names =Collections.list(super.getHeaderNames());
+            List<String> names = Collections.list(super.getHeaderNames());
             names.add("CLOUD_AUTH");
             return Collections.enumeration(names);
         }

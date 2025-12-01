@@ -18,7 +18,7 @@ import java.util.Map;
 import static nan.produced.prism.auth.oauth.oidc.OidcClaimsConstant.*;
 
 /**
- * OIDC令牌定制器
+ * 添加自定义Claim
  *
  * @author Nan
  */
@@ -43,6 +43,10 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
 
     private void extendAccessToken(JwtEncodingContext context) {
         Map<String, Object> claims = buildCommonClaims(context);
+        String userUuid = resolveUserUuid(context.getPrincipal());
+        if (userUuid != null) {
+            claims.put(CLAIM_USER_ID, userUuid);
+        }
         claims.forEach((key, value) -> context.getClaims().claim(key, value));
     }
 
@@ -86,6 +90,17 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
         Object principal = authentication.getPrincipal();
         if (principal instanceof PrismUserPrincipal prismUserPrincipal) {
             return prismUserPrincipal.getDisplayName();
+        }
+        return null;
+    }
+
+    private String resolveUserUuid(Authentication authentication) {
+        if (authentication == null) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof PrismUserPrincipal prismUserPrincipal && prismUserPrincipal.getId() != null) {
+            return prismUserPrincipal.getId().toString();
         }
         return null;
     }

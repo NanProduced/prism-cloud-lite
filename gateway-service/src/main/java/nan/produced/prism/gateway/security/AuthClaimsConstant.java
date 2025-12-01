@@ -11,5 +11,6 @@ public class AuthClaimsConstant {
 
     public static final String CLAIM_TIER = "tier";
 
+    public static final String CLAIM_USER_ID = "user_uuid";
 
 }
