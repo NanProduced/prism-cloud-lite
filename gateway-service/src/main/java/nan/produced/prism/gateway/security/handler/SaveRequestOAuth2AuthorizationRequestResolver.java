@@ -2,7 +2,6 @@ package nan.produced.prism.gateway.security.handler;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
-import nan.produced.prism.gateway.security.config.GatewaySecurityProps;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
@@ -24,22 +23,22 @@ public class SaveRequestOAuth2AuthorizationRequestResolver implements OAuth2Auth
      */
     private static final String SAVED_REQUEST_ATTR = "SPRING_SECURITY_SAVED_REQUEST";
 
-    public SaveRequestOAuth2AuthorizationRequestResolver(ClientRegistrationRepository  repository, GatewaySecurityProps gatewaySecurityProps) {
-        this.delegate = new DefaultOAuth2AuthorizationRequestResolver(repository, gatewaySecurityProps.getOauth2().getLoginEndpoint());
+    public SaveRequestOAuth2AuthorizationRequestResolver(ClientRegistrationRepository  repository) {
+        this.delegate = new DefaultOAuth2AuthorizationRequestResolver(repository, "/oauth2/authorization/");
     }
 
     @Override
     public OAuth2AuthorizationRequest resolve(HttpServletRequest request) {
         OAuth2AuthorizationRequest authorizationRequest = delegate.resolve(request);
         saveRedirectUri(request, authorizationRequest);
-        return null;
+        return authorizationRequest;
     }
 
     @Override
     public OAuth2AuthorizationRequest resolve(HttpServletRequest request, String clientRegistrationId) {
         OAuth2AuthorizationRequest authorizationRequest = delegate.resolve(request, clientRegistrationId);
         saveRedirectUri(request, authorizationRequest);
-        return null;
+        return authorizationRequest;
     }
 
     private void saveRedirectUri(HttpServletRequest request, OAuth2AuthorizationRequest authorizationRequest) {

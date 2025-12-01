@@ -90,8 +90,8 @@ public class GatewaySecurityConfig {
 
     @Bean
     @Primary
-    public OAuth2AuthorizationRequestResolver saveRequestOAuth2AuthorizationRequestResolver(ClientRegistrationRepository repository, GatewaySecurityProps gatewaySecurityProps) {
-        return new SaveRequestOAuth2AuthorizationRequestResolver(repository, gatewaySecurityProps);
+    public OAuth2AuthorizationRequestResolver saveRequestOAuth2AuthorizationRequestResolver(ClientRegistrationRepository repository) {
+        return new SaveRequestOAuth2AuthorizationRequestResolver(repository);
     }
 
     @Bean
