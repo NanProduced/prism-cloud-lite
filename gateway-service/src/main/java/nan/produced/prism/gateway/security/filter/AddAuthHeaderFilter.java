@@ -21,6 +21,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
+import static nan.produced.prism.gateway.security.AuthClaimsConstant.CLAIM_ROLES;
+import static nan.produced.prism.gateway.security.AuthClaimsConstant.CLAIM_TIER;
+
 @Component
 @Slf4j
 @Order(1)
@@ -73,7 +76,16 @@ public class AddAuthHeaderFilter extends OncePerRequestFilter {
         ObjectNode jsonNode = JsonUtils.getObjectMapper().createObjectNode();
 
         jsonNode.put("publicId", claims.get("sub").toString());
-        // todo: 其他信息
+
+        Object rolesObj = claims.get(CLAIM_ROLES);
+        if (rolesObj != null) {
+            jsonNode.putPOJO(CLAIM_ROLES, rolesObj);
+        }
+        else {
+            jsonNode.putArray(CLAIM_ROLES);
+        }
+
+        jsonNode.put(CLAIM_TIER, claims.get(CLAIM_TIER).toString());
 
         return Base64.getUrlEncoder().withoutPadding().encodeToString(jsonNode.toString().getBytes(StandardCharsets.UTF_8));
     }

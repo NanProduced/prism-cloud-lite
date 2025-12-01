@@ -4,6 +4,8 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Data
@@ -17,11 +19,17 @@ public class GatewaySecurityProps {
 
     private WhiteList whiteList = new WhiteList();
 
+    private List<ApiPolicy> apiPolicies = new ArrayList<>(List.of(
+            ApiPolicy.of("/api/admin/**", ApiPolicy.Realm.ADMIN, List.of("ROLE_ADMIN"), ApiPolicy.TierRequirement.FREE_OR_ABOVE),
+            ApiPolicy.of("/api/pro/**", ApiPolicy.Realm.END_USER, List.of("ROLE_END_USER"), ApiPolicy.TierRequirement.PRO_ONLY),
+            ApiPolicy.of("/api/**", ApiPolicy.Realm.END_USER, List.of("ROLE_END_USER"), ApiPolicy.TierRequirement.FREE_OR_ABOVE)
+    ));
+
     @Data
     public static class Oauth2 {
 
         /**
-         * Spring Security client registrationId。
+         * Spring Security client registrationId
          */
         private String registrationId = "prism-gateway";
 
@@ -38,7 +46,7 @@ public class GatewaySecurityProps {
 
             private String clientSecret = "NanProduced";
 
-            /** Gateway 对外访问的基础地址，用于拼接默认重定向。 */
+            /** Gateway host used for composing default callback URLs during local runs */
             private String host = "http://localhost:8082";
 
             private String redirectUri = "http://localhost:8082/login/oauth2/code/prism-gateway";
@@ -75,4 +83,59 @@ public class GatewaySecurityProps {
                 "/logout_status"
         );
     }
+
+    @Data
+    public static class ApiPolicy {
+
+        private String pattern;
+
+        private Realm realm = Realm.END_USER;
+
+        private List<String> roles = new ArrayList<>();
+
+        private TierRequirement tier = TierRequirement.FREE_OR_ABOVE;
+
+        public static ApiPolicy of(String pattern, Realm realm, List<String> roles, TierRequirement tier) {
+            ApiPolicy policy = new ApiPolicy();
+            policy.setPattern(pattern);
+            policy.setRealm(realm);
+            policy.setRoles(new ArrayList<>(roles));
+            policy.setTier(tier);
+            return policy;
+        }
+
+        public enum Realm {
+            END_USER,
+            ADMIN;
+
+            public static Realm fromClaim(Object raw) {
+                if (raw == null) {
+                    return END_USER;
+                }
+                String value = raw.toString();
+                return Arrays.stream(values())
+                        .filter(realm -> realm.name().equalsIgnoreCase(value))
+                        .findFirst()
+                        .orElse(END_USER);
+            }
+        }
+
+        public enum TierRequirement {
+            FREE_OR_ABOVE {
+                @Override
+                public boolean matches(String actualTier) {
+                    return true;
+                }
+            },
+            PRO_ONLY {
+                @Override
+                public boolean matches(String actualTier) {
+                    return "PRO".equalsIgnoreCase(actualTier);
+                }
+            };
+
+            public abstract boolean matches(String actualTier);
+        }
+    }
 }
+

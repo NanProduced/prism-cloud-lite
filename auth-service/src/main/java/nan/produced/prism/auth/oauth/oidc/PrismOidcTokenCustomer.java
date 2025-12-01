@@ -9,16 +9,13 @@ import org.springframework.security.oauth2.server.authorization.OAuth2Authorizat
 import org.springframework.security.oauth2.server.authorization.OAuth2TokenType;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
-import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-import static nan.produced.prism.auth.oauth.oidc.OidcClaimsConstant.CLAIM_ROLES;
-import static nan.produced.prism.auth.oauth.oidc.OidcClaimsConstant.CLAIM_SESSION_ID;
+import static nan.produced.prism.auth.oauth.oidc.OidcClaimsConstant.*;
 
 /**
  * OIDC令牌定制器
@@ -45,7 +42,7 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
     }
 
     private void extendAccessToken(JwtEncodingContext context) {
-        Map<String, Object> claims = buildSessionAndRoleClaims(context);
+        Map<String, Object> claims = buildCommonClaims(context);
         claims.forEach((key, value) -> context.getClaims().claim(key, value));
     }
 
@@ -54,7 +51,7 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
     }
 
     private void extendIdToken(JwtEncodingContext context) {
-        Map<String, Object> claims = buildSessionAndRoleClaims(context);
+        Map<String, Object> claims = buildCommonClaims(context);
         String displayName = resolveDisplayName(context.getPrincipal());
         if (displayName != null) {
             claims.put(StandardClaimNames.NAME, displayName);
@@ -62,7 +59,7 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
         claims.forEach((key, value) -> context.getClaims().claim(key, value));
     }
 
-    private Map<String, Object> buildSessionAndRoleClaims(JwtEncodingContext context) {
+    private Map<String, Object> buildCommonClaims(JwtEncodingContext context) {
         Map<String, Object> claims = new HashMap<>();
         Authentication authentication = context.getPrincipal();
         if (authentication != null) {
@@ -77,6 +74,8 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
         if (authorization != null) {
             claims.put(CLAIM_SESSION_ID, authorization.getAttribute(CLAIM_SESSION_ID));
         }
+        claims.put(CLAIM_TIER, "FREE");
+        claims.put(CLAIM_REALM, "END_USER");
         return claims;
     }
 
