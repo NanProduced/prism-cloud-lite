@@ -8,21 +8,17 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.type.SqlTypes;
 
 /**
- * 用户业务侧基本资料。鉴于租户=个人用户，主键直接复用 auth-service 的用户 UUID。
+ * 用户业务侧基本资料
  */
-@Getter
-@Setter
+@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -45,6 +41,12 @@ public class UserProfileEntity {
 
     @Column(name = "display_name", length = 80)
     private String displayName;
+
+    @Column(name = "subscription_tier", nullable = false, length = 32)
+    private String subscriptionTier = "FREE";
+
+    @Column(name = "subscription_expires_at")
+    private Instant subscriptionExpiresAt;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "metadata", columnDefinition = "jsonb")
