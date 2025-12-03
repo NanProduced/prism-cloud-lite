@@ -38,7 +38,7 @@ public class RegistrationController {
 
     /**
      * 申请OTP - 第一步
-     * POST /auth/register/request-otp
+     * POST /register/request-otp
      *
      * @param request 请求体，包含邮箱地址
      * @return 操作结果
@@ -55,7 +55,7 @@ public class RegistrationController {
             - 如果邮箱已注册，将返回错误
 
             ### 后续步骤
-            收到验证码后，调用 `/auth/register/verify-otp` 验证
+            收到验证码后，调用 `/register/verify-otp` 验证
             """
     )
     @ApiResponse(
@@ -155,7 +155,7 @@ public class RegistrationController {
 
     /**
      * 验证OTP - 第二步
-     * POST /auth/register/verify-otp
+     * POST /register/verify-otp
      *
      * @param request 请求体，包含邮箱和OTP
      * @return 验证结果（包含临时令牌）
@@ -172,7 +172,7 @@ public class RegistrationController {
             - 验证成功后返回临时令牌（verificationToken）
 
             ### 后续步骤
-            使用返回的 `verificationToken` 调用 `/auth/register/complete` 完成注册
+            使用返回的 `verificationToken` 调用 `/register/complete` 完成注册
             """
     )
     @ApiResponse(
@@ -251,7 +251,7 @@ public class RegistrationController {
 
     /**
      * 完成注册 - 第三步
-     * POST /auth/register/complete
+     * POST /register/complete
      *
      * @param request 请求体，包含邮箱、密码和验证令牌
      * @return 注册结果

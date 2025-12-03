@@ -47,9 +47,9 @@ public class OpenApiConfig {
                 提供用户认证、注册、OAuth2/OIDC 授权服务
 
                 ## 用户注册流程
-                1. **申请 OTP**：`POST /auth/register/request-otp` - 向邮箱发送验证码
-                2. **验证 OTP**：`POST /auth/register/verify-otp` - 验证验证码，获取临时令牌
-                3. **完成注册**：`POST /auth/register/complete` - 提交密码和用户信息完成注册
+                1. **申请 OTP**：`POST /register/request-otp` - 向邮箱发送验证码
+                2. **验证 OTP**：`POST /register/verify-otp` - 验证验证码，获取临时令牌
+                3. **完成注册**：`POST /register/complete` - 提交密码和用户信息完成注册
 
                 ## 响应格式
                 所有接口统一使用 `BffResponse<T>` 格式：
