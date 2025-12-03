@@ -30,7 +30,7 @@ import jakarta.validation.constraints.NotBlank;
  */
 @Tag(name = "用户注册", description = "用户注册相关接口 - 三步注册流程")
 @RestController
-@RequestMapping("/auth/register")
+@RequestMapping("/register")
 @RequiredArgsConstructor
 public class RegistrationController {
 
@@ -253,20 +253,20 @@ public class RegistrationController {
      * 完成注册 - 第三步
      * POST /auth/register/complete
      *
-     * @param request 请求体，包含邮箱、密码、显示名称和验证令牌
+     * @param request 请求体，包含邮箱、密码和验证令牌
      * @return 注册结果
      */
     @Operation(
         summary = "完成注册",
         description = """
             ### 功能说明
-            用户注册的第三步：提交密码和用户信息，完成账号创建
+            用户注册的第三步：提交密码，完成账号创建
 
             ### 业务规则
             - 必须提供第二步获得的 `verificationToken`
-            - 密码要求：至少 8 个字符
-            - `displayName` 为可选字段，不填写则使用邮箱前缀
+            - 密码要求：至少 8 个字符，包含大小写字母和数字
             - 注册成功后自动创建用户账号
+            - 用户资料（昵称等）将在首次登录后初始化
 
             ### 后续步骤
             注册完成后，前端应引导用户前往登录页面
@@ -362,7 +362,6 @@ public class RegistrationController {
         registrationService.completeRegistration(
             request.email(),
             request.password(),
-            request.displayName(),
             request.verificationToken()
         );
 
@@ -449,13 +448,6 @@ public class RegistrationController {
         )
         @NotBlank(message = "密码不能为空")
         String password,
-
-        @Schema(
-            description = "用户显示名称（可选，不填写则使用邮箱前缀）",
-            example = "张三",
-            requiredMode = Schema.RequiredMode.NOT_REQUIRED
-        )
-        String displayName,
 
         @Schema(
             description = "验证令牌（从第二步验证OTP接口获得）",

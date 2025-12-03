@@ -141,6 +141,14 @@ public enum ErrorCode {
         true  // 可重试（修正后）
     ),
 
+    OTP_VERIFY_TOO_FREQUENT(
+        "AUTH-1015",
+        "操作过于频繁",
+        "操作过于频繁，请稍后再试",
+        HttpStatus.TOO_MANY_REQUESTS,
+        true  // 可重试（等待后）
+    ),
+
     // ============ 系统异常 (SYS-5xxx) ============
     INTERNAL_SERVER_ERROR(
         "SYS-5000",

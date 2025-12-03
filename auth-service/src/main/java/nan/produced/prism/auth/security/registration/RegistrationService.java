@@ -7,8 +7,10 @@ import nan.produced.prism.auth.common.exception.ErrorCode;
 import nan.produced.prism.auth.common.exception.InfraException;
 import nan.produced.prism.auth.common.util.PublicIdGenerator;
 import nan.produced.prism.auth.domain.user.EndUserEntity;
+import nan.produced.prism.auth.domain.user.LoginAliasEntity;
+import nan.produced.prism.auth.domain.user.LoginAliasType;
 import nan.produced.prism.auth.domain.user.repository.EndUserRepository;
-import nan.produced.prism.auth.integration.CoreServiceClient;
+import nan.produced.prism.auth.domain.user.repository.LoginAliasRepository;
 import nan.produced.prism.auth.security.email.EmailService;
 import nan.produced.prism.auth.security.otp.OtpProps;
 import nan.produced.prism.auth.security.otp.OtpService;
@@ -20,7 +22,8 @@ import java.util.UUID;
 
 /**
  * 注册服务
- * 负责邮箱+验证码注册流程：申请OTP → 验证OTP → 设置密码 → 初始化Core-Service用户
+ * 负责邮箱+验证码注册流程：申请OTP → 验证OTP → 设置密码
+ * 采用 JIT Provisioning 模式：用户资料在首次登录后由 Core-Service 自动创建
  */
 @Slf4j
 @Service
@@ -31,9 +34,9 @@ public class RegistrationService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final EndUserRepository endUserRepository;
-    private final CoreServiceClient coreServiceClient;
     private final OtpProps otpProps;
     private final VerificationTokenService verificationTokenService;
+    private final LoginAliasRepository loginAliasRepository;
 
     /**
      * 申请OTP - 第一步
@@ -81,16 +84,14 @@ public class RegistrationService {
 
     /**
      * 完成注册 - 第三步
-     * 创建用户账户并初始化Core-Service用户资料和配额
+     * 创建用户账户（JIT Provisioning模式：用户资料将在首次登录后自动创建）
      * @param email 邮箱地址
      * @param password 密码（明文）
-     * @param displayName 显示名称（可选）
      * @param verificationToken 验证令牌（OTP验证后获得）
      * @throws BizException 如果邮箱已被注册、密码验证失败或验证令牌无效
-     * @throws InfraException 如果Core-Service初始化失败
      */
     @Transactional
-    public void completeRegistration(String email, String password, String displayName, String verificationToken) {
+    public void completeRegistration(String email, String password, String verificationToken) {
         // 验证令牌（确保用户已完成OTP验证）
         verificationTokenService.validateAndConsumeToken(email, verificationToken);
 
@@ -105,65 +106,23 @@ public class RegistrationService {
         // 创建用户实体
         EndUserEntity user = new EndUserEntity();
         user.setEmail(email.toLowerCase());
-        user.setDisplayName(displayName);
         user.setPasswordHash(passwordEncoder.encode(password));
         user.setPublicId(PublicIdGenerator.generate());  // 生成有意义的 publicId
         user.setMetadata("{}");
 
         // 保存到Auth-Service数据库
         user = endUserRepository.save(user);
-        log.info("User created in Auth-Service with id: {}, email: {}", user.getId(), email);
+        log.info("User registered successfully in Auth-Service: id={}, publicId={}, email={}",
+            user.getId(), user.getPublicId(), email);
 
-        // 初始化Core-Service用户资料和配额
-        try {
-            CoreServiceClient.InitializeUserRequest request = new CoreServiceClient.InitializeUserRequest(
-                user.getId().toString(),
-                user.getPublicId(),
-                user.getEmail(),
-                user.getPhone(),
-                user.getDisplayName(),
-                "FREE"  // 默认为FREE等级
-            );
+        LoginAliasEntity loginAlias = new LoginAliasEntity();
+        loginAlias.setUser(user);
+        loginAlias.setAliasType(LoginAliasType.EMAIL);
+        loginAlias.setAliasValue(email);
 
-            var apiResponse = coreServiceClient.initializeUser(request);
+         loginAliasRepository.save(loginAlias);
 
-            // 规范要求：优先检查 ApiResponse.code，然后检查 data
-            if (!"CORE-0000".equals(apiResponse.getCode())) {
-                // Core-Service 返回错误码，回滚 Auth-Service 用户
-                endUserRepository.delete(user);
-                log.error("Core-Service returned error: code={}, message={}",
-                    apiResponse.getCode(), apiResponse.getMessage());
-                throw new InfraException(
-                    ErrorCode.EXTERNAL_SERVICE_ERROR,
-                    "用户初始化失败: " + apiResponse.getMessage()
-                );
-            }
-
-            // 防御性检查：验证 data 内容
-            if (apiResponse.getData() == null || !apiResponse.getData().success()) {
-                endUserRepository.delete(user);
-                log.error("Core-Service data validation failed: data={}", apiResponse.getData());
-                throw new InfraException(
-                    ErrorCode.EXTERNAL_SERVICE_ERROR,
-                    "用户初始化失败: 响应数据异常"
-                );
-            }
-
-            log.info("User initialized in Core-Service with coreUserId: {}",
-                apiResponse.getData().coreUserId());
-        } catch (InfraException e) {
-            // 回滚：删除已创建的Auth-Service用户
-            endUserRepository.delete(user);
-            log.error("Failed to initialize user in Core-Service, rolled back Auth-Service user", e);
-            throw e;
-        } catch (Exception e) {
-            // 回滚：删除已创建的Auth-Service用户
-            endUserRepository.delete(user);
-            log.error("Failed to initialize user in Core-Service, rolled back Auth-Service user", e);
-            throw new InfraException(ErrorCode.EXTERNAL_SERVICE_ERROR, "用户初始化失败，注册已回滚，请重试", e);
-        }
-
-        log.info("Registration completed successfully for email: {}", email);
+        // 注册完成 用户资料将在首次登录后通过 JIT Provisioning 自动创建
     }
 
     /**

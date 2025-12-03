@@ -57,7 +57,7 @@ public class GatewaySecurityProps {
 
             private String backchannelLogoutUri = "http://localhost:8082/logout/backchannel";
 
-            private String scope = "openid,profile,email,prism.account,prism.session";
+            private String scope = "openid,email,prism.account,prism.session";
         }
 
         @Data

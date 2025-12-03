@@ -31,7 +31,6 @@ public final class PrismUserPrincipal implements UserDetails {
     private String publicId;
     private String email;
     private String phone;
-    private String displayName;
     private UserStatus status;
     private UserType userType;
     private String password;
@@ -48,7 +47,6 @@ public final class PrismUserPrincipal implements UserDetails {
                 .publicId(entity.getPublicId())
                 .email(entity.getEmail())
                 .phone(entity.getPhone())
-                .displayName(entity.getDisplayName())
                 .status(entity.getStatus())
                 .userType(entity.getUserType())
                 .password(entity.getPasswordHash())
@@ -65,7 +63,6 @@ public final class PrismUserPrincipal implements UserDetails {
                 .publicId(entity.getPublicId())
                 .email(entity.getEmail())
                 .phone(entity.getPhone())
-                .displayName(entity.getDisplayName())
                 .status(entity.getStatus())
                 .userType(entity.getUserType())
                 .password(entity.getPasswordHash())

@@ -40,10 +40,6 @@ public abstract class AbstractAuthUserEntity {
     @Column(name = "phone", unique = true, columnDefinition = "citext")
     private String phone;
 
-    /** Friendly display name. */
-    @Column(name = "display_name", length = 100)
-    private String displayName;
-
     /** Stored password hash (bcrypt by default). */
     @Column(name = "password_hash")
     private String passwordHash;

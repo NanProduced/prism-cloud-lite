@@ -23,7 +23,6 @@ import java.util.UUID;
 public class DefaultTestUserInitializer implements ApplicationRunner {
 
     private static final String DEFAULT_EMAIL = "nanproduced@gmail.com";
-    private static final String DEFAULT_DISPLAY_NAME = "NanTest";
     private static final String DEFAULT_PASSWORD = "Nan12091209";
 
     private final LoginAliasRepository loginAliasRepository;
@@ -42,7 +41,6 @@ public class DefaultTestUserInitializer implements ApplicationRunner {
         EndUserEntity user = new EndUserEntity();
         user.setPublicId(UUID.randomUUID().toString());
         user.setEmail(DEFAULT_EMAIL);
-        user.setDisplayName(DEFAULT_DISPLAY_NAME);
         user.setPasswordHash(passwordEncoder.encode(DEFAULT_PASSWORD));
         user.setPasswordAlgo("bcrypt");
         user.setUserType(UserType.END_USER);
@@ -57,6 +55,6 @@ public class DefaultTestUserInitializer implements ApplicationRunner {
         alias.setUser(saved);
         loginAliasRepository.save(alias);
 
-        log.info("Created default test user '{}' ({}) for local testing", DEFAULT_DISPLAY_NAME, DEFAULT_EMAIL);
+        log.info("Created default test user ({}) for local testing", DEFAULT_EMAIL);
     }
 }

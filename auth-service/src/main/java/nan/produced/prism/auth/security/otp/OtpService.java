@@ -10,6 +10,8 @@ import org.springframework.stereotype.Service;
 import java.security.SecureRandom;
 import java.util.concurrent.TimeUnit;
 
+import static nan.produced.prism.auth.common.exception.ErrorCode.OTP_REQUEST_TOO_FREQUENT;
+
 /**
  * OTP（一次性密码）服务
  * 负责OTP的生成、存储、验证和防暴力破解
@@ -22,9 +24,20 @@ public class OtpService {
     private final RedisTemplate<String, String> redisTemplate;
     private final OtpProps otpProps;
 
+    private static final String RATE_LIMIT_KEY_PREFIX = "auth:otp:rate-limit:";
     private static final String OTP_KEY_PREFIX = "auth:otp:";
     private static final String OTP_ATTEMPT_KEY_PREFIX = "auth:otp:attempt:";
     private static final SecureRandom RANDOM = new SecureRandom();
+
+    /**
+     * 判断是否可以请求验证码
+     * @param email 邮箱地址
+     * @return 是否可以请求验证码
+     */
+    public Boolean canApplyOtp(String email) {
+        String key = RATE_LIMIT_KEY_PREFIX + email;
+        return redisTemplate.opsForValue().setIfAbsent(key, "1", otpProps.getRateLimit().getWindowMinutes(), TimeUnit.MINUTES);
+    }
 
     /**
      * 生成并存储OTP
@@ -32,6 +45,8 @@ public class OtpService {
      * @return 生成的OTP
      */
     public String generateAndStoreOtp(String email) {
+        if (Boolean.FALSE.equals(canApplyOtp(email))) throw new BizException(OTP_REQUEST_TOO_FREQUENT);
+
         // 生成OTP
         String otp = generateOtp();
 
@@ -97,7 +112,7 @@ public class OtpService {
             if (attemptCount >= maxAttempts) {
                 long windowMinutes = otpProps.getRateLimit().getWindowMinutes();
                 throw new BizException(
-                    ErrorCode.OTP_REQUEST_TOO_FREQUENT,
+                    ErrorCode.OTP_VERIFY_TOO_FREQUENT,
                     String.format("验证失败次数过多，请在%d分钟后重试", windowMinutes)
                 );
             }

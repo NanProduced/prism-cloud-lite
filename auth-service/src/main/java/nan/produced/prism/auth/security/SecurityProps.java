@@ -109,7 +109,8 @@ public class SecurityProps {
 
         private String[] ignoreUrls = new String[]{
                 "/",
-                "/error"
+                "/error",
+                "/auth/register/**"  // 注册接口公开访问（JIT Provisioning 模式）
         };
 
         private String[] swagger = new String[]{

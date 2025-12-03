@@ -32,7 +32,6 @@ public class PrismOidcUserInfoMapper implements Function<OidcUserInfoAuthenticat
     static {
         SCOPE_CLAIM_MAPPING = Map.of(
                 OidcScopes.OPENID, Set.of(StandardClaimNames.SUB),
-                OidcScopes.PROFILE, Set.of(StandardClaimNames.NAME),
                 OidcScopes.EMAIL, Set.of(StandardClaimNames.EMAIL, StandardClaimNames.EMAIL_VERIFIED),
                 OidcScopes.PHONE, Set.of(CLAIM_PHONE_NUMBER, CLAIM_PHONE_VERIFIED),
                 SCOPE_PRISM_ACCOUNT, Set.of(CLAIM_ROLES),
@@ -83,9 +82,6 @@ public class PrismOidcUserInfoMapper implements Function<OidcUserInfoAuthenticat
             putIfHasText(claims, CLAIM_PHONE_NUMBER, user.getPhone());
             if (StringUtils.hasText(user.getPhone())) {
                 claims.put(CLAIM_PHONE_VERIFIED, Boolean.TRUE);
-            }
-            if (StringUtils.hasText(user.getDisplayName())) {
-                claims.put(StandardClaimNames.NAME, user.getDisplayName());
             }
         });
     }
