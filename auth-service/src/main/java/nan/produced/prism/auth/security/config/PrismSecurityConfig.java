@@ -37,6 +37,7 @@ public class PrismSecurityConfig {
                         .requestMatchers(securityProps.getWhiteList().getRsaPublicKey()).permitAll()
                         .requestMatchers(securityProps.getWhiteList().getActuator()).permitAll()
                         .requestMatchers(securityProps.getWhiteList().getIgnoreUrls()).permitAll()
+                        .requestMatchers(securityProps.getWhiteList().getSwagger()).permitAll()
                         .anyRequest().authenticated())
                 .csrf(csrf -> csrf
                         .ignoringRequestMatchers(securityProps.getWhiteList().getIgnoreUrls())

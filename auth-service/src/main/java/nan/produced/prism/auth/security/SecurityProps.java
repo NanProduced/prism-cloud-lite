@@ -111,6 +111,12 @@ public class SecurityProps {
                 "/",
                 "/error"
         };
+
+        private String[] swagger = new String[]{
+                "/v3/api-docs/**",
+                "/swagger-ui.html",
+                "/swagger-ui/**"
+        };
     }
 
     @Data

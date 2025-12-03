@@ -7,7 +7,7 @@ import org.springframework.modulith.core.ApplicationModules;
 
 class ModulithStructureTests {
 
-    private final ApplicationModules modules = ApplicationModules.of(PrismCoreApplication.class);
+    private final ApplicationModules modules = ApplicationModules.of(CoreServiceApplication.class);
 
     @Test
     void verifiesModularStructure() {

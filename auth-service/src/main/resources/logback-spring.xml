@@ -3,8 +3,16 @@
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="auth-service"/>
     <springProperty scope="context" name="ENV" source="spring.profiles.active" defaultValue="dev"/>
 
-    <!-- Console Appender with JSON format -->
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <!-- Dev 环境专用：可读格式控制台输出 -->
+    <appender name="CONSOLE_DEV" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) [%thread] %cyan([%X{traceId:--},%X{spanId:--}]) %yellow(%-40.40logger{39}) : %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 生产环境：JSON 格式控制台输出（用于 ELK） -->
+    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <!-- 自定义字段 -->
             <customFields>{"service":"${APP_NAME}","env":"${ENV}"}</customFields>
@@ -62,27 +70,27 @@
         </encoder>
     </appender>
 
-    <!-- 开发环境：仅控制台输出 -->
+    <!-- 开发环境：仅控制台输出（可读格式） -->
     <springProfile name="dev">
         <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="CONSOLE_DEV"/>
         </root>
         <logger name="nan.produced.prism" level="DEBUG"/>
     </springProfile>
 
-    <!-- 生产环境：控制台 + 文件输出 -->
+    <!-- 生产环境：控制台（JSON）+ 文件输出（JSON） -->
     <springProfile name="prod">
         <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="CONSOLE_JSON"/>
             <appender-ref ref="FILE"/>
         </root>
         <logger name="nan.produced.prism" level="INFO"/>
     </springProfile>
 
-    <!-- 其他环境：默认配置 -->
+    <!-- 其他环境：默认使用 JSON 格式 -->
     <springProfile name="!dev &amp; !prod">
         <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="CONSOLE_JSON"/>
         </root>
     </springProfile>
 </configuration>

@@ -8,9 +8,9 @@ import org.springframework.modulith.Modulithic;
 @SpringBootApplication
 @EnableDiscoveryClient
 @Modulithic(sharedModules = "common", systemName = "Prism Core Service")
-public class PrismCoreApplication {
+public class CoreServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(PrismCoreApplication.class, args);
+        SpringApplication.run(CoreServiceApplication.class, args);
     }
 }
