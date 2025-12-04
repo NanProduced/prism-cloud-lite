@@ -41,27 +41,17 @@ public class OpenApiConfig {
         return new Info()
             .title("Prism Auth Service API")
             .description("""
-                # Prism 认证服务 API 文档
+                # Auth-Service 对接重点
 
-                ## 功能概述
-                提供用户认证、注册、OAuth2/OIDC 授权服务
+                - **责任边界**：负责注册、账号激活、OAuth2/OIDC 授权以及 JWKS 公钥；登录凭证和业务 API 由 Gateway/Core 处理。
+                - **访问路径**：浏览器只访问 `/auth/**` 下的注册与公钥接口，其它 OAuth2 流程统一由 Gateway 暴露 `/oauth2/authorization/prism-gateway`；8081 端口只在本地/测试环境允许直接访问。
+                - **注册流程**：遵循“申请 OTP → 验证 OTP → 完成注册”的三步交互，接口返回 `BffResponse`，前端根据 `success` 与 `error.displayMessage` 做提示即可。
+                - **集成建议**：
+                    * 需要刷新 JWKS 时调用 `/auth/.well-known/jwks.json`；
+                    * Gateway 与 Core 通过 `/internal/**` 完成 RPC，避免前端绕过；
+                    * 本说明聚焦流程与协作要点，字段细节请打开具体接口查看。
 
-                ## 用户注册流程
-                1. **申请 OTP**：`POST /register/request-otp` - 向邮箱发送验证码
-                2. **验证 OTP**：`POST /register/verify-otp` - 验证验证码，获取临时令牌
-                3. **完成注册**：`POST /register/complete` - 提交密码和用户信息完成注册
-
-                ## 响应格式
-                所有接口统一使用 `BffResponse<T>` 格式：
-                - `success`: 操作是否成功
-                - `data`: 响应数据（成功时）
-                - `error`: 错误详情（失败时）
-                - `traceId`: 链路追踪ID
-
-                ## 错误处理
-                - 所有错误都包含错误码（格式：`领域-数字`）
-                - `retryable` 字段指示是否可重试
-                - `displayMessage` 为用户友好的错误提示
+                此处比对接口字段更强调“如何使用”，便于前端和第三方快速定位关键步骤。
                 """)
             .version("1.0.0")
             .contact(new Contact()

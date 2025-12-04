@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Tag(name = "用户资料", description = "用户资料相关接口")
 @RestController
-@RequestMapping("/user")
+@RequestMapping("/api/v1/user")
 @RequiredArgsConstructor
 public class UserController {
 

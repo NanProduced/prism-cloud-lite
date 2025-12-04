@@ -20,9 +20,9 @@ public class GatewaySecurityProps {
     private WhiteList whiteList = new WhiteList();
 
     private List<ApiPolicy> apiPolicies = new ArrayList<>(List.of(
-            ApiPolicy.of("/api/admin/**", ApiPolicy.Realm.ADMIN, List.of("ROLE_ADMIN"), ApiPolicy.TierRequirement.FREE_OR_ABOVE),
-            ApiPolicy.of("/api/pro/**", ApiPolicy.Realm.END_USER, List.of("ROLE_END_USER"), ApiPolicy.TierRequirement.PRO_ONLY),
-            ApiPolicy.of("/api/**", ApiPolicy.Realm.END_USER, List.of("ROLE_END_USER"), ApiPolicy.TierRequirement.FREE_OR_ABOVE)
+            ApiPolicy.of("/api/v1/admin/**", ApiPolicy.Realm.ADMIN, List.of("ROLE_ADMIN"), ApiPolicy.TierRequirement.FREE_OR_ABOVE),
+            ApiPolicy.of("/api/v1/pro/**", ApiPolicy.Realm.END_USER, List.of("ROLE_END_USER"), ApiPolicy.TierRequirement.PRO_ONLY),
+            ApiPolicy.of("/api/v1/**", ApiPolicy.Realm.END_USER, List.of("ROLE_END_USER"), ApiPolicy.TierRequirement.FREE_OR_ABOVE)
     ));
 
     @Data
@@ -80,7 +80,11 @@ public class GatewaySecurityProps {
 
         private List<String> urls = List.of(
                 "/logout",
-                "/logout_status"
+                "/logout_status",
+                "/swagger-ui.html",
+                "/swagger-ui/**",
+                "/v3/api-docs/**",
+                "/core-service/v3/api-docs"
         );
     }
 
