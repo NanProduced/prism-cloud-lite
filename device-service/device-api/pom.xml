@@ -9,7 +9,7 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>device-application</artifactId>
+    <artifactId>device-api</artifactId>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
@@ -18,26 +18,42 @@
     </properties>
 
     <dependencies>
-        <dependency>
-            <groupId>nan.produced</groupId>
-            <artifactId>device-common</artifactId>
-        </dependency>
+        <!-- HTTP API协议定义 - 仅允许Spring Web依赖 -->
         <dependency>
             <groupId>org.springframework</groupId>
-            <artifactId>spring-context</artifactId>
+            <artifactId>spring-web</artifactId>
+        </dependency>
+
+        <!-- Jakarta Servlet API - 接口定义 -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
             <scope>provided</scope>
         </dependency>
+
+        <!-- Swagger注解支持 -->
+        <dependency>
+            <groupId>io.swagger.core.v3</groupId>
+            <artifactId>swagger-annotations-jakarta</artifactId>
+        </dependency>
+
+        <!-- JSON序列化支持 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
+
+        <!-- 编译时工具 -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
-        <!-- 日志依赖 - 解决@Slf4j无法解析问题 -->
+
+        <!-- 参数验证 -->
         <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <scope>provided</scope>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
         </dependency>
     </dependencies>
-
 </project>

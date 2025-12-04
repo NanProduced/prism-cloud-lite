@@ -16,12 +16,14 @@
         <module>device-application</module>
         <module>device-boot</module>
         <module>device-infrastructure</module>
+        <module>device-api</module>
     </modules>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <caffeine.version>3.2.2</caffeine.version>
     </properties>
 
     <dependencyManagement>
@@ -41,6 +43,12 @@
                 <groupId>nan.produced</groupId>
                 <artifactId>device-application</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.github.ben-manes.caffeine</groupId>
+                <artifactId>caffeine</artifactId>
+                <version>${caffeine.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
