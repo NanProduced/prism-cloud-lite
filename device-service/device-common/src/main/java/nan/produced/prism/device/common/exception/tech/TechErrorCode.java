@@ -1,0 +1,75 @@
+package nan.produced.prism.device.common.exception.tech;
+
+import lombok.Getter;
+import nan.produced.prism.device.common.exception.ErrorCode;
+import nan.produced.prism.device.common.exception.ErrorLevel;
+import nan.produced.prism.device.common.exception.HttpStatusCode;
+
+@Getter
+public enum TechErrorCode implements ErrorCode {
+
+    /**
+     * JSON序列化/反序列化错误
+     * <p>Jackson</p>
+     */
+    JSON_SERIALIZATION_EXCEPTION("TM0101", "序列化/反序列化错误", ErrorLevel.ERROR, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    JSON_MERGE_EXCEPTION("TM0102", "Json合并错误", ErrorLevel.ERROR, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    TIME_FORMAT_TRANSLATE_FAILED("TM0103", "Java.time时间转换失败", ErrorLevel.ERROR, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    INSTANTIATION_IS_PROHIBITED("TM0104", "禁止实例化", ErrorLevel.WARN, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    MONGO_DB_ERROR("TM0105", "MongoDB操作失败", ErrorLevel.CRITICAL, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    MYSQL_ERROR("TM0106", "MySQL操作失败", ErrorLevel.WARN, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    REDIS_ERROR("TM0107", "Redis操作失败", ErrorLevel.WARN, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    THREAD_POOL_REJECTED_ERROR("TM0108", "线程池耗尽拒绝任务", ErrorLevel.FATAL, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    RPC_EXCEPTION("TM0109", "RPC调用错误", ErrorLevel.CRITICAL, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    MINIO_ERROR("TM0110", "MinIO上传错误", ErrorLevel.CRITICAL, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    MINIO_SECURITY_ERROR("TM0111", "MinIO签名异常", ErrorLevel.CRITICAL, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    IO_EXCEPTION("TM0112", "I/O流处理异常", ErrorLevel.ERROR, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    NETTY_START_ERROR("TM0113", "Netty服务器启动错误", ErrorLevel.FATAL, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    METRICS_ERROR("TM0114", "Metrics错误", ErrorLevel.ERROR, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    ALGORITHM_ERROR("TM0115", "算法错误", ErrorLevel.CRITICAL, HttpStatusCode.INTERNAL_SERVER_ERROR),
+
+    REDIS_TRANSACTION_FAILED("TM0116", "Redis事务执行失败", ErrorLevel.CRITICAL, HttpStatusCode.INTERNAL_SERVER_ERROR);
+
+    ;
+    /**
+     * 错误码
+     */
+    private final String code;
+
+    /**
+     *
+     * 错误消息
+     */
+    private final String message;
+
+    /**
+     * 错误级别
+     */
+    private final ErrorLevel level;
+
+    /**
+     * HTTP状态码
+     */
+    private final HttpStatusCode httpStatus;
+
+    TechErrorCode(String code, String message, ErrorLevel level, HttpStatusCode httpStatus) {
+        this.code = code;
+        this.message = message;
+        this.level = level;
+        this.httpStatus = httpStatus;
+    }
+}
