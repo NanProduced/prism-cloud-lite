@@ -1,143 +1,162 @@
 package nan.produced.prism.core.user.service;
 
+import java.util.HashMap;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.exception.InfraException;
+import nan.produced.prism.core.common.response.ApiResponse;
+import nan.produced.prism.core.integration.auth.client.AuthInternalClient;
+import nan.produced.prism.core.integration.auth.dto.AuthInternalUserResponse;
 import nan.produced.prism.core.security.CloudAuthContext;
 import nan.produced.prism.core.security.CloudAuthUser;
+import nan.produced.prism.core.user.domain.QuotaUsageEntity;
 import nan.produced.prism.core.user.domain.UserProfileEntity;
+import nan.produced.prism.core.user.repository.QuotaUsageRepository;
 import nan.produced.prism.core.user.repository.UserProfileRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
+import org.springframework.util.StringUtils;
 
 /**
- * 用户资料服务
- * 负责 JIT (Just-In-Time) Provisioning：首次访问时自动创建用户资料
- * <p>
- * JIT Provisioning 模式说明:
- * 1. 用户在 Auth-Service 注册时，只创建认证账户
- * 2. 用户首次登录访问业务功能时，Core-Service 自动创建用户资料
- * 3. 使用数据库 UNIQUE(public_id) 约束防止并发重复创建
- * 4. 后续访问直接查询已有资料，性能高效
+ * 用户 Profile 业务逻辑，负责首次登录时的 JIT Provisioning。
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserProfileService {
 
-    private final UserProfileRepository userProfileRepository;
+    private static final String AUTH_SUCCESS_CODE = "AUTH-0000";
 
-    /**
-     * JIT Provisioning: 获取或创建当前用户的资料
-     * <p>
-     * 首次调用时创建用户资料，后续调用直接返回已有资料
-     * 使用数据库 UNIQUE 约束防止并发竞态条件
-     *
-     * @return 用户资料实体
-     * @throws IllegalStateException 如果没有认证用户
-     */
+    private final UserProfileRepository userProfileRepository;
+    private final QuotaUsageRepository quotaUsageRepository;
+    private final AuthInternalClient authInternalClient;
+
     @Transactional
     public UserProfileEntity getOrCreateCurrentUserProfile() {
         CloudAuthUser authUser = CloudAuthContext.getCurrentUser();
         String publicId = authUser.publicId();
 
-        log.debug("JIT Provisioning: checking profile for publicId={}", publicId);
-
-        // 1. 尝试查找已有资料
         return userProfileRepository.findByPublicId(publicId)
             .orElseGet(() -> {
-                log.info("JIT Provisioning: No existing profile found, creating new profile for publicId={}", publicId);
+                log.info("JIT Provisioning: profile not found, provisioning publicId={}", publicId);
                 return createUserProfileJIT(authUser);
             });
     }
 
-    /**
-     * JIT 创建用户资料
-     * <p>
-     * 并发安全机制:
-     * - 数据库有 UNIQUE(public_id) 约束
-     * - 如果并发插入，第二个请求会抛出 DataIntegrityViolationException
-     * - 捕获异常后重新查询，返回第一个请求创建的资料
-     *
-     * @param authUser 认证用户信息（从 CLOUD_AUTH 头解析）
-     * @return 新创建的用户资料
-     */
     private UserProfileEntity createUserProfileJIT(CloudAuthUser authUser) {
         String publicId = authUser.publicId();
+        AuthInternalUserResponse remote = fetchRemoteProfile(publicId);
 
-        log.info("JIT Provisioning: Creating user profile for publicId={}", publicId);
+        String email = remote.getEmail();
+        if (!StringUtils.hasText(email)) {
+            throw new InfraException(ErrorCode.EXTERNAL_SERVICE_ERROR, "认证中心未返回邮箱，无法初始化用户");
+        }
+
+        UUID userUuid = resolveUserUuid(authUser, remote);
+        String displayName = resolveDisplayName(remote.getDisplayName(), publicId);
 
         try {
-            // 构建用户资料
             UserProfileEntity profile = UserProfileEntity.builder()
-                .id(UUID.fromString(authUser.userUuid()))  // 新 UUID
-                .publicId(publicId)     // 从 Auth-Service 获取
-                .email(null)            // 暂时为空，后续可通过 API 更新
-                .phone(null)
-                .displayName(generateDefaultDisplayName())  // 默认昵称
+                .id(userUuid)
+                .publicId(publicId)
+                .email(email.toLowerCase())
+                .phone(remote.getPhone())
+                .displayName(displayName)
                 .subscriptionTier(authUser.tier() != null ? authUser.tier() : "FREE")
                 .subscriptionExpiresAt(null)
+                .metadata(new HashMap<>())
+                .configs(new HashMap<>())
                 .build();
 
-            // 保存到数据库
             profile = userProfileRepository.save(profile);
+            createDefaultQuotaUsage(profile.getId());
 
-            log.info("JIT Provisioning SUCCESS: publicId={}, coreUserId={}, displayName={}",
-                publicId, profile.getId(), profile.getDisplayName());
-
+            log.info("JIT Provisioning SUCCESS: publicId={}, coreUserId={}, email={}", publicId, profile.getId(), email);
             return profile;
-
-        } catch (DataIntegrityViolationException e) {
-            // 并发情况：其他线程已创建，重新查询
-            log.warn("JIT Provisioning: Concurrent creation detected for publicId={}, retrying query...", publicId);
-
+        } catch (DataIntegrityViolationException ex) {
+            log.warn("JIT Provisioning concurrent creation detected for publicId={}, retrying lookup", publicId);
             return userProfileRepository.findByPublicId(publicId)
-                .orElseThrow(() -> new InfraException(
-                    ErrorCode.USER_PROFILE_CREATION_FAILED,
-                    "User profile creation failed even after concurrent retry: " + publicId));
+                .orElseThrow(() -> new InfraException(ErrorCode.USER_PROFILE_CREATION_FAILED,
+                    "Profile creation failed after retry: " + publicId));
         }
     }
 
-    /**
-     * 生成默认显示名称
-     * <p>
-     * 策略: "用户" + 8位随机字符串（UUID前8位）
-     * <p>
-     * 示例:
-     * - publicId="u_2Xk9P7qL" → displayName="用户a3f5b2c9"
-     * - 用户可以在后续通过 API 修改为自己喜欢的昵称
-     *
-     * @return 默认显示名称
-     */
-    private String generateDefaultDisplayName() {
-        // 使用 UUID 的前 8 位作为随机字符串
-        String randomStr = UUID.randomUUID().toString().substring(0, 8);
-        return "User_" + randomStr;
+    private void createDefaultQuotaUsage(UUID userId) {
+        if (quotaUsageRepository.findByUserId(userId).isPresent()) {
+            return;
+        }
+        try {
+            QuotaUsageEntity usage = QuotaUsageEntity.builder()
+                .id(UUID.randomUUID())
+                .userId(userId)
+                .storageUsedBytes(0L)
+                .deviceCountActive(0)
+                .programCountActive(0)
+                .version(0)
+                .build();
+            quotaUsageRepository.save(usage);
+        } catch (DataIntegrityViolationException ex) {
+            log.debug("Quota usage already exists for userId={}, skip", userId);
+        }
     }
 
-    /**
-     * 根据 publicId 查找用户资料
-     * <p>
-     * 注意: 此方法不会触发 JIT 创建，只查询已有资料
-     *
-     * @param publicId 用户公开 ID
-     * @return 用户资料（如果存在），否则返回 null
-     */
+    private AuthInternalUserResponse fetchRemoteProfile(String publicId) {
+        try {
+            ApiResponse<AuthInternalUserResponse> response = authInternalClient.getUserByPublicId(publicId);
+            if (response == null) {
+                throw new InfraException(ErrorCode.EXTERNAL_SERVICE_ERROR, "从认证中心获取用户资料失败: null 响应");
+            }
+            if (!AUTH_SUCCESS_CODE.equals(response.getCode()) || response.getData() == null) {
+                throw new InfraException(ErrorCode.EXTERNAL_SERVICE_ERROR,
+                    "认证中心返回错误: " + response.getMessage());
+            }
+            return response.getData();
+        } catch (InfraException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new InfraException(ErrorCode.EXTERNAL_SERVICE_ERROR, "调用认证中心失败", ex);
+        }
+    }
+
+    private UUID resolveUserUuid(CloudAuthUser authUser, AuthInternalUserResponse remote) {
+        if (StringUtils.hasText(remote.getUserId())) {
+            try {
+                return UUID.fromString(remote.getUserId());
+            } catch (IllegalArgumentException ignored) {
+                log.warn("Invalid userId from auth-service: {}", remote.getUserId());
+            }
+        }
+        if (StringUtils.hasText(authUser.userUuid())) {
+            try {
+                return UUID.fromString(authUser.userUuid());
+            } catch (IllegalArgumentException ignored) {
+                log.warn("Invalid userUuid from CLOUD_AUTH: {}", authUser.userUuid());
+            }
+        }
+        return UUID.randomUUID();
+    }
+
+    private String resolveDisplayName(String remoteDisplayName, String publicId) {
+        if (StringUtils.hasText(remoteDisplayName)) {
+            return remoteDisplayName;
+        }
+        return generateDefaultDisplayName(publicId);
+    }
+
+    private String generateDefaultDisplayName(String publicId) {
+        String suffix = StringUtils.hasText(publicId) && publicId.length() > 4
+            ? publicId.substring(publicId.length() - 4)
+            : UUID.randomUUID().toString().substring(0, 4);
+        return "User_" + suffix.toUpperCase();
+    }
+
     public UserProfileEntity findByPublicId(String publicId) {
-        return userProfileRepository.findByPublicId(publicId)
-            .orElse(null);
+        return userProfileRepository.findByPublicId(publicId).orElse(null);
     }
 
-    /**
-     * 检查用户资料是否已存在
-     *
-     * @param publicId 用户公开 ID
-     * @return true 如果资料已存在
-     */
     public boolean profileExists(String publicId) {
         return userProfileRepository.findByPublicId(publicId).isPresent();
     }
