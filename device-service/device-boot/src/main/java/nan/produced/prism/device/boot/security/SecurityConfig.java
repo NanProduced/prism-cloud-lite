@@ -2,7 +2,7 @@ package nan.produced.prism.device.boot.security;
 
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.device.boot.security.filter.DeviceBasicAuthFilter;
-import nan.produced.prism.device.infrastracture.security.DeviceAuthenticationProvider;
+import nan.produced.prism.device.infrastructure.security.DeviceAuthenticationProvider;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

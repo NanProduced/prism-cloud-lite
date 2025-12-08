@@ -1,0 +1,456 @@
+package nan.produced.prism.device.infrastructure.websocket.connection;
+
+import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.device.application.domain.websocket.DeviceWsConnection;
+import nan.produced.prism.device.application.domain.websocket.ProtocolVersion;
+import nan.produced.prism.device.application.port.outbound.websocket.WsConnectionManagerPort;
+import nan.produced.prism.device.common.utils.JsonUtils;
+import org.springframework.beans.factory.DisposableBean;
+import org.springframework.stereotype.Component;
+
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+/**
+ * 分片Websocket连接管理器
+ *
+ * @author Nan
+ */
+@Slf4j
+@Component
+public class ShardedWsConnectionManager implements WsConnectionManagerPort, DisposableBean {
+
+    // ============== 配置常量 ==============
+
+    /**
+     * 分片数量 - 基于CPU核心数优化
+     * <p>8核以下按核心数乘2</p>
+     */
+    private static final int SHARD_COUNT = Math.min(16, Runtime.getRuntime().availableProcessors() * 2);
+
+    /** 每个分片的初始容量 */
+    private static final int INITIAL_SHARD_CAPACITY = 1024;
+
+    // ============== 核心数据结构 ==============
+
+    /** 分片存储 - 每个分片独立管理一部分连接 */
+    private final ConnectionShard[] shards;
+
+    /** 全局连接计数器 - 原子操作保证一致性 */
+    private final AtomicInteger totalConnections = new AtomicInteger(0);
+
+    /** 版本协议连接数统计 */
+    private final Map<ProtocolVersion, AtomicInteger> versionCounter = new ConcurrentHashMap<>();
+
+    /** 全局读写锁 - 保护整体状态变更 */
+    private final ReadWriteLock globalLock = new ReentrantReadWriteLock();
+
+    /** 管理器状态 */
+    private volatile boolean running = true;
+
+    // ============== 构造函数 ==============
+
+    public ShardedWsConnectionManager() {
+        this.shards = new ConnectionShard[SHARD_COUNT];
+
+        // 初始化所有分片
+        for (int i = 0; i < SHARD_COUNT; i++) {
+            shards[i] = new ConnectionShard(i, INITIAL_SHARD_CAPACITY);
+        }
+
+        log.info("ShardedConnectionManager - 分片连接管理初始化完成, 分片: {}, 初始化总容量: {}",
+                SHARD_COUNT, SHARD_COUNT * INITIAL_SHARD_CAPACITY);
+    }
+
+    // ============== 公开接口实现 ==============
+
+    /**
+     * 添加终端连接
+     * @param deviceId 设备ID
+     * @param connection WebSocket会话
+     * @return 添加成功返回true，否则返回false
+     */
+    @Override
+    public boolean addConnection(Long deviceId, DeviceWsConnection connection) {
+        if (!running || deviceId == null || connection == null) {
+            log.warn("ShardedConnectionManager - 无法添加连接 - manager={}, deviceId={}, connection={}",
+                    running, deviceId, connection != null);
+            return false;
+        }
+
+        try {
+            ConnectionShard shard = getShardForDevice(deviceId);
+            boolean added = shard.addConnection(deviceId, connection);
+
+            if (added) {
+                // 增加连接计数
+                totalConnections.incrementAndGet();
+                // 增加协议计数
+                versionCounter.compute(connection.getProtocolVersion(), (key, value) -> {
+                    if (value == null) {
+                        return new AtomicInteger(1);
+                    }
+                    else {
+                        value.incrementAndGet();
+                        return value;
+                    }
+                });
+                log.debug("ShardedConnectionManager - 添加终端连接: {}, version: {}, total: {}", deviceId, connection.getProtocolVersion().getVersion(), totalConnections.get());
+            }
+
+            return added;
+
+        } catch (Exception e) {
+            log.error("ShardedConnectionManager - 添加终端连接失败: {}", deviceId, e);
+            return false;
+        }
+    }
+
+    /**
+     * 移除终端连接
+     * @param deviceId 设备ID
+     * @return 移除的终端连接对象，移除失败返回null
+     */
+    @Override
+    public DeviceWsConnection removeConnection(Long deviceId) {
+        if (!running || deviceId == null) {
+            return null;
+        }
+
+        try {
+            ConnectionShard shard = getShardForDevice(deviceId);
+            DeviceWsConnection removed = shard.removeConnection(deviceId);
+
+            if (removed != null) {
+                // 安全地减少连接计数（防止负数）
+                int newTotal = totalConnections.decrementAndGet();
+                if (newTotal < 0) {
+                    totalConnections.set(0);
+                    log.warn("ShardedConnectionManager - 连接计数异常（低于0），已重置为0");
+                }
+
+                // 安全地减少协议版本计数（防止NPE和负数）
+                ProtocolVersion version = removed.getProtocolVersion();
+                versionCounter.compute(version, (key, counter) -> {
+                    if (counter == null) {
+                        log.warn("ShardedConnectionManager - 协议版本计数不存在，version: {}", version);
+                        return null;
+                    }
+
+                    int newCount = counter.decrementAndGet();
+                    if (newCount < 0) {
+                        counter.set(0);
+                        log.warn("ShardedConnectionManager - 协议版本计数异常（低于0），version: {}, 已重置为0", version);
+                        return counter;
+                    }
+
+                    return counter;
+                });
+
+                log.debug("ShardedConnectionManager - 移除终端连接: {}, total: {}", deviceId, totalConnections.get());
+            }
+
+            return removed;
+
+        } catch (Exception e) {
+            log.error("ShardedConnectionManager - 移除终端连接失败: {}", deviceId, e);
+            return null;
+        }
+    }
+
+    /**
+     * 获取终端连接
+     * @param deviceId 设备ID
+     * @return 终端连接对象，获取失败返回null
+     */
+    @Override
+    public Optional<DeviceWsConnection> getConnection(Long deviceId) {
+        if (!running || deviceId == null) {
+            return Optional.empty();
+        }
+
+        try {
+            ConnectionShard shard = getShardForDevice(deviceId);
+            return shard.getConnection(deviceId);
+
+        } catch (Exception e) {
+            log.error("ShardedConnectionManager - 获取终端连接失败: {}", deviceId, e);
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public int getConnectionCount() {
+        return totalConnections.get();
+    }
+
+    @Override
+    public Collection<Long> getOnlineDeviceIds() {
+        if (!running) {
+            return Collections.emptyList();
+        }
+
+        globalLock.readLock().lock();
+        try {
+            Set<Long> allDeviceIds = new HashSet<>();
+
+            // 并行收集所有分片的设备ID
+            for (ConnectionShard shard : shards) {
+                allDeviceIds.addAll(shard.getDeviceIds());
+            }
+
+            return allDeviceIds;
+
+        } finally {
+            globalLock.readLock().unlock();
+        }
+    }
+
+    // ============== 性能优化方法 ==============
+
+    /**
+     * 根据设备ID计算分片索引
+     * 使用一致性哈希确保分布均匀
+     */
+    private ConnectionShard getShardForDevice(Long deviceId) {
+        int shardIndex = (deviceId.hashCode() & Integer.MAX_VALUE) % SHARD_COUNT;
+        return shards[shardIndex];
+    }
+
+    /**
+     * 获取分片统计信息 - 用于监控和调优
+     */
+    public Map<String, Object> getShardStatistics() {
+        globalLock.readLock().lock();
+        try {
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("totalShards", SHARD_COUNT);
+            stats.put("totalConnections", totalConnections.get());
+            stats.put("running", running);
+
+            // 分片详细统计
+            Map<Integer, Integer> shardSizes = new HashMap<>();
+            int maxShardSize = 0;
+            int minShardSize = Integer.MAX_VALUE;
+
+            for (int i = 0; i < shards.length; i++) {
+                int size = shards[i].size();
+                shardSizes.put(i, size);
+                maxShardSize = Math.max(maxShardSize, size);
+                minShardSize = Math.min(minShardSize, size);
+            }
+
+            stats.put("shardSizes", shardSizes);
+            stats.put("maxShardSize", maxShardSize);
+            stats.put("minShardSize", minShardSize);
+            stats.put("loadBalance", (double) maxShardSize / Math.max(1, minShardSize));
+            stats.put("versionCount", JsonUtils.toJson(versionCounter));
+
+            return stats;
+
+        } finally {
+            globalLock.readLock().unlock();
+        }
+    }
+
+    /**
+     * 清理无效连接 - 定期维护任务
+     * 同时更新totalConnections和versionCounter以保持数据一致性
+     */
+    public int cleanupInvalidConnections() {
+        if (!running) {
+            return 0;
+        }
+
+        globalLock.writeLock().lock();
+        try {
+            AtomicInteger cleanedCount = new AtomicInteger(0);
+            Map<ProtocolVersion, Integer> totalCleanedByVersion = new EnumMap<>(ProtocolVersion.class);
+
+            for (ConnectionShard shard : shards) {
+                Map<ProtocolVersion, Integer> shardCleaned = shard.cleanupInvalidConnections();
+                if (shardCleaned.isEmpty()) {
+                    continue;
+                }
+
+                shardCleaned.forEach((version, count) -> {
+                    totalCleanedByVersion.merge(version, count, Integer::sum);
+                    cleanedCount.addAndGet(count);
+                });
+            }
+
+            int removed = cleanedCount.get();
+            if (removed > 0) {
+                int remaining = totalConnections.updateAndGet(current -> Math.max(0, current - removed));
+
+                totalCleanedByVersion.forEach((version, count) ->
+                        versionCounter.computeIfPresent(version, (key, counter) -> {
+                            int updated = counter.addAndGet(-count);
+                            if (updated <= 0) {
+                                counter.set(0);
+                                return null;
+                            }
+                            return counter;
+                        })
+                );
+
+                log.info("ShardedConnectionManager - 清除 {} 个无效连接, 当前连接数: {}, 协议版本分布: {}",
+                        removed, remaining, totalCleanedByVersion);
+            }
+
+            return removed;
+        } finally {
+            globalLock.writeLock().unlock();
+        }
+    }
+    public Map<ProtocolVersion, Integer> getProtocolVersionConnections() {
+        Map<ProtocolVersion, Integer> result = new EnumMap<>(ProtocolVersion.class);
+        for (Map.Entry<ProtocolVersion, AtomicInteger> entry : versionCounter.entrySet()) {
+            result.put(entry.getKey(), entry.getValue().get());
+        }
+        return result;
+    }
+
+    /**
+     * 获取指定协议版本的连接数
+     *
+     * @param version 协议版本
+     * @return 连接数，如果版本不存在返回0
+     */
+    public int getProtocolVersionConnectionCount(ProtocolVersion version) {
+        AtomicInteger counter = versionCounter.get(version);
+        return counter != null ? counter.get() : 0;
+    }
+
+    // ============== destroy方法 ==============
+
+    @Override
+    public void destroy() {
+        log.info("ShardedConnectionManager - Shutting down ShardedConnectionManager...");
+
+        globalLock.writeLock().lock();
+        try {
+            running = false;
+
+            // 关闭所有分片
+            for (ConnectionShard shard : shards) {
+                shard.shutdown();
+            }
+
+            totalConnections.set(0);
+            log.info("ShardedConnectionManager - ShardedConnectionManager shutdown completed");
+
+        } finally {
+            globalLock.writeLock().unlock();
+        }
+    }
+
+    // ============== 内部分片类 ==============
+
+    /**
+     * 连接分片 - 管理部分连接的独立单元
+     * 每个分片使用独立的锁，减少竞争
+     */
+    private static class ConnectionShard {
+        private final int shardId;
+        private final ConcurrentHashMap<Long, DeviceWsConnection> connections;
+        private final ReadWriteLock shardLock = new ReentrantReadWriteLock();
+
+        public ConnectionShard(int shardId, int initialCapacity) {
+            this.shardId = shardId;
+            this.connections = new ConcurrentHashMap<>(initialCapacity);
+        }
+
+        public boolean addConnection(Long deviceId, DeviceWsConnection connection) {
+            DeviceWsConnection existing = connections.putIfAbsent(deviceId, connection);
+            boolean added = (existing == null);
+
+            if (!added) {
+                log.debug("ConnectionShard - 设备 {} 连接已经存在 {}", deviceId, shardId);
+            }
+
+            return added;
+        }
+
+        public DeviceWsConnection removeConnection(Long deviceId) {
+            return connections.remove(deviceId);
+        }
+
+        public Optional<DeviceWsConnection> getConnection(Long deviceId) {
+            DeviceWsConnection connection = connections.get(deviceId);
+            return Optional.ofNullable(connection);
+        }
+
+        public Set<Long> getDeviceIds() {
+            return new HashSet<>(connections.keySet());
+        }
+
+        public int size() {
+            return connections.size();
+        }
+
+        /**
+         * 清理无效连接
+         * 实现连接健康检查逻辑
+         *
+         * @return 清理的连接按协议版本的分布统计 (协议版本 -> 清理数量)
+         */
+        public Map<ProtocolVersion, Integer> cleanupInvalidConnections() {
+            shardLock.writeLock().lock();
+            try {
+                Iterator<Map.Entry<Long, DeviceWsConnection>> iterator = connections.entrySet().iterator();
+                Map<ProtocolVersion, Integer> cleanedByVersion = new EnumMap<>(ProtocolVersion.class);
+
+                while (iterator.hasNext()) {
+                    Map.Entry<Long, DeviceWsConnection> entry = iterator.next();
+                    DeviceWsConnection connection = entry.getValue();
+
+                    // 检查连接是否有效
+                    if (!isSessionValid(connection)) {
+                        // 统计被清理连接的协议版本
+                        ProtocolVersion version = connection.getProtocolVersion();
+                        cleanedByVersion.merge(version, 1, Integer::sum);
+
+                        iterator.remove();
+                        log.debug("ConnectionShard - 清除无效连接: {} - 分片编号: {} - 协议版本: {}",
+                                entry.getKey(), shardId, version);
+                    }
+                }
+
+                return cleanedByVersion;
+
+            } finally {
+                shardLock.writeLock().unlock();
+            }
+        }
+
+        /**
+         * 检查会话是否有效
+         * 具体实现依赖于会话类型
+         */
+        private boolean isSessionValid(DeviceWsConnection connection) {
+            try {
+                if (connection.getSession() instanceof DeviceWsSession session) {
+                    return session.isConnected();
+                }
+                return false;
+            } catch (Exception e) {
+                log.debug("检查会话有效性时发生异常: {}", e.getMessage());
+                return false;
+            }
+        }
+
+        public void shutdown() {
+            shardLock.writeLock().lock();
+            try {
+                log.debug("ConnectionShard - Shutting down shard {} with {} connections", shardId, connections.size());
+                connections.clear();
+            } finally {
+                shardLock.writeLock().unlock();
+            }
+        }
+    }
+}
