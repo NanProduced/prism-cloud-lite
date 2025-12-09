@@ -6,6 +6,7 @@ import nan.produced.prism.auth.common.exception.ErrorCode;
 import nan.produced.prism.auth.common.exception.InfraException;
 import nan.produced.prism.auth.common.response.BffResponse;
 import nan.produced.prism.auth.utils.TraceUtils;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -46,6 +47,24 @@ public class BffExceptionHandler {
         // 根据字段名映射到精确的错误码
         ErrorCode errorCode = mapFieldToErrorCode(field, message);
         return buildErrorResponse(errorCode);
+    }
+
+    /**
+     * 处理非法参数异常（如 continueUrl 校验失败）
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<BffResponse<Object>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        log.warn("Illegal argument exception: {}", ex.getMessage());
+        return buildErrorResponse(ErrorCode.INVALID_PARAMETER);
+    }
+
+    /**
+     * 处理认证异常（Spring Security 抛出）
+     */
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<BffResponse<Object>> handleAuthenticationException(AuthenticationException ex) {
+        log.warn("Authentication exception: {}", ex.getMessage());
+        return buildErrorResponse(ErrorCode.INVALID_CREDENTIALS);
     }
 
     /**

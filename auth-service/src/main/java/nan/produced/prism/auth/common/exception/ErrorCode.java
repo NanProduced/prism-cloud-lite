@@ -149,6 +149,14 @@ public enum ErrorCode {
         true  // 可重试（等待后）
     ),
 
+    INVALID_CREDENTIALS(
+        "AUTH-1016",
+        "账号或凭证错误",
+        "账号或密码/验证码错误，请重试",
+        HttpStatus.UNAUTHORIZED,
+        true  // 可重试（重新输入）
+    ),
+
     // ============ 系统异常 (SYS-5xxx) ============
     INTERNAL_SERVER_ERROR(
         "SYS-5000",

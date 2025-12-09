@@ -5,6 +5,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.core.io.Resource;
 
+import java.util.List;
+
 @Data
 @RefreshScope
 @ConfigurationProperties(prefix = SecurityProps.PROPS_PREFIX)
@@ -32,6 +34,11 @@ public class SecurityProps {
     public static class Login {
 
         /**
+         * 前端控制登录页面
+         */
+        private Boolean spaLoginPage = true;
+
+        /**
          * 登录页面URL(对应GET请求)
          */
         private String loginPageUrl = "/login";
@@ -42,6 +49,32 @@ public class SecurityProps {
         private String loginProcessingUrl = "/login";
 
         private String loginSuccessUrl = "/";
+
+        private Spa spa = new Spa();
+
+        @Data
+        public static class Spa {
+
+            /**
+             * 前端 SPA 登录页完整 URL
+             */
+            private String entryPage = "http://localhost:5173/login";
+
+            /**
+             * SPA 登录页使用的 continue 参数名
+             */
+            private String continueParam = "continue";
+
+            /**
+             * 允许 CORS 的前端来源
+             */
+            private List<String> allowedOrigins = List.of("http://localhost:5173");
+
+            /**
+             * 允许的 continueUrl host（避免开放重定向）
+             */
+            private List<String> allowedHosts = List.of("localhost", "127.0.0.1");
+        }
 
     }
 
@@ -110,6 +143,7 @@ public class SecurityProps {
         private String[] ignoreUrls = new String[]{
                 "/",
                 "/error",
+                "/login/**",    // 登录接口
                 "/register/**"  // 注册接口公开访问（JIT Provisioning 模式）
         };
 

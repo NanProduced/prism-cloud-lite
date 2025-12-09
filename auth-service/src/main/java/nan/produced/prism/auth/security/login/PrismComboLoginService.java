@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import nan.produced.prism.auth.security.login.otp.PrismEmailOtpLoginService;
 import nan.produced.prism.auth.security.login.otp.PrismPhoneOtpLoginService;
 import nan.produced.prism.auth.security.login.pwd.PrismPwdLoginService;
+import nan.produced.prism.auth.security.otp.EmailOtpService;
 import nan.produced.prism.auth.security.principal.PrismUserPrincipal;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -23,6 +24,8 @@ public class PrismComboLoginService implements PrismLoginInterface{
 
     private final UserDetailsService userDetailsService;
 
+    private final EmailOtpService emailOtpService;
+
     private Map<LoginAuthType, PrismLoginInterface> authTypeLoginServiceMap = new HashMap<>(4);
 
     @PostConstruct
@@ -30,7 +33,7 @@ public class PrismComboLoginService implements PrismLoginInterface{
         PrismPwdLoginService prismPwdLoginService = new PrismPwdLoginService(userDetailsService, passwordEncoder);
         this.authTypeLoginServiceMap.put(LoginAuthType.EMAIL_PWD, prismPwdLoginService);
         this.authTypeLoginServiceMap.put(LoginAuthType.PHONE_PWD, prismPwdLoginService);
-        this.authTypeLoginServiceMap.put(LoginAuthType.EMAIL_OTP, new PrismEmailOtpLoginService());
+        this.authTypeLoginServiceMap.put(LoginAuthType.EMAIL_OTP, new PrismEmailOtpLoginService(userDetailsService, emailOtpService));
         this.authTypeLoginServiceMap.put(LoginAuthType.PHONE_OTP, new PrismPhoneOtpLoginService());
     }
 

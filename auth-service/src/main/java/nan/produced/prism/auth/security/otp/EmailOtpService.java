@@ -6,8 +6,10 @@ import nan.produced.prism.auth.common.exception.BizException;
 import nan.produced.prism.auth.common.exception.ErrorCode;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.security.SecureRandom;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 import static nan.produced.prism.auth.common.exception.ErrorCode.OTP_REQUEST_TOO_FREQUENT;
@@ -19,7 +21,7 @@ import static nan.produced.prism.auth.common.exception.ErrorCode.OTP_REQUEST_TOO
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class OtpService {
+public class EmailOtpService {
 
     private final RedisTemplate<String, String> redisTemplate;
     private final OtpProps otpProps;
@@ -35,7 +37,8 @@ public class OtpService {
      * @return 是否可以请求验证码
      */
     public Boolean canApplyOtp(String email) {
-        String key = RATE_LIMIT_KEY_PREFIX + email;
+        String normalized = normalizeIdentifier(email);
+        String key = RATE_LIMIT_KEY_PREFIX + normalized;
         return redisTemplate.opsForValue().setIfAbsent(key, "1", otpProps.getRateLimit().getWindowMinutes(), TimeUnit.MINUTES);
     }
 
@@ -45,21 +48,22 @@ public class OtpService {
      * @return 生成的OTP
      */
     public String generateAndStoreOtp(String email) {
-        if (Boolean.FALSE.equals(canApplyOtp(email))) throw new BizException(OTP_REQUEST_TOO_FREQUENT);
+        String normalized = normalizeIdentifier(email);
+        if (Boolean.FALSE.equals(canApplyOtp(normalized))) throw new BizException(OTP_REQUEST_TOO_FREQUENT);
 
         // 生成OTP
         String otp = generateOtp();
 
         // 存储到Redis
-        String key = OTP_KEY_PREFIX + email;
+        String key = OTP_KEY_PREFIX + normalized;
         long validityMinutes = otpProps.getValidityMinutes();
         redisTemplate.opsForValue().set(key, otp, validityMinutes, TimeUnit.MINUTES);
 
         // 重置错误尝试计数
-        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + email;
+        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + normalized;
         redisTemplate.delete(attemptKey);
 
-        log.info("OTP generated and stored for email: {}", email);
+        log.info("OTP generated and stored for identifier: {}", normalized);
         return otp;
     }
 
@@ -70,20 +74,21 @@ public class OtpService {
      * @throws BizException 验证失败异常
      */
     public void verifyOtp(String email, String otpCode) {
+        String normalized = normalizeIdentifier(email);
         // 检查防暴力破解限制
-        checkRateLimit(email);
+        checkRateLimit(normalized);
 
         // 从Redis获取OTP
-        String key = OTP_KEY_PREFIX + email;
+        String key = OTP_KEY_PREFIX + normalized;
         String storedOtp = redisTemplate.opsForValue().get(key);
 
         if (storedOtp == null) {
-            recordFailedAttempt(email);
+            recordFailedAttempt(normalized);
             throw new BizException(ErrorCode.OTP_EXPIRED);
         }
 
         if (!storedOtp.equals(otpCode)) {
-            recordFailedAttempt(email);
+            recordFailedAttempt(normalized);
             throw new BizException(ErrorCode.INVALID_OTP);
         }
 
@@ -91,19 +96,19 @@ public class OtpService {
         redisTemplate.delete(key);
 
         // 清除错误尝试记录
-        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + email;
+        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + normalized;
         redisTemplate.delete(attemptKey);
 
-        log.info("OTP verified successfully for email: {}", email);
+        log.info("OTP verified successfully for identifier: {}", normalized);
     }
 
     /**
      * 检查防暴力破解限制
-     * @param email 邮箱地址
+     * @param normalized 邮箱地址
      * @throws BizException 超过尝试次数
      */
-    private void checkRateLimit(String email) {
-        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + email;
+    private void checkRateLimit(String normalized) {
+        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + normalized;
         String attemptCountStr = redisTemplate.opsForValue().get(attemptKey);
 
         if (attemptCountStr != null) {
@@ -121,10 +126,10 @@ public class OtpService {
 
     /**
      * 记录验证失败的尝试
-     * @param email 邮箱地址
+     * @param normalized 邮箱地址
      */
-    private void recordFailedAttempt(String email) {
-        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + email;
+    private void recordFailedAttempt(String normalized) {
+        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + normalized;
         String attemptCountStr = redisTemplate.opsForValue().get(attemptKey);
 
         int attemptCount = 1;
@@ -140,7 +145,7 @@ public class OtpService {
             TimeUnit.MINUTES
         );
 
-        log.warn("Failed OTP verification for email: {}, attempt: {}", email, attemptCount);
+        log.warn("Failed OTP verification for identifier: {}, attempt: {}", normalized, attemptCount);
     }
 
     /**
@@ -161,12 +166,25 @@ public class OtpService {
      * @param email 邮箱地址
      */
     public void deleteOtp(String email) {
-        String key = OTP_KEY_PREFIX + email;
+        String normalized = normalizeIdentifier(email);
+        String key = OTP_KEY_PREFIX + normalized;
         redisTemplate.delete(key);
 
-        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + email;
+        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + normalized;
         redisTemplate.delete(attemptKey);
 
-        log.info("OTP deleted for email: {}", email);
+        log.info("OTP deleted for identifier: {}", normalized);
+    }
+
+    /**
+     * 标准化标识符
+     * @param identifier 标识符
+     * @return 标准化后的标识符
+     */
+    private String normalizeIdentifier(String identifier) {
+        if (!StringUtils.hasText(identifier)) {
+            throw new BizException(ErrorCode.INVALID_PARAMETER, "目标标识不能为空");
+        }
+        return identifier.trim().toLowerCase(Locale.ROOT);
     }
 }
