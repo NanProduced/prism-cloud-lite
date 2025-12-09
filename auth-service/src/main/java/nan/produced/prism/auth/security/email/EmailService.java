@@ -30,9 +30,6 @@ public class EmailService {
     @Value("${spring.mail.properties.mail.smtp.from:}")
     private String fromEmail;
 
-    @Value("${spring.mail.properties.mail.smtp.from-name:Prism Cloud}")
-    private String fromName;
-
     /**
      * 发送OTP邮件
      * @param email 收件人邮箱
@@ -61,7 +58,7 @@ public class EmailService {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-        helper.setFrom(fromEmail, fromName);
+        helper.setFrom(fromEmail, "Prism Cloud");
         helper.setTo(email);
         helper.setSubject(subject);
         helper.setText(htmlContent, true);

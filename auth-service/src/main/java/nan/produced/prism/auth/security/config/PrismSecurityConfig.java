@@ -130,8 +130,8 @@ public class PrismSecurityConfig {
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         // 登录/注册页面
-        source.registerCorsConfiguration("/auth/**", config);
         source.registerCorsConfiguration("/login/**", config);
+        source.registerCorsConfiguration("/register/**", config);
         return source;
     }
 }

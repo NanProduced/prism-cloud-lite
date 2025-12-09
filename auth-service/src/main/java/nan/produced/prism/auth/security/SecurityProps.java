@@ -58,7 +58,7 @@ public class SecurityProps {
             /**
              * 前端 SPA 登录页完整 URL
              */
-            private String entryPage = "http://localhost:5173/login";
+            private String entryPage = "http://localhost:5173/auth-form";
 
             /**
              * SPA 登录页使用的 continue 参数名
@@ -68,12 +68,15 @@ public class SecurityProps {
             /**
              * 允许 CORS 的前端来源
              */
-            private List<String> allowedOrigins = List.of("http://localhost:5173");
+            private List<String> allowedOrigins = List.of(
+                    "http://localhost:5173");
 
             /**
              * 允许的 continueUrl host（避免开放重定向）
              */
-            private List<String> allowedHosts = List.of("localhost", "127.0.0.1");
+            private List<String> allowedHosts = List.of(
+                    "http://localhost:5173",
+                    "http://localhost:8081");
         }
 
     }
