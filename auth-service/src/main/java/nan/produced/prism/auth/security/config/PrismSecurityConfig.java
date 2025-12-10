@@ -5,6 +5,7 @@ import nan.produced.prism.auth.security.authentication.PrismLoginAuthenticationP
 import nan.produced.prism.auth.security.login.PrismLoginInterface;
 import nan.produced.prism.auth.security.login.config.PrismLoginAuthenticationSecurityConfig;
 import nan.produced.prism.auth.security.otp.OtpProps;
+import nan.produced.prism.auth.security.rememberme.RememberMeAuthenticationFilter;
 import nan.produced.prism.auth.security.signature.ServiceSignatureValidationFilter;
 import nan.produced.prism.auth.security.login.handler.SpaRedirectAuthenticationEntryPoint;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -43,6 +44,7 @@ public class PrismSecurityConfig {
                                                    SecurityProps securityProps,
                                                    SpaRedirectAuthenticationEntryPoint spaRedirectAuthenticationEntryPoint,
                                                    ServiceSignatureValidationFilter signatureValidationFilter,
+                                                   RememberMeAuthenticationFilter rememberMeAuthenticationFilter,
                                                    @Qualifier("prismCorsConfig") CorsConfigurationSource corsConfigurationSource) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
@@ -60,7 +62,8 @@ public class PrismSecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(spaRedirectAuthenticationEntryPoint))
                 // 添加服务签名验证过滤器（在 UsernamePasswordAuthenticationFilter 之前执行）
-                .addFilterBefore(signatureValidationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(signatureValidationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(rememberMeAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 
@@ -70,7 +73,8 @@ public class PrismSecurityConfig {
                                                             SecurityProps securityProps,
                                                             PrismLoginInterface loginService,
                                                             RequestCache requestCache,
-                                                            ServiceSignatureValidationFilter signatureValidationFilter) throws Exception {
+                                                            ServiceSignatureValidationFilter signatureValidationFilter,
+                                                            RememberMeAuthenticationFilter rememberMeAuthenticationFilter) throws Exception {
         http
                 .with(new PrismLoginAuthenticationSecurityConfig(loginService, securityProps, requestCache), Customizer.withDefaults())
                 .authorizeHttpRequests(request ->  request
@@ -89,7 +93,8 @@ public class PrismSecurityConfig {
                         .loginProcessingUrl(securityProps.getLogin().getLoginProcessingUrl())
                         .defaultSuccessUrl(securityProps.getLogin().getLoginSuccessUrl()))
                 // 添加服务签名验证过滤器（在 UsernamePasswordAuthenticationFilter 之前执行）
-                .addFilterBefore(signatureValidationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(signatureValidationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(rememberMeAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 

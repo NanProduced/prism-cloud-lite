@@ -52,6 +52,8 @@ public class SecurityProps {
 
         private Spa spa = new Spa();
 
+        private RememberMe rememberMe = new RememberMe();
+
         @Data
         public static class Spa {
 
@@ -77,6 +79,35 @@ public class SecurityProps {
             private List<String> allowedHosts = List.of(
                     "http://localhost:5173",
                     "http://localhost:8081");
+        }
+
+        @Data
+        public static class RememberMe {
+
+            /**
+             * 是否启用 remember-me 逻辑。
+             */
+            private boolean enabled = true;
+
+            /**
+             * Cookie 名称。
+             */
+            private String cookieName = "prism-remember-me";
+
+            /**
+             * Cookie 和 token 的有效天数。
+             */
+            private long validityDays = 30;
+
+            /**
+             * Cookie Path。
+             */
+            private String cookiePath = "/";
+
+            /**
+             * 是否仅通过 HTTPS 发送 Cookie。
+             */
+            private boolean secureCookie = true;
         }
 
     }

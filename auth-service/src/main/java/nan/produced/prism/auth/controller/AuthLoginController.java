@@ -21,6 +21,8 @@ import nan.produced.prism.auth.security.authentication.PrismAuthenticationToken;
 import nan.produced.prism.auth.security.login.LoginAuthType;
 import nan.produced.prism.auth.security.login.LoginAuthTypeConstants;
 import nan.produced.prism.auth.security.login.otp.CommonLoginOtpService;
+import nan.produced.prism.auth.security.principal.PrismUserPrincipal;
+import nan.produced.prism.auth.security.rememberme.RememberMeTokenService;
 import nan.produced.prism.auth.security.login.validator.OAuth2ContinueUrlValidator;
 import nan.produced.prism.auth.utils.TraceUtils;
 import org.springframework.http.ResponseEntity;
@@ -51,6 +53,7 @@ public class AuthLoginController {
     private final AuthenticationManager authenticationManager;
     private final OAuth2ContinueUrlValidator continueUrlValidator;
     private final CommonLoginOtpService loginOtpService;
+    private final RememberMeTokenService rememberMeTokenService;
     private final HttpSessionSecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
     @PostMapping("/request-email-otp")
@@ -88,6 +91,10 @@ public class AuthLoginController {
             context.setAuthentication(authentication);
             SecurityContextHolder.setContext(context);
             securityContextRepository.saveContext(context, request, response);
+
+            boolean rememberMe = Boolean.TRUE.equals(loginRequest.getRememberMe());
+            PrismUserPrincipal principal = authentication.getPrincipal() instanceof PrismUserPrincipal user ? user : null;
+            rememberMeTokenService.handleLoginSuccess(request, response, principal, rememberMe);
         }
         catch (AuthenticationException ex) {
             SecurityContextHolder.clearContext();
@@ -169,6 +176,9 @@ public class AuthLoginController {
         @NotBlank
         @Schema(description = "登录成功后继续访问的 URL", requiredMode = Schema.RequiredMode.REQUIRED)
         private String continueUrl;
+
+        @Schema(description = "是否在当前设备记住登录状态", defaultValue = "false")
+        private Boolean rememberMe;
 
     }
 
