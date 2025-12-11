@@ -1,0 +1,68 @@
+package nan.produced.prism.core.common.messaging;
+
+/**
+ * RabbitMQ常量
+ *
+ * @author Nan
+ */
+public final class MessagingConstants {
+
+    private MessagingConstants() {
+    }
+
+    public static final String MESSAGE_VERSION = "1.0";
+
+    /**
+     * 交换机
+     */
+    public static final class Exchanges {
+        // 设备事件交换机（设备在线状态、设备指令响应、设备数据上报）
+        public static final String DEVICE_EVENTS = "device.events";
+        // 业务服务事件通知交换机（core-service内部使用） 任务推送/任务结果通知
+        public static final String CORE_NOTIFICATIONS = "core.notifications";
+
+        private Exchanges() {
+        }
+    }
+
+    /**
+     * 消息队列
+     */
+    public static final class Queues {
+        // 设备在线状态队列
+        public static final String DEVICE_STATUS = "core-device-status-q";
+        // 设备指令响应队列
+        public static final String DEVICE_COMMAND = "core-device-command-q";
+        // 设备数据上报队列
+        public static final String DEVICE_REPORT = "core-device-report-q";
+        // 业务异步任务推送/执行结果队列
+        public static final String TASK_WORKER = "core-task-worker-q";
+        // 前端spa通知队列
+        public static final String COMMON_NOTIFY = "core-notify-q";
+
+        private Queues() {
+        }
+    }
+
+    /**
+     * 路由键
+     */
+    public static final class RoutingKeys {
+        // 设备状态路由键
+        public static final String STATUS_ALL = "status.*";
+        // 设备指令路由键
+        public static final String COMMAND_ALL = "command.*";
+        // 设备数据上报路由键
+        public static final String REPORT_ALL = "report.*";
+        // 业务异步任务推送路由键
+        public static final String TASK_PENDING = "task.pending";
+        // 业务异步任务执行结果路由键
+        public static final String TASK_RESULT = "task.result";
+        // 前端spa通知路由键
+        public static final String NOTIFY_ALL = "notify.*";
+
+        private RoutingKeys() {
+        }
+    }
+}
+
