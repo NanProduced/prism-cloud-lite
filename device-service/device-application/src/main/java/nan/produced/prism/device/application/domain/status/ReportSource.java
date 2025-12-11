@@ -18,7 +18,7 @@ public enum ReportSource {
     /**
      * WebSocket心跳或消息
      */
-    WEBSOCKET("WebSocket");
+    WEBSOCKET("Websocket");
 
     private final String description;
 

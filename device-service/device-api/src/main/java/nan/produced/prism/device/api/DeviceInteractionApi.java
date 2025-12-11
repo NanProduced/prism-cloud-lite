@@ -3,7 +3,6 @@ package nan.produced.prism.device.api;
 import jakarta.servlet.http.HttpServletRequest;
 import nan.produced.prism.device.api.dto.comand.DeviceApiCommand;
 import nan.produced.prism.device.api.dto.comand.DeviceApiCommandConfirm;
-import nan.produced.prism.device.api.dto.log.DeviceApiTerminalLog;
 import nan.produced.prism.device.api.dto.media.DeviceApiMedia;
 import nan.produced.prism.device.api.dto.program.DeviceApiProgram;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +24,7 @@ public interface DeviceInteractionApi {
      * @return 200 Ok - 状态信息上报成功
      */
     @PutMapping(value = "/wp-json/screen/v1/status")
-    ResponseEntity<Void> reportTerminalStatus(@RequestBody String report);
+    ResponseEntity<Void> reportDeviceProperties(@RequestBody String report);
 
     /**
      * 终端获取待执行指令列表
@@ -100,7 +99,7 @@ public interface DeviceInteractionApi {
      * @return 200 Ok - 日志上报成功
      */
     @PostMapping("/wp-json/led/monitor/log")
-    ResponseEntity<Void> reportTerminalLog(@RequestBody List<DeviceApiTerminalLog> logs);
+    ResponseEntity<Void> reportTerminalLog(@RequestBody String logs);
 
     /**
      * 二进制流上传设备屏幕截图

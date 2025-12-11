@@ -20,6 +20,10 @@
     <dependencies>
         <dependency>
             <groupId>nan.produced</groupId>
+            <artifactId>device-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>nan.produced</groupId>
             <artifactId>device-infrastructure</artifactId>
         </dependency>
         <dependency>

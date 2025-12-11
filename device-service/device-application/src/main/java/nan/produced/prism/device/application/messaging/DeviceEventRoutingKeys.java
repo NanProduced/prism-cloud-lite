@@ -41,7 +41,7 @@ public final class DeviceEventRoutingKeys {
         if (value == null || value.isBlank()) {
             return "generic";
         }
-        return value.replaceAll("\s+", "-").toLowerCase();
+        return value.replaceAll(" +", "-").toLowerCase();
     }
 }
 

@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.device.application.domain.event.DeviceOnlineStatusEvent;
 import nan.produced.prism.device.application.dto.record.DeviceOnlineTimeRecord;
 import nan.produced.prism.device.application.dto.record.DeviceReconnectRecord;
+import nan.produced.prism.device.application.messaging.DeviceEventMessage;
+import nan.produced.prism.device.application.port.outbound.event.DeviceEventPublisherPort;
 import nan.produced.prism.device.application.port.outbound.repository.DeviceAccountRepository;
 import nan.produced.prism.device.application.port.outbound.repository.DeviceOnlineTimeRecordRepository;
 import nan.produced.prism.device.application.port.outbound.repository.DeviceReconnectRecordRepository;
@@ -15,7 +17,11 @@ import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Map;
+
+import static nan.produced.prism.device.application.domain.CommonConstant.Device.*;
 
 /**
  * 设备状态事件处理器
@@ -36,6 +42,8 @@ public class DeviceOnlineStatusEventHandler {
     private final DeviceReconnectRecordRepository deviceReconnectRecordRepository;
 
     private final DeviceLoginUpdatePort deviceLoginUpdatePort;
+
+    private final DeviceEventPublisherPort deviceEventPublisherPort;
 
     @Async
     @EventListener
@@ -62,7 +70,8 @@ public class DeviceOnlineStatusEventHandler {
     private void processDeviceOnline(DeviceOnlineStatusEvent event) {
         log.debug("DeviceStatusEvent - 设备上线事件: deviceId={}, source={}, clientIp={}",
                 event.getDeviceId(), event.getReportSource(), event.getClientIp());
-
+        // 推送设备上线事件(Mq)
+        pushDeviceOnline(event);
         // 首次上线立即更新登录时间，确保firstLoginTime不丢失
         updateLoginTimeImmediate(event);
 
@@ -77,6 +86,8 @@ public class DeviceOnlineStatusEventHandler {
         log.debug("DeviceStatusEvent - 设备短时间重连事件: deviceId={}, source={}, clientIp={}",
                 event.getDeviceId(), event.getReportSource(), event.getClientIp());
 
+        // 推送设备上线事件(Mq)
+        pushDeviceOnline(event);
         // 重连时提交到缓冲池异步更新
         updateLoginTimeAsync(event);
         // 记录重连信息
@@ -89,7 +100,8 @@ public class DeviceOnlineStatusEventHandler {
      */
     private void processDetectedDeviceOffline(DeviceOnlineStatusEvent event) {
         log.debug("DeviceStatusEvent - 标记设备离线事件: deviceId={}", event.getDeviceId());
-
+        // 推送设备离线事件(Mq)
+        pushDeviceOffline(event);
         // 记录在线时长
         saveTerminalOnlineTime(event);
 
@@ -211,5 +223,39 @@ public class DeviceOnlineStatusEventHandler {
 
         log.debug("DeviceOnlineTime - 设备在线时长记录保存成功: deviceId={}, duration={}s",
                 event.getDeviceId(), durationSeconds);
+    }
+
+    // ==================== mq设备在线状态推送辅助方法 ====================
+
+    private void pushDeviceOnline(DeviceOnlineStatusEvent event) {
+        Map<String, Object> payload = Map.of(
+                REPORT_SOURCE, event.getReportSource().name(),
+                CLIENT_IP, event.getClientIp()
+        );
+        DeviceEventMessage message = DeviceEventMessage.builder()
+                .deviceId(event.getDeviceId())
+                .eventType(event.getEventType().name())
+                .payload(payload)
+                .occurredAt(Instant.ofEpochMilli(event.getEventTime()))
+                .build();
+
+        deviceEventPublisherPort.publishStatus(ONLINE, message);
+
+    }
+
+    private void pushDeviceOffline(DeviceOnlineStatusEvent event) {
+        Map<String, Object> payload = Map.of(
+                ONLINE_START_TIME, event.getOnlineStartTime(),
+                LAST_REPORT_TIME, event.getLastReportTime(),
+                CLIENT_IP, event.getClientIp()
+        );
+        DeviceEventMessage message = DeviceEventMessage.builder()
+                .deviceId(event.getDeviceId())
+                .eventType(event.getEventType().name())
+                .payload(payload)
+                .occurredAt(Instant.ofEpochMilli(event.getEventTime()))
+                .build();
+
+        deviceEventPublisherPort.publishStatus(OFFLINE, message);
     }
 }

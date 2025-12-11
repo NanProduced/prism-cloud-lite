@@ -21,6 +21,8 @@ public class CommonConstant {
 
         public static final String ONLINE_START_TIME = "onlineStartTime";
 
+        public static final String REPORT_SOURCE = "reportSource";
+
         public static final String CLIENT_IP = "clientIp";
 
         public static final String VERSION = "version";
@@ -31,21 +33,9 @@ public class CommonConstant {
 
         public static final String UPDATED_AT = "updatedAt";
 
+        public static final String ONLINE = "online";
+
+        public static final String OFFLINE = "offline";
     }
 
-    public static final class Media {
-
-        private Media() {
-        }
-
-        public static final String PROGRAM_STATUS = "programStatus";
-
-        public static final String PROGRAM_UPDATE_TIME = "programUpdateTime";
-
-        public static final String UPGRADE_STATUS = "upgradeStatus";
-
-        public static final String UPGRADE_UPDATE_TIME = "upgradeUpdateTime";
-
-
-    }
 }
