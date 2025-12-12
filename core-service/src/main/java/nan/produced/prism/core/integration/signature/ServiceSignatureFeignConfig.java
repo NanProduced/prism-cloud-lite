@@ -1,4 +1,4 @@
-package nan.produced.prism.core.integration.auth.signature;
+package nan.produced.prism.core.integration.signature;
 
 import feign.RequestInterceptor;
 import org.springframework.context.annotation.Bean;

@@ -5,12 +5,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import nan.produced.prism.core.integration.auth.signature.ServiceSignatureProperties;
+import nan.produced.prism.core.integration.signature.ServiceSignatureProperties;
 import org.springframework.modulith.Modulithic;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@EnableFeignClients(basePackages = "nan.produced.prism.core.integration.auth")
+@EnableFeignClients(basePackages = "nan.produced.prism.core.integration")
 @EnableConfigurationProperties(ServiceSignatureProperties.class)
 @Modulithic(sharedModules = "common", systemName = "Prism Core Service")
 public class CoreServiceApplication {

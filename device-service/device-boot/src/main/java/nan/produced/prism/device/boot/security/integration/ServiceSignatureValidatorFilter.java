@@ -7,7 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import nan.produced.prism.device.boot.intergration.ApiResponse;
+import nan.produced.prism.device.boot.integration.ApiResponse;
 import nan.produced.prism.device.boot.security.DeviceSecurityProps;
 import nan.produced.prism.device.common.exception.ErrorCode;
 import nan.produced.prism.device.common.exception.business.BusinessErrorCode;

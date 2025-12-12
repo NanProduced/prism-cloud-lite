@@ -1,4 +1,4 @@
-package nan.produced.prism.core.integration.auth.signature;
+package nan.produced.prism.core.integration.signature;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;

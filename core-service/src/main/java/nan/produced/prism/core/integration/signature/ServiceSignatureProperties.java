@@ -1,4 +1,4 @@
-package nan.produced.prism.core.integration.auth.signature;
+package nan.produced.prism.core.integration.signature;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

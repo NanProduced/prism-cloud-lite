@@ -5,6 +5,7 @@ import nan.produced.prism.core.common.response.BffResponse;
 import nan.produced.prism.core.device.api.converter.DeviceConverter;
 import nan.produced.prism.core.device.api.dto.CreateDeviceReq;
 import nan.produced.prism.core.device.api.dto.CreateDeviceResp;
+import nan.produced.prism.core.device.application.port.inbound.DeviceManageUseCase;
 import nan.produced.prism.core.device.domain.dto.CreateDeviceDTO;
 import nan.produced.prism.core.security.CloudAuthContext;
 import org.springframework.validation.annotation.Validated;
@@ -22,13 +23,14 @@ public class DeviceCommonController {
 
     private final DeviceConverter deviceConverter;
 
+    private final DeviceManageUseCase deviceManageUseCase;
+
     @PostMapping("/create")
     public BffResponse<CreateDeviceResp> createDevice(@RequestBody @Validated CreateDeviceReq req) {
         String userUuid = CloudAuthContext.getCurrentUser().userUuid();
         UUID userId = UUID.fromString(userUuid);
         CreateDeviceDTO createDeviceDTO = deviceConverter.toCreateDeviceDTO(userId, req);
-
-
-
+        Long deviceId = deviceManageUseCase.createDevice(createDeviceDTO);
+        return BffResponse.success(new CreateDeviceResp(deviceId, req.getDisplayName(), req.getAccount(), req.getPassword()));
     }
 }
