@@ -2,6 +2,7 @@ package nan.produced.prism.device.boot.security;
 
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.device.boot.security.filter.DeviceBasicAuthFilter;
+import nan.produced.prism.device.boot.security.integration.ServiceSignatureValidatorFilter;
 import nan.produced.prism.device.infrastructure.security.DeviceAuthenticationProvider;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -27,7 +28,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain deviceSecurityFilterChain(HttpSecurity http,
                                                          DeviceSecurityProps securityProps,
-                                                         DeviceBasicAuthFilter deviceBasicAuthFilter) throws Exception {
+                                                         DeviceBasicAuthFilter deviceBasicAuthFilter,
+                                                         ServiceSignatureValidatorFilter serviceSignatureValidatorFilter) throws Exception {
         return http
                 // 设备端无需CSRF保护
                 .csrf(AbstractHttpConfigurer::disable)
@@ -53,6 +55,7 @@ public class SecurityConfig {
                 .addFilterAfter(deviceBasicAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .httpBasic(basic -> basic
                         .authenticationEntryPoint(basicAuthenticationEntryPoint()))
+                .addFilterBefore(serviceSignatureValidatorFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 

@@ -1,16 +1,17 @@
-package nan.produced.prism.auth.security.signature;
+package nan.produced.prism.device.boot.security.integration;
 
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
-import java.nio.charset.StandardCharsets;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import nan.produced.prism.auth.common.exception.BizException;
+import nan.produced.prism.device.common.exception.business.BusinessException;
+import nan.produced.prism.device.common.utils.SignatureUtils;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
-import static nan.produced.prism.auth.common.exception.ErrorCode.INTERNAL_SERVER_ERROR;
+import java.nio.charset.StandardCharsets;
+
+import static nan.produced.prism.device.common.exception.business.BusinessErrorCode.SYSTEM_ERROR;
 
 /**
  * 服务签名请求拦截器
@@ -23,7 +24,6 @@ import static nan.produced.prism.auth.common.exception.ErrorCode.INTERNAL_SERVER
  */
 @Slf4j
 @Component
-@Primary
 @RequiredArgsConstructor
 public class ServiceSignatureInterceptor implements RequestInterceptor {
 
@@ -49,8 +49,8 @@ public class ServiceSignatureInterceptor implements RequestInterceptor {
             String body = extractBody(template);
 
             // 计算签名
-            String signature = ServiceSignatureUtil.calculateSignature(
-                method, path, body, timestamp, signatureSecret
+            String signature = SignatureUtils.calculateSignature(
+                    method, path, body, timestamp, signatureSecret
             );
 
             // 添加请求头
@@ -61,21 +61,14 @@ public class ServiceSignatureInterceptor implements RequestInterceptor {
             log.debug("为请求添加服务签名: path={}, signature={}", path, signature.substring(0, Math.min(10, signature.length())) + "...");
         } catch (Exception e) {
             log.error("为请求添加签名失败: {}", e.getMessage(), e);
-            throw new BizException(INTERNAL_SERVER_ERROR, "为请求添加签名失败: " + e.getMessage(), e);
+            throw new BusinessException(SYSTEM_ERROR, "为请求添加签名失败: " + e.getMessage(), e);
         }
     }
 
-    /**
-     * 从请求模板中提取 body
-     *
-     * @param template Feign 请求模板
-     * @return body 内容（如果有）
-     */
     private String extractBody(RequestTemplate template) {
-        if (template.body() == null || template.body().length == 0) {
+        if (template.body() == null) {
             return "";
         }
-
         return new String(template.body(), StandardCharsets.UTF_8);
     }
 }

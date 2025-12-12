@@ -72,6 +72,17 @@ public enum BusinessErrorCode implements ErrorCode {
      */
     AUTHENTICATION_FAILED("TM1004", "认证失败",ErrorLevel.WARN, HttpStatusCode.UNAUTHORIZED),
 
+    /**
+     * IP地址不在白名单中
+     */
+    IP_NOT_WHITELISTED("TM1005", "IP地址不在白名单中", ErrorLevel.WARN, HttpStatusCode.UNAUTHORIZED),
+
+    /**
+     * 服务签名验证失败
+     */
+    INVALID_SERVICE_TOKEN("TM1006", "服务签名验证失败", ErrorLevel.WARN, HttpStatusCode.UNAUTHORIZED),
+
+
     /*======================= 终端/设备管理 TM20XX =======================*/
 
     /**

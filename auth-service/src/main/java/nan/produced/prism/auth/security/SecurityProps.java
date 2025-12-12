@@ -195,7 +195,7 @@ public class SecurityProps {
          * HMAC-SHA256 共享密钥（与其他服务必须相同）
          * 生产环境应通过环境变量或密钥管理服务配置
          */
-        private String secret = "your-shared-secret-key-change-in-production";
+        private String secret = "NanProduced";
 
         /**
          * 时间戳容忍度（毫秒），防止重放攻击

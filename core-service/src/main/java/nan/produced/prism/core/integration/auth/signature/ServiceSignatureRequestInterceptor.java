@@ -5,6 +5,15 @@ import feign.RequestTemplate;
 import java.nio.charset.StandardCharsets;
 import nan.produced.prism.core.common.util.TraceUtils;
 
+/**
+ * 服务签名请求拦截器
+ * 为所有向其他服务的 Feign 请求添加服务签名
+ * <p>
+ * 添加的请求头：
+ * - X-Service-From: 调用服务标识
+ * - X-Timestamp: 请求时间戳
+ * - X-Signature: HMAC-SHA256 签名
+ */
 public class ServiceSignatureRequestInterceptor implements RequestInterceptor {
 
     private final ServiceSignatureProperties properties;

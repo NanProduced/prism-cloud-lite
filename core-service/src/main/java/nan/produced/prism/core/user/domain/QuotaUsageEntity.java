@@ -45,7 +45,7 @@ public class QuotaUsageEntity {
     private Integer deviceCountActive = 0;
 
     /**
-     * 活跃程序数量
+     * 活跃节目数量
      */
     @Column(name = "program_count_active", nullable = false)
     private Integer programCountActive = 0;

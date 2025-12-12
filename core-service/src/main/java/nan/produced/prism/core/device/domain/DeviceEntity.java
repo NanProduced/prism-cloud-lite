@@ -24,6 +24,9 @@ public class DeviceEntity {
     @Column(name = "device_name", nullable = false, length = 128)
     private String deviceName;
 
+    @Column(name = "description", length = 256)
+    private String description;
+
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
