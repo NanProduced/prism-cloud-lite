@@ -38,4 +38,43 @@ public class CommonConstant {
         public static final String OFFLINE = "offline";
     }
 
+    public static final class Report {
+
+        /**
+         * 设备属性上报
+         * <p>/wp-json/screen/v1/status</p>
+         */
+        public static final String PROPERTIES = "properties";
+
+        /**
+         * 素材播放记录上报
+         * <p>/wp-json/led/flowfee</p>
+         */
+        public static final String MEDIA_PLAY_RECORD = "mediaPlayRecord";
+
+        /**
+         * 节目播放记录上报
+         * <p>/wp-json/led/flowfee/v2/program</p>
+         */
+        public static final String PROGRAM_PLAY_RECORD = "programPlayRecord";
+
+        /**
+         * 终端日志上报
+         * <p>/wp-json/led/monitor/log</p>
+         */
+        public static final String DEVICE_LOG = "deviceLog";
+
+        /**
+         * 传感器数据上报
+         * <P>/wp-json/led/v2/monitor</P>
+         */
+        public static final String SENSOR_DATA = "sensorData";
+
+        /**
+         * 素材下载进度上报
+         * <p>/wp-json/screen/v1/info</p>
+         */
+        public static final String DOWNLOADING_PROGRESS = "downloadingProgress";
+    }
+
 }

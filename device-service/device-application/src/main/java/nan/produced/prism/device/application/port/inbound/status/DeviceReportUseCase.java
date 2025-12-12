@@ -1,8 +1,10 @@
 package nan.produced.prism.device.application.port.inbound.status;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
+/**
+ * 设备上报数据处理服务
+ *
+ * @author Nan
+ */
 public interface DeviceReportUseCase {
 
     /**
