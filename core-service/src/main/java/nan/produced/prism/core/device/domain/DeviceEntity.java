@@ -70,14 +70,19 @@ public class DeviceEntity {
     private String resolution;
 
     @Column(name = "total_storage", length = 64)
-    private String totalStorage;
+    private Long totalStorage;
 
     @Column(name = "free_storage", length = 64)
-    private String freeStorage;
+    private Long freeStorage;
 
     /* ====== 设备属性JSON字段 ====== */
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "properties", columnDefinition = "jsonb")
     private DeviceProperties properties;
+
+    public DeviceEntity(Long deviceId, DeviceProperties  properties) {
+        this.deviceId = deviceId;
+        this.properties = properties;
+    }
 }

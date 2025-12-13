@@ -27,6 +27,9 @@ public class DeviceEventMessage {
 
     private Instant occurredAt;
 
+    @Builder.Default
+    private boolean retryable = false;
+
     private String traceId;
 
     @Builder.Default

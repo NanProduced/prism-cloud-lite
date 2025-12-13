@@ -25,6 +25,8 @@ public class DeviceEventMessage {
 
     private Instant occurredAt;
 
+    private boolean retryable;
+
     private String traceId;
 
     private String version;

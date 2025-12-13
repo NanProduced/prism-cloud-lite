@@ -64,5 +64,49 @@ public final class MessagingConstants {
         private RoutingKeys() {
         }
     }
+
+    public static final class DeviceEventTypes {
+
+        /**
+         * 设备状态 - 在线
+         */
+        public static final String STATUS_ONLINE = "status.online";
+
+        /**
+         * 设备状态 - 离线
+         */
+        public static final String STATUS_OFFLINE = "status.offline";
+
+        /**
+         * 设备数据上报 - 设备属性
+         */
+        public static final String REPORT_PROPERTIES = "report.properties";
+
+        /**
+         *  设备数据上报 - 素材播放记录
+         */
+        public static final String REPORT_MEDIA_PLAY_RECORD = "report.mediaPlayRecord";
+
+        /**
+         * 设备数据上报 - 节目播放记录
+         */
+        public static final String REPORT_PROGRAM_PLAY_RECORD = "report.programPlayRecord";
+
+        /**
+         * 设备数据上报 - 设备日志
+         */
+        public static final String REPORT_DEVICE_LOG = "report.deviceLog";
+
+        /**
+         * 设备数据上报 - 传感器数据
+         */
+        public static final String REPORT_SENSOR_DATA = "report.sensorData";
+
+        /**
+         * 设备数据上报 - 素材下载进度
+         */
+        public static final String REPORT_DOWNLOADING_PROGRESS = "report.downloadingProgress";
+
+    }
 }
 

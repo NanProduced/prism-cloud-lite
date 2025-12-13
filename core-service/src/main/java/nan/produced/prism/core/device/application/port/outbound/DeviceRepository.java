@@ -2,7 +2,41 @@ package nan.produced.prism.core.device.application.port.outbound;
 
 import nan.produced.prism.core.device.domain.DeviceEntity;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 public interface DeviceRepository {
 
     void createDevice(DeviceEntity entity);
+
+    DeviceEntity findByDeviceId(Long deviceId);
+
+    /**
+     * 根据设备ID查所属用户ID
+     * @param deviceId 设备ID
+     * @return 用户ID
+     */
+    UUID findUserIdByDeviceId(Long deviceId);
+
+    /**
+     * 仅更新有值的字段和最后上报时间
+     * 注意properties字段(JSON)，仅为部分JSON子结构，需要部分更新
+     */
+    void updateDeviceProperties(DeviceEntity entity);
+
+    /**
+     * 更新设备在线状态,最后上报时间,如果onboardingTime为空则同时插入onboardingTime
+     * @param deviceId 设备ID
+     * @param status 状态 (0:离线,1:在线)
+     * @param time  时间
+     */
+    void updateStatusWithOnboarding(Long deviceId, Integer status, LocalDateTime time);
+
+    /**
+     * 更新设备在线状态,最后上报时间
+     * @param deviceId 设备ID
+     * @param status 状态 (0:离线,1:在线)
+     * @param time  时间
+     */
+    void updateStatus(Long deviceId, Integer status, LocalDateTime time);
 }
