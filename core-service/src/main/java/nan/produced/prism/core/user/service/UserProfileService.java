@@ -1,5 +1,6 @@
 package nan.produced.prism.core.user.service;
 
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -11,10 +12,10 @@ import nan.produced.prism.core.integration.auth.client.AuthInternalClient;
 import nan.produced.prism.core.integration.auth.dto.AuthInternalUserResponse;
 import nan.produced.prism.core.security.CloudAuthContext;
 import nan.produced.prism.core.security.CloudAuthUser;
-import nan.produced.prism.core.user.domain.QuotaUsageEntity;
 import nan.produced.prism.core.user.domain.UserProfileEntity;
-import nan.produced.prism.core.user.repository.QuotaUsageRepository;
+import nan.produced.prism.core.user.domain.UserQuotaUsageEntity;
 import nan.produced.prism.core.user.repository.UserProfileRepository;
+import nan.produced.prism.core.user.repository.UserQuotaUsageRepository;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,8 +32,8 @@ public class UserProfileService {
     private static final String AUTH_SUCCESS_CODE = "AUTH-0000";
 
     private final UserProfileRepository userProfileRepository;
-    private final QuotaUsageRepository quotaUsageRepository;
     private final AuthInternalClient authInternalClient;
+    private final UserQuotaUsageRepository userQuotaUsageRepository;
 
     @Transactional
     public UserProfileEntity getOrCreateCurrentUserProfile() {
@@ -72,6 +73,7 @@ public class UserProfileService {
                 .build();
 
             profile = userProfileRepository.save(profile);
+            // 创建默认的资源使用情况
             createDefaultQuotaUsage(profile.getId());
 
             log.info("JIT Provisioning SUCCESS: publicId={}, coreUserId={}, email={}", publicId, profile.getId(), email);
@@ -85,22 +87,11 @@ public class UserProfileService {
     }
 
     private void createDefaultQuotaUsage(UUID userId) {
-        if (quotaUsageRepository.findByUserId(userId).isPresent()) {
-            return;
-        }
-        try {
-            QuotaUsageEntity usage = QuotaUsageEntity.builder()
-                .id(UUID.randomUUID())
-                .userId(userId)
-                .storageUsedBytes(0L)
-                .deviceCountActive(0)
-                .programCountActive(0)
-                .version(0)
-                .build();
-            quotaUsageRepository.save(usage);
-        } catch (DataIntegrityViolationException ex) {
-            log.debug("Quota usage already exists for userId={}, skip", userId);
-        }
+        userQuotaUsageRepository.save(UserQuotaUsageEntity.builder()
+                        .id(UUID.randomUUID())
+                        .userId(userId)
+                        .lastUpdated(Instant.now())
+                        .build());
     }
 
     private AuthInternalUserResponse fetchRemoteProfile(String publicId) {

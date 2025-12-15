@@ -1,5 +1,3 @@
-@org.springframework.modulith.ApplicationModule(displayName = "Messaging Infrastructure")
+@org.springframework.modulith.NamedInterface("messaging")
 package nan.produced.prism.core.common.messaging;
-
-import org.springframework.modulith.ApplicationModule;
 
