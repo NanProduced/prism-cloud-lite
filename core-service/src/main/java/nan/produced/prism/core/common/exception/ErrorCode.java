@@ -44,6 +44,14 @@ public enum ErrorCode {
     // ============ MQ相关 (CORE-26xx) ============
     MQ_MESSAGE_CONSUMING_FAILED("CORE-2600", "MQ消息消费失败", "MQ消息消费失败，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
 
+    // ============ 媒体库相关 (CORE-27xx) ============
+    MEDIA_FOLDER_NOT_FOUND("CORE-2700", "媒体文件夹不存在", "指定的文件夹不存在或无权访问", HttpStatus.NOT_FOUND, false),
+    MEDIA_FILE_ENTITY_NOT_FOUND("CORE-2701", "文件实体不存在", "引用的文件不存在", HttpStatus.NOT_FOUND, false),
+    MEDIA_ASSET_NOT_FOUND("CORE-2702", "媒体素材不存在", "指定的素材不存在或无权访问", HttpStatus.NOT_FOUND, false),
+    MEDIA_INVALID_FILE_REFERENCE("CORE-2703", "文件引用无效", "请提供有效的 s3Key 或 fileEntityId", HttpStatus.BAD_REQUEST, false),
+    MEDIA_MISSING_ORIGINAL_FILE("CORE-2704", "缺少原始文件", "素材必须包含原始文件", HttpStatus.BAD_REQUEST, false),
+    MEDIA_BATCH_FINALIZE_FAILED("CORE-2705", "批量落库失败", "素材创建失败，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
+
     // ============ 系统异常 (SYS-5xxx) ============
     INTERNAL_SERVER_ERROR("SYS-5000", "系统内部错误", "服务器内部错误，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
     EXTERNAL_SERVICE_ERROR("SYS-5001", "外部服务调用失败", "依赖服务暂时不可用，请稍后重试", HttpStatus.BAD_GATEWAY, true);
