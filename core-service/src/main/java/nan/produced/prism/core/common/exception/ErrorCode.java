@@ -31,6 +31,13 @@ public enum ErrorCode {
     DEVICE_DELETED_FAILED("CORE-2006", "设备删除失败", "设备删除失败，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
     DEVICE_REPORT_EVENT_HANDLE_FAILED("CORE-2007", "设备上报事件处理失败", "设备上报事件处理失败，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
 
+    // ============ 设备标签相关 (CORE-21xx) ============
+    DEVICE_TAG_NOT_FOUND("CORE-2100", "设备标签不存在", "指定的标签不存在或无权访问", HttpStatus.NOT_FOUND, false),
+    DEVICE_TAG_SLUG_ALREADY_EXISTS("CORE-2101", "标签标识已存在", "该标签名称已被使用，请使用其他名称", HttpStatus.BAD_REQUEST, false),
+    DEVICE_TAG_CREATE_FAILED("CORE-2102", "标签创建失败", "标签创建失败，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
+    DEVICE_TAG_UPDATE_FAILED("CORE-2103", "标签更新失败", "标签更新失败，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
+    DEVICE_TAG_DELETE_FAILED("CORE-2104", "标签删除失败", "标签删除失败，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
+
     // ============ 认证相关 (CORE-24xx) ============
     UNAUTHORIZED("CORE-2401", "未授权访问", "请提供有效的认证信息", HttpStatus.UNAUTHORIZED, false),
     INVALID_CLOUD_AUTH_HEADER("CORE-2402", "CLOUD_AUTH头格式错误", "认证信息格式错误，请重新登录", HttpStatus.UNAUTHORIZED, false),
