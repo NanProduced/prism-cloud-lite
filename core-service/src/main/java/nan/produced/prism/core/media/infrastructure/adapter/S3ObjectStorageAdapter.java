@@ -27,16 +27,15 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort {
 
     @Override
     public String generatePresignedPutUrl(String key, String contentType, Map<String, String> metadata, Duration expiration) {
-        var putObjectRequest = PutObjectRequest.builder()
-                .bucket(s3Properties.getBucket())
-                .key(key)
-                .contentType(contentType)
-                .metadata(metadata)
-                .build();
 
         var presignRequest = PutObjectPresignRequest.builder()
                 .signatureDuration(expiration)
-                .putObjectRequest(putObjectRequest)
+                .putObjectRequest(r -> r
+                        .bucket(s3Properties.getBucket())
+                        .key(key)
+                        .contentType(contentType)
+                        .metadata(metadata)
+                        .build())
                 .build();
 
         var presignedRequest = s3Presigner.presignPutObject(presignRequest);
@@ -60,16 +59,15 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort {
 
     @Override
     public String generatePresignedPartUrl(String key, String uploadId, int partNumber, Duration expiration) {
-        var uploadPartRequest = UploadPartRequest.builder()
-                .bucket(s3Properties.getBucket())
-                .key(key)
-                .uploadId(uploadId)
-                .partNumber(partNumber)
-                .build();
 
         var presignRequest = UploadPartPresignRequest.builder()
                 .signatureDuration(expiration)
-                .uploadPartRequest(uploadPartRequest)
+                .uploadPartRequest(r -> r
+                        .bucket(s3Properties.getBucket())
+                        .key(key)
+                        .uploadId(uploadId)
+                        .partNumber(partNumber)
+                        .build())
                 .build();
 
         var presignedRequest = s3Presigner.presignUploadPart(presignRequest);
@@ -79,15 +77,14 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort {
 
     @Override
     public String generatePresignedCompleteUrl(String key, String uploadId, Duration expiration) {
-        var completeRequest = CompleteMultipartUploadRequest.builder()
-                .bucket(s3Properties.getBucket())
-                .key(key)
-                .uploadId(uploadId)
-                .build();
 
         var presignRequest = CompleteMultipartUploadPresignRequest.builder()
                 .signatureDuration(expiration)
-                .completeMultipartUploadRequest(completeRequest)
+                .completeMultipartUploadRequest(r -> r
+                        .bucket(s3Properties.getBucket())
+                        .key(key)
+                        .uploadId(uploadId)
+                        .build())
                 .build();
 
         var presignedRequest = s3Presigner.presignCompleteMultipartUpload(presignRequest);
@@ -97,15 +94,12 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort {
 
     @Override
     public String generatePresignedAbortUrl(String key, String uploadId, Duration expiration) {
-        var abortRequest = AbortMultipartUploadRequest.builder()
-                .bucket(s3Properties.getBucket())
-                .key(key)
-                .uploadId(uploadId)
-                .build();
-
         var presignRequest = AbortMultipartUploadPresignRequest.builder()
                 .signatureDuration(expiration)
-                .abortMultipartUploadRequest(abortRequest)
+                .abortMultipartUploadRequest(r -> r
+                        .bucket(s3Properties.getBucket())
+                        .key(key)
+                        .uploadId(uploadId))
                 .build();
 
         var presignedRequest = s3Presigner.presignAbortMultipartUpload(presignRequest);

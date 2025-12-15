@@ -19,9 +19,8 @@ logging:
 prism:
   media:
     s3:
-      region: ${AWS_REGION:ap-northeast-1}
-      bucket: ${AWS_S3_BUCKET:prism-media-library}
-      # endpoint: # 留空使用 AWS S3，或设置为 MinIO 等兼容存储的地址
+      region: ap-east-1
+      bucket: prism-cloud-lite-s3-hk
       presigned-url-expiration-minutes: 15
     upload:
       routes:
@@ -36,18 +35,6 @@ prism:
           multipart-enabled: true
           multipart-part-size: 52428800  # 50MB
           multipart-threshold: 104857600  # 100MB
-          path-prefix: media
-          storage-class: STANDARD
-          public-access: false
-        # 头像上传路由（示例）
-        avatar:
-          allowed-types:
-            - "image/jpeg"
-            - "image/png"
-            - "image/webp"
-          max-file-size: 5242880  # 5MB
-          max-files: 1
-          multipart-enabled: false
-          path-prefix: avatars
+          path-prefix: media_library
           storage-class: STANDARD
           public-access: false

@@ -18,13 +18,14 @@ public class S3Properties {
 
     /**
      * AWS 区域
+     * 默认香港
      */
-    private String region = "ap-northeast-1";
+    private String region = "ap-east-1";
 
     /**
      * S3 Bucket 名称
      */
-    private String bucket = "prism-media-library";
+    private String bucket = "prism-cloud-lite-s3-hk";
 
     /**
      * 自定义端点（用于 MinIO 等 S3 兼容存储，生产环境留空）

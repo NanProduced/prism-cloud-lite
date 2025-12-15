@@ -40,9 +40,9 @@ public class UploadRouteProperties {
 
         /**
          * 单文件最大大小（字节）
-         * 默认 5GB
+         * 默认 2GB
          */
-        private long maxFileSize = 5L * 1024 * 1024 * 1024;
+        private long maxFileSize = 2L * 1024 * 1024 * 1024;
 
         /**
          * 单次请求最大文件数量
@@ -69,7 +69,7 @@ public class UploadRouteProperties {
         /**
          * S3 存储路径前缀
          */
-        private String pathPrefix = "media";
+        private String pathPrefix = "default";
 
         /**
          * S3 存储类型
