@@ -174,6 +174,17 @@ public class DeviceRepositoryAdapter implements DeviceRepository {
     }
 
     /**
+     * 【扩展方法】根据设备 ID 和用户
+     * @param deviceId 设备ID
+     * @param userId 用户ID
+     * @return 设备实体
+     */
+    @Override
+    public DeviceEntity findByDeviceIdAndUserId(Long deviceId, UUID userId) {
+        return deviceRepositoryJpa.findByDeviceIdAndUserId(deviceId, userId);
+    }
+
+    /**
      * 【扩展方法】删除设备
      * 虽然不在 DeviceRepository 接口中定义，但作为常用操作提供
      *

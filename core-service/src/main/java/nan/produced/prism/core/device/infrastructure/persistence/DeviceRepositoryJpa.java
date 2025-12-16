@@ -32,6 +32,15 @@ public interface DeviceRepositoryJpa extends JpaRepository<DeviceEntity, Long> {
     DeviceEntity findByDeviceId(Long deviceId);
 
     /**
+     * 根据设备 ID 和用户 ID 查询设备信息
+     *
+     * @param deviceId 设备 ID
+     * @param userId 用户 ID
+     * @return 设备实体，如果不存在返回 null
+     */
+    DeviceEntity findByDeviceIdAndUserId(Long deviceId, UUID userId);
+
+    /**
      * 查询用户的全部设备
      *
      * @param userId 用户ID

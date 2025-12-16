@@ -1,7 +1,19 @@
 package nan.produced.prism.core.device.application.service;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.core.common.exception.BizException;
+import nan.produced.prism.core.common.exception.ErrorCode;
+import nan.produced.prism.core.device.api.dto.DeviceDetailResp;
+import nan.produced.prism.core.device.api.dto.FilterDeviceReq;
+import nan.produced.prism.core.device.application.mapper.DeviceDetailMapper;
 import nan.produced.prism.core.device.application.mapper.DeviceTagMapper;
 import nan.produced.prism.core.device.application.port.inbound.DeviceSearchUseCase;
 import nan.produced.prism.core.device.application.mapper.DeviceListMapper;
@@ -17,12 +29,8 @@ import nan.produced.prism.core.device.domain.dto.DeviceListVO;
 import nan.produced.prism.core.device.domain.dto.TagVO;
 import nan.produced.prism.core.device.domain.tags.DeviceTagMapEntity;
 import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @Slf4j
@@ -34,16 +42,88 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
     private final DeviceCustomFieldDefRepository customFieldDefRepository;
     private final DeviceCustomFieldValueRepository customFieldValueRepository;
     private final DeviceListMapper deviceListMapper;
+    private final DeviceDetailMapper deviceDetailMapper;
     private final DeviceTagMapper deviceTagMapper;
 
     @Override
+    @Transactional(readOnly = true)
     public List<DeviceListVO> listAllUsersDevices(UUID userId) {
+        if (userId == null) {
+            return List.of();
+        }
+        return assembleDeviceList(userId, deviceRepository.findByUserId(userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DeviceDetailResp getDeviceDetail(UUID userId, Long deviceId) {
+        if (userId == null || deviceId == null) {
+            throw new BizException(ErrorCode.DEVICE_NOT_FOUND_IN_CORE);
+        }
+
+        DeviceEntity deviceEntity = deviceRepository.findByDeviceIdAndUserId(deviceId, userId);
+        if (deviceEntity == null) {
+            throw new BizException(ErrorCode.DEVICE_NOT_FOUND_IN_CORE);
+        }
+
+        DeviceDetailResp resp = deviceDetailMapper.toDetailResp(deviceEntity);
+
+        // tags
+        List<TagVO> tagVOS = deviceTagRepository.findByDeviceId(deviceId, userId).stream()
+                .map(deviceTagMapper::toVO)
+                .toList();
+        resp.setTags(tagVOS);
+
+        // customFieldValues（key=fieldKey）
+        Map<Long, Map<String, Object>> valuesByDevice = loadCustomFieldValues(userId, List.of(deviceId));
+        resp.setCustomFieldValues(valuesByDevice.getOrDefault(deviceId, Map.of()));
+
+        return resp;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DeviceListVO> filterDevices(UUID userId, FilterDeviceReq req) {
+        if (userId == null) {
+            return List.of();
+        }
+
         List<DeviceEntity> devices = deviceRepository.findByUserId(userId);
         if (devices == null || devices.isEmpty()) {
             return List.of();
         }
 
-        List<Long> deviceIds = devices.stream().map(DeviceEntity::getDeviceId).toList();
+        if (req == null || isBlankFilters(req)) {
+            return assembleDeviceList(userId, devices);
+        }
+
+        String keyword = normalize(req.getKeyword());
+        String model = normalize(req.getModel());
+        Integer networkType = req.getNetworkType();
+        Integer onlineStatus = req.getOnlineStatus();
+
+        List<DeviceEntity> filtered = devices.stream()
+                .filter(device -> keyword == null || matchKeyword(device, keyword))
+                .filter(device -> model == null || containsIgnoreCase(device.getModel(), model))
+                .filter(device -> networkType == null || Objects.equals(device.getNetworkType(), networkType))
+                .filter(device -> onlineStatus == null || Objects.equals(device.getOnlineStatus(), onlineStatus))
+                .toList();
+
+        return assembleDeviceList(userId, filtered);
+    }
+
+    private List<DeviceListVO> assembleDeviceList(UUID userId, List<DeviceEntity> devices) {
+        if (devices == null || devices.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> deviceIds = devices.stream()
+                .map(DeviceEntity::getDeviceId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (deviceIds.isEmpty()) {
+            return List.of();
+        }
 
         Map<Long, List<TagVO>> tagsByDevice = loadTags(userId, deviceIds);
         Map<Long, Map<String, Object>> customFieldValuesByDevice = loadCustomFieldValues(userId, deviceIds);
@@ -66,11 +146,10 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
 
         Map<Long, List<TagVO>> result = new HashMap<>();
         for (DeviceTagMapEntity mapping : mappings) {
-            if (mapping == null || mapping.getDeviceId() == null || mapping.getTag() == null) {
-                continue;
+            if (mapping != null && mapping.getDeviceId() != null && mapping.getTag() != null) {
+                TagVO tag = deviceTagMapper.toVO(mapping.getTag());
+                result.computeIfAbsent(mapping.getDeviceId(), ignored -> new ArrayList<>()).add(tag);
             }
-            TagVO tag = deviceTagMapper.toVO(mapping.getTag());
-            result.computeIfAbsent(mapping.getDeviceId(), ignored -> new ArrayList<>()).add(tag);
         }
         return result;
     }
@@ -83,10 +162,9 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
 
         Map<Long, DeviceCustomFieldDefEntity> defMap = new HashMap<>();
         for (DeviceCustomFieldDefEntity def : defs) {
-            if (def == null || def.getFieldId() == null) {
-                continue;
+            if (def != null && def.getFieldId() != null) {
+                defMap.put(def.getFieldId(), def);
             }
-            defMap.put(def.getFieldId(), def);
         }
 
         List<DeviceCustomFieldValueEntity> values = customFieldValueRepository.findByUserIdAndDeviceIdIn(userId, deviceIds);
@@ -96,17 +174,14 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
 
         Map<Long, Map<String, Object>> result = new HashMap<>();
         for (DeviceCustomFieldValueEntity valueEntity : values) {
-            if (valueEntity == null || valueEntity.getDeviceId() == null || valueEntity.getFieldId() == null) {
-                continue;
+            if (valueEntity != null && valueEntity.getDeviceId() != null && valueEntity.getFieldId() != null) {
+                DeviceCustomFieldDefEntity def = defMap.get(valueEntity.getFieldId());
+                if (def != null && def.getFieldKey() != null && def.getFieldType() != null) {
+                    Object value = extractValue(valueEntity, def.getFieldType());
+                    result.computeIfAbsent(valueEntity.getDeviceId(), ignored -> new HashMap<>())
+                            .put(def.getFieldKey(), value);
+                }
             }
-            DeviceCustomFieldDefEntity def = defMap.get(valueEntity.getFieldId());
-            if (def == null || def.getFieldKey() == null || def.getFieldType() == null) {
-                continue;
-            }
-
-            Object value = extractValue(valueEntity, def.getFieldType());
-            result.computeIfAbsent(valueEntity.getDeviceId(), ignored -> new HashMap<>())
-                    .put(def.getFieldKey(), value);
         }
         return result;
     }
@@ -119,5 +194,35 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
             case MULTI_SELECT -> entity.getValueMultiText();
             default -> entity.getValueText();
         };
+    }
+
+    private boolean isBlankFilters(FilterDeviceReq req) {
+        return !StringUtils.hasText(req.getKeyword())
+                && !StringUtils.hasText(req.getModel())
+                && req.getNetworkType() == null
+                && req.getOnlineStatus() == null;
+    }
+
+    private boolean matchKeyword(DeviceEntity device, String keyword) {
+        if (device == null) {
+            return false;
+        }
+
+        return containsIgnoreCase(device.getDeviceName(), keyword)
+                || containsIgnoreCase(device.getDescription(), keyword);
+    }
+
+    private static String normalize(String input) {
+        if (!StringUtils.hasText(input)) {
+            return null;
+        }
+        return input.trim();
+    }
+
+    private static boolean containsIgnoreCase(String text, String keyword) {
+        if (!StringUtils.hasText(text) || !StringUtils.hasText(keyword)) {
+            return false;
+        }
+        return text.toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT));
     }
 }

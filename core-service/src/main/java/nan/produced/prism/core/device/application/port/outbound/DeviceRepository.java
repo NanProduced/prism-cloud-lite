@@ -12,6 +12,8 @@ public interface DeviceRepository {
 
     DeviceEntity findByDeviceId(Long deviceId);
 
+    DeviceEntity findByDeviceIdAndUserId(Long deviceId, UUID userId);
+
     /**
      * 查询用户的全部设备（Lite 为个人用户场景，默认不分页）
      *

@@ -33,20 +33,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import static nan.produced.prism.core.device.domain.customfield.CustomFieldConstant.DEF_SORT;
+import static nan.produced.prism.core.device.domain.customfield.CustomFieldConstant.OPTION_SORT;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeviceCustomFieldApplicationService implements DeviceCustomFieldUseCase {
 
     private static final String TIER_PRO = "PRO";
-
-    private static final Comparator<DeviceCustomFieldDefEntity> DEF_SORT = Comparator
-            .comparing((DeviceCustomFieldDefEntity d) -> d.getSequence() != null ? d.getSequence() : Integer.MAX_VALUE)
-            .thenComparing(DeviceCustomFieldDefEntity::getFieldId);
-
-    private static final Comparator<DeviceCustomFieldOptionEntity> OPTION_SORT = Comparator
-            .comparing((DeviceCustomFieldOptionEntity o) -> o.getSequence() != null ? o.getSequence() : Integer.MAX_VALUE)
-            .thenComparing(DeviceCustomFieldOptionEntity::getOptionId);
 
     private final DeviceCustomFieldDefRepository customFieldDefRepository;
     private final DeviceCustomFieldValueRepository customFieldValueRepository;

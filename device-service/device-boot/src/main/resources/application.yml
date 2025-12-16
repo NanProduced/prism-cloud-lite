@@ -1,5 +1,5 @@
 spring:
   application:
-    name: core-service
+    name: device-service
   profiles:
     active: ${profileActive:dev}
