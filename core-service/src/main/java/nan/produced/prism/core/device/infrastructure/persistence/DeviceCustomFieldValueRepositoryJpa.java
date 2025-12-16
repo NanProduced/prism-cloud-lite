@@ -14,8 +14,9 @@ public interface DeviceCustomFieldValueRepositoryJpa extends JpaRepository<Devic
 
     List<DeviceCustomFieldValueEntity> findByUserIdAndDeviceIdAndFieldIdIn(UUID userId, Long deviceId, List<Long> fieldIds);
 
+    List<DeviceCustomFieldValueEntity> findByUserIdAndDeviceIdIn(UUID userId, List<Long> deviceIds);
+
     void deleteByUserIdAndDeviceIdAndFieldId(UUID userId, Long deviceId, Long fieldId);
 
     void deleteByUserIdAndFieldId(UUID userId, Long fieldId);
 }
-

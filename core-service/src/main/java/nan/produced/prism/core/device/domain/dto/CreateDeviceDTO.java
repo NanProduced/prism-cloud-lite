@@ -9,6 +9,11 @@ public class CreateDeviceDTO {
 
     private UUID userId;
 
+    /**
+     * 订阅等级（FREE/PRO），用于配额校验
+     */
+    private String tier;
+
     private String displayName;
 
     private String account;

@@ -16,6 +16,7 @@ import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.util.IdGenerator;
 import nan.produced.prism.core.common.util.TextSlugifier;
+import nan.produced.prism.core.device.application.mapper.DeviceCustomFieldMapper;
 import nan.produced.prism.core.device.application.port.inbound.DeviceCustomFieldOptionSpec;
 import nan.produced.prism.core.device.application.port.inbound.DeviceCustomFieldUseCase;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCustomFieldDefRepository;
@@ -51,6 +52,7 @@ public class DeviceCustomFieldApplicationService implements DeviceCustomFieldUse
     private final DeviceCustomFieldValueRepository customFieldValueRepository;
     private final DeviceRepository deviceRepository;
     private final UserQuotaFacade userQuotaFacade;
+    private final DeviceCustomFieldMapper deviceCustomFieldMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -408,38 +410,19 @@ public class DeviceCustomFieldApplicationService implements DeviceCustomFieldUse
     }
 
     private DeviceCustomFieldDefVO toDefVO(DeviceCustomFieldDefEntity entity) {
+        DeviceCustomFieldDefVO vo = deviceCustomFieldMapper.toDefVO(entity);
+
         List<DeviceCustomFieldOptionVO> options = List.of();
         if (entity.getOptions() != null && !entity.getOptions().isEmpty()) {
             List<DeviceCustomFieldOptionEntity> optionEntities = new ArrayList<>(entity.getOptions());
             optionEntities.sort(OPTION_SORT);
             options = optionEntities.stream()
-                    .map(this::toOptionVO)
+                    .map(deviceCustomFieldMapper::toOptionVO)
                     .toList();
         }
 
-        return DeviceCustomFieldDefVO.builder()
-                .fieldId(entity.getFieldId())
-                .fieldKey(entity.getFieldKey())
-                .fieldType(entity.getFieldType())
-                .displayName(entity.getDisplayName())
-                .description(entity.getDescription())
-                .icon(entity.getIcon())
-                .planTierRequired(entity.getPlanTierRequired())
-                .sequence(entity.getSequence())
-                .options(options)
-                .build();
-    }
-
-    private DeviceCustomFieldOptionVO toOptionVO(DeviceCustomFieldOptionEntity entity) {
-        return DeviceCustomFieldOptionVO.builder()
-                .optionId(entity.getOptionId())
-                .optionKey(entity.getOptionKey())
-                .displayName(entity.getDisplayName())
-                .description(entity.getDescription())
-                .sequence(entity.getSequence())
-                .active(entity.getActive())
-                .color(entity.getColor())
-                .build();
+        vo.setOptions(options);
+        return vo;
     }
 
     private boolean isProTier(String tier) {

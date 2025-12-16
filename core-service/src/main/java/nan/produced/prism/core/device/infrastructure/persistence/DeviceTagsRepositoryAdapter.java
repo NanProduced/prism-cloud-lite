@@ -105,6 +105,14 @@ public class DeviceTagsRepositoryAdapter implements DeviceTagRepository {
     }
 
     @Override
+    public List<DeviceTagMapEntity> findTagMappingsByUserIdAndDeviceIds(UUID userId, List<Long> deviceIds) {
+        if (userId == null || deviceIds == null || deviceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return deviceTagMapRepositoryJpa.findByDeviceIdInAndUserIdWithTag(deviceIds, userId);
+    }
+
+    @Override
     @Transactional
     public void replaceDeviceTags(Long deviceId, UUID userId, List<Long> tagIds) {
         if (deviceId == null || userId == null) {

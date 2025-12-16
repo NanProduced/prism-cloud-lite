@@ -11,10 +11,18 @@ public interface DeviceCustomFieldValueRepository {
 
     List<DeviceCustomFieldValueEntity> findByUserIdAndDeviceIdAndFieldIdIn(UUID userId, Long deviceId, List<Long> fieldIds);
 
+    /**
+     * 批量查询用户多个设备的自定义字段值
+     *
+     * @param userId 用户ID
+     * @param deviceIds 设备ID列表
+     * @return 自定义字段值列表
+     */
+    List<DeviceCustomFieldValueEntity> findByUserIdAndDeviceIdIn(UUID userId, List<Long> deviceIds);
+
     void deleteByUserIdAndDeviceIdAndFieldId(UUID userId, Long deviceId, Long fieldId);
 
     void deleteByUserIdAndFieldId(UUID userId, Long fieldId);
 
     DeviceCustomFieldValueEntity save(DeviceCustomFieldValueEntity entity);
 }
-

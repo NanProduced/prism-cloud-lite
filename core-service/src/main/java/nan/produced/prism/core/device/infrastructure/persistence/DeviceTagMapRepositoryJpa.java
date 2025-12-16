@@ -44,4 +44,10 @@ public interface DeviceTagMapRepositoryJpa extends JpaRepository<DeviceTagMapEnt
      */
     @Query("SELECT m FROM DeviceTagMapEntity m JOIN FETCH m.tag WHERE m.deviceId = :deviceId AND m.userId = :userId")
     List<DeviceTagMapEntity> findByDeviceIdAndUserIdWithTag(@Param("deviceId") Long deviceId, @Param("userId") UUID userId);
+
+    /**
+     * 批量查询设备标签映射（带标签信息）
+     */
+    @Query("SELECT m FROM DeviceTagMapEntity m JOIN FETCH m.tag WHERE m.deviceId IN :deviceIds AND m.userId = :userId")
+    List<DeviceTagMapEntity> findByDeviceIdInAndUserIdWithTag(@Param("deviceIds") List<Long> deviceIds, @Param("userId") UUID userId);
 }

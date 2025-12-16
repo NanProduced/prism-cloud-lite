@@ -1,6 +1,7 @@
 package nan.produced.prism.core.device.application.port.outbound;
 
 import nan.produced.prism.core.device.domain.tags.DeviceTagEntity;
+import nan.produced.prism.core.device.domain.tags.DeviceTagMapEntity;
 
 import java.util.List;
 import java.util.Optional;
@@ -90,6 +91,17 @@ public interface DeviceTagRepository {
      * @return 标签列表
      */
     List<DeviceTagEntity> findByDeviceId(Long deviceId, UUID userId);
+
+    /**
+     * 批量获取设备的标签映射（带标签信息）
+     * <p>
+     * 用于设备列表查询场景，避免按 deviceId N+1 查询。
+     *
+     * @param userId 用户ID
+     * @param deviceIds 设备ID列表
+     * @return 标签映射列表（包含 deviceId 与 tag）
+     */
+    List<DeviceTagMapEntity> findTagMappingsByUserIdAndDeviceIds(UUID userId, List<Long> deviceIds);
 
     /**
      * 替换设备的标签关联（全量覆盖）

@@ -35,6 +35,22 @@ public interface UserQuotaUsageRepository extends JpaRepository<UserQuotaUsageEn
     int incrementStorageTotalBytes(@Param("userId") UUID userId, @Param("bytes") long bytes);
 
     @Modifying
+    @Query("UPDATE UserQuotaUsageEntity u SET u.deviceCount = u.deviceCount + :delta WHERE u.userId = :userId")
+    int incrementDeviceCount(@Param("userId") UUID userId, @Param("delta") int delta);
+
+    @Modifying
+    @Query("""
+            UPDATE UserQuotaUsageEntity u
+            SET u.deviceCount = u.deviceCount + :delta
+            WHERE u.userId = :userId
+              AND (u.deviceCount + :delta) <= :limit
+            """)
+    int incrementDeviceCountIfWithinLimit(
+            @Param("userId") UUID userId,
+            @Param("delta") int delta,
+            @Param("limit") int limit);
+
+    @Modifying
     @Query("UPDATE UserQuotaUsageEntity u SET u.customColumnCount = u.customColumnCount + :delta WHERE u.userId = :userId")
     int incrementCustomColumnCount(@Param("userId") UUID userId, @Param("delta") int delta);
 

@@ -10,6 +10,23 @@ import java.util.UUID;
 public interface UserQuotaFacade {
 
     /**
+     * 扣减设备可用额度（上云设备数量）。
+     *
+     * @param userId  用户ID
+     * @param tier    订阅层级（FREE/PRO）
+     * @param count   本次新增的设备数量（必须 &gt; 0）
+     */
+    void consumeDevices(UUID userId, String tier, int count);
+
+    /**
+     * 释放设备额度（删除设备时调用）。
+     *
+     * @param userId 用户ID
+     * @param count  本次释放的数量（必须 &gt; 0）
+     */
+    void releaseDevices(UUID userId, int count);
+
+    /**
      * 扣减自定义列（设备自定义字段定义）的可用额度。
      *
      * @param userId  用户ID
@@ -26,4 +43,3 @@ public interface UserQuotaFacade {
      */
     void releaseCustomColumns(UUID userId, int count);
 }
-

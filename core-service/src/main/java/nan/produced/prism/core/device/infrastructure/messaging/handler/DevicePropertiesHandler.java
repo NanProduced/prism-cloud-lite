@@ -8,11 +8,14 @@ import nan.produced.prism.core.common.util.JsonUtils;
 import nan.produced.prism.core.device.application.port.outbound.DevicePropertiesPort;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
 import nan.produced.prism.core.device.domain.DeviceEntity;
+import nan.produced.prism.core.device.domain.DeviceNetworkType;
 import nan.produced.prism.core.device.domain.DeviceProperties;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import static nan.produced.prism.core.common.exception.ErrorCode.DEVICE_NOT_FOUND_IN_CORE;
@@ -44,11 +47,17 @@ public class DevicePropertiesHandler implements DevicePropertiesPort {
     }
 
     private DeviceEntity handleRedundantProperties(DeviceEntity existingDevice, DeviceProperties properties) {
-        if (properties == null) return null;
+        if (existingDevice == null) {
+            return null;
+        }
+        if (properties == null) {
+            return existingDevice;
+        }
 
         // info.info
-        if (Optional.ofNullable(properties.getInfo().getInfo()).isPresent()) {
-            DeviceProperties.Info info = properties.getInfo().getInfo();
+        DeviceProperties.InfoWrapper infoWrapper = properties.getInfo();
+        DeviceProperties.Info info = infoWrapper != null ? infoWrapper.getInfo() : null;
+        if (info != null) {
             if (info.getVername() != null) {
                 existingDevice.setVersion(info.getVername());
             }
@@ -65,18 +74,38 @@ public class DevicePropertiesHandler implements DevicePropertiesPort {
         }
 
         // dimension
-        if (Optional.ofNullable(properties.getDimension()).isPresent()) {
-            int realWidth = properties.getDimension().getReal_width();
-            int realHeight = properties.getDimension().getReal_height();
+        DeviceProperties.Dimension dimension = properties.getDimension();
+        if (dimension != null) {
+            int realWidth = dimension.getReal_width();
+            int realHeight = dimension.getReal_height();
             existingDevice.setResolution(realWidth + " x " + realHeight);
         }
 
+        // network-type
+        DeviceProperties.IfStatus ifStatus = properties.getIfStatus();
+        List<DeviceProperties.IfStatus.NetInterface> types = ifStatus != null ? ifStatus.getTypes() : null;
+        if (types != null && !types.isEmpty()) {
+            types.stream()
+                    .filter(e -> e != null && e.getEnabled() == 1)
+                    .findFirst()
+                    .ifPresent(netInterface -> {
+                        DeviceNetworkType networkType = DeviceNetworkType.getByName(netInterface.getType());
+                        if (networkType != null) {
+                            existingDevice.setNetworkType(networkType.getCode());
+                        }
+                    });
+        }
+
         // brightnessandcolortemp
-        if (Optional.ofNullable(properties.getBrightnessandcolortemp()).isPresent()) {
-            existingDevice.setBrightness(properties.getBrightnessandcolortemp().getBrightness() / 100 * 255);
+        DeviceProperties.BrightnessAndColorTemp brightnessAndColorTemp = properties.getBrightnessandcolortemp();
+        if (brightnessAndColorTemp != null) {
+            existingDevice.setBrightness(Math.round(brightnessAndColorTemp.getBrightness() * 100f / 255f));
         }
 
         // 合并、替换Properties
+        if (existingDevice.getProperties() == null) {
+            existingDevice.setProperties(new DeviceProperties());
+        }
         BeanUtils.copyNonNullProperties(properties, existingDevice.getProperties());
 
         return existingDevice;

@@ -23,6 +23,45 @@ public class UserQuotaService implements UserQuotaFacade {
 
     @Override
     @Transactional
+    public void consumeDevices(UUID userId, String tier, int count) {
+        if (userId == null || count <= 0) {
+            return;
+        }
+
+        ensureQuotaUsageExists(userId);
+
+        Integer limit = subscriptionQuotaFacade.getQuota(tier).deviceLimit();
+        if (limit != null && limit >= 0) {
+            int updated = userQuotaUsageRepository.incrementDeviceCountIfWithinLimit(userId, count, limit);
+            if (updated == 0) {
+                throw new BizException(ErrorCode.DEVICE_QUOTA_EXCEEDED);
+            }
+            return;
+        }
+
+        userQuotaUsageRepository.incrementDeviceCount(userId, count);
+    }
+
+    @Override
+    @Transactional
+    public void releaseDevices(UUID userId, int count) {
+        if (userId == null || count <= 0) {
+            return;
+        }
+
+        UserQuotaUsageEntity usage = userQuotaUsageRepository.findByUserId(userId)
+                .orElse(null);
+        if (usage == null) {
+            return;
+        }
+
+        int current = usage.getDeviceCount() != null ? usage.getDeviceCount() : 0;
+        usage.setDeviceCount(Math.max(0, current - count));
+        userQuotaUsageRepository.save(usage);
+    }
+
+    @Override
+    @Transactional
     public void consumeCustomColumns(UUID userId, String tier, int count) {
         if (userId == null || count <= 0) {
             return;
@@ -76,4 +115,3 @@ public class UserQuotaService implements UserQuotaFacade {
         }
     }
 }
-

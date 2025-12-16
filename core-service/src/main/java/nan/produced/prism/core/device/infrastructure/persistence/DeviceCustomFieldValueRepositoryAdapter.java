@@ -25,6 +25,11 @@ public class DeviceCustomFieldValueRepositoryAdapter implements DeviceCustomFiel
     }
 
     @Override
+    public List<DeviceCustomFieldValueEntity> findByUserIdAndDeviceIdIn(UUID userId, List<Long> deviceIds) {
+        return repositoryJpa.findByUserIdAndDeviceIdIn(userId, deviceIds);
+    }
+
+    @Override
     public void deleteByUserIdAndDeviceIdAndFieldId(UUID userId, Long deviceId, Long fieldId) {
         repositoryJpa.deleteByUserIdAndDeviceIdAndFieldId(userId, deviceId, fieldId);
     }
@@ -39,4 +44,3 @@ public class DeviceCustomFieldValueRepositoryAdapter implements DeviceCustomFiel
         return repositoryJpa.save(entity);
     }
 }
-

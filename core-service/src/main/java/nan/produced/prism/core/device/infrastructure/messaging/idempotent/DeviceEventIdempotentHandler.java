@@ -72,7 +72,7 @@ public class DeviceEventIdempotentHandler {
 
         String key = generateKey(category, deviceId, traceId);
         redisTemplate.opsForValue().set(key, "1",
-                IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.HOURS);
+                IDEMPOTENT_EXPIRE_MINUTES, TimeUnit.MINUTES);
         log.debug("DeviceEventIdempotent - 标记消息已处理: deviceId={}, traceId={}", deviceId, traceId);
     }
 

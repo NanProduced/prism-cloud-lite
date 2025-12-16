@@ -21,13 +21,15 @@ public interface DeviceConverter {
      * 将创建设备请求转换为创建设备数据传输对象
      *
      * @param userId  用户ID
+     * @param tier    订阅等级（FREE/PRO）
      * @param request 创建设备请求对象
      * @return CreateDeviceDTO 创建设备数据传输对象
      */
     @Mapping(source = "userId", target = "userId")
+    @Mapping(source = "tier", target = "tier")
     @Mapping(source = "request.displayName", target = "displayName")
     @Mapping(source = "request.account", target = "account")
     @Mapping(source = "request.password", target = "password")
     @Mapping(source = "request.description", target = "description")
-    CreateDeviceDTO toCreateDeviceDTO(UUID userId, CreateDeviceReq request);
+    CreateDeviceDTO toCreateDeviceDTO(UUID userId, String tier, CreateDeviceReq request);
 }

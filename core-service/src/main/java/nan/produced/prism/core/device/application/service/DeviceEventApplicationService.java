@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 /**
  * 设备事件应用层服务
@@ -42,10 +43,10 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
         log.debug("处理设备上线状态: deviceId={}, isOnline={}, traceId={}",
                 deviceId, isOnline, traceId);
         if (isOnline)  {
-            deviceRepository.updateStatusWithOnboarding(deviceId, 1, LocalDateTime.from(timestamp));
+            deviceRepository.updateStatusWithOnboarding(deviceId, 1, LocalDateTime.ofInstant(timestamp, ZoneId.of("UTC")));
         }
         else {
-            deviceRepository.updateStatus(deviceId, 0, LocalDateTime.from(timestamp));
+            deviceRepository.updateStatus(deviceId, 0, LocalDateTime.ofInstant(timestamp, ZoneId.of("UTC")));
         }
         // TODO: 实现设备上线状态处理逻辑
         // 1. 更新设备在线状态
