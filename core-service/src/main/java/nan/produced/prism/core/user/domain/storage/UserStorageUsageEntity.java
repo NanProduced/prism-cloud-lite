@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.UpdateTimestamp;
+import nan.produced.prism.core.user.api.StorageFileType;
+import nan.produced.prism.core.user.api.StorageSourceType;
 
 import java.time.Instant;
 import java.util.UUID;

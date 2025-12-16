@@ -1,7 +1,7 @@
 package nan.produced.prism.core.user.repository;
 
-import nan.produced.prism.core.user.domain.storage.StorageFileType;
-import nan.produced.prism.core.user.domain.storage.StorageSourceType;
+import nan.produced.prism.core.user.api.StorageFileType;
+import nan.produced.prism.core.user.api.StorageSourceType;
 import nan.produced.prism.core.user.domain.storage.UserStorageUsageEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;

@@ -10,11 +10,9 @@ import nan.produced.prism.core.media.application.dto.*;
 import nan.produced.prism.core.media.application.repository.FileEntityRepository;
 import nan.produced.prism.core.media.application.repository.MediaAssetRepository;
 import nan.produced.prism.core.media.application.repository.MediaFolderRepository;
-import nan.produced.prism.core.user.domain.storage.StorageFileType;
-import nan.produced.prism.core.user.domain.storage.StorageSourceType;
-import nan.produced.prism.core.user.domain.storage.UserStorageUsageEntity;
-import nan.produced.prism.core.user.repository.UserQuotaUsageRepository;
-import nan.produced.prism.core.user.repository.UserStorageUsageRepository;
+import nan.produced.prism.core.user.api.StorageFileType;
+import nan.produced.prism.core.user.api.StorageSourceType;
+import nan.produced.prism.core.user.api.UserStorageUsageFacade;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -49,8 +47,7 @@ public class MediaService {
     private final FileEntityRepository fileEntityRepository;
     private final MediaAssetRepository mediaAssetRepository;
     private final MediaFolderRepository mediaFolderRepository;
-    private final UserStorageUsageRepository userStorageUsageRepository;
-    private final UserQuotaUsageRepository userQuotaUsageRepository;
+    private final UserStorageUsageFacade userStorageUsageFacade;
 
     /**
      * MD5 秒传检查
@@ -270,44 +267,16 @@ public class MediaService {
      * @param storageIncrements 按文件类型分组的存储增量
      */
     private void updateStorageUsage(UUID userId, Map<StorageFileType, StorageIncrement> storageIncrements) {
-        long totalBytesIncrement = 0L;
-
         for (var entry : storageIncrements.entrySet()) {
             var fileType = entry.getKey();
             var increment = entry.getValue();
 
-            // 尝试原子更新
-            int updated = userStorageUsageRepository.incrementUsage(
+            userStorageUsageFacade.incrementUsage(
                     userId,
                     StorageSourceType.MEDIA_LIBRARY,
                     fileType,
                     increment.fileCount(),
                     increment.bytes());
-
-            // 如果没有更新到记录（记录不存在），则创建新记录
-            if (updated == 0) {
-                var storageUsage = UserStorageUsageEntity.builder()
-                        .id(UUID.randomUUID())
-                        .userId(userId)
-                        .sourceType(StorageSourceType.MEDIA_LIBRARY)
-                        .fileType(fileType)
-                        .fileCount(increment.fileCount())
-                        .totalBytes(increment.bytes())
-                        .build();
-                userStorageUsageRepository.save(storageUsage);
-            }
-
-            totalBytesIncrement += increment.bytes();
-
-            log.debug("Storage usage updated: userId={}, fileType={}, fileCount={}, bytes={}",
-                    userId, fileType, increment.fileCount(), increment.bytes());
-        }
-
-        // 更新用户配额使用表中的存储总量冗余字段
-        if (totalBytesIncrement > 0) {
-            userQuotaUsageRepository.incrementStorageTotalBytes(userId, totalBytesIncrement);
-            log.debug("Quota usage updated: userId={}, storageTotalBytes +{}",
-                    userId, totalBytesIncrement);
         }
     }
 

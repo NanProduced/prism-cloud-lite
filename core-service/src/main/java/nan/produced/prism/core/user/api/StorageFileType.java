@@ -1,4 +1,4 @@
-package nan.produced.prism.core.user.domain.storage;
+package nan.produced.prism.core.user.api;
 
 public enum StorageFileType {
 

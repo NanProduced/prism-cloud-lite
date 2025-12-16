@@ -26,3 +26,4 @@
  * - 分布式追踪和日志记录
  */
 @org.springframework.modulith.ApplicationModule(displayName = "Device")
+package nan.produced.prism.core.device;
