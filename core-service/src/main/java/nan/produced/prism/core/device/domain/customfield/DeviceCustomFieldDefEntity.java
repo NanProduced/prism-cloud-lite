@@ -59,6 +59,12 @@ public class DeviceCustomFieldDefEntity {
     private String description;
 
     /**
+     * 图标（前端 Lucide icon name，可选）
+     */
+    @Column(name = "icon", length = 64)
+    private String icon;
+
+    /**
      * 是否需要付费订阅
      */
     @Column(name = "plan_tier_required", nullable = false)

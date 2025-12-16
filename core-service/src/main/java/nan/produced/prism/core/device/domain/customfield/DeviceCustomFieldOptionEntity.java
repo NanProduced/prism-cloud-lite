@@ -42,6 +42,12 @@ public class DeviceCustomFieldOptionEntity {
     @Column(name = "active", nullable = false)
     private Boolean active;
 
+    /**
+     * 颜色（preset key 或 hex，可选）
+     */
+    @Column(name = "color", length = 32)
+    private String color;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createTime;
 

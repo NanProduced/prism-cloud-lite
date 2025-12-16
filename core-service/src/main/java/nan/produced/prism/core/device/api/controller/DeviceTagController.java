@@ -78,7 +78,7 @@ public class DeviceTagController {
      * @param req  更新标签请求
      * @return 更新的标签
      */
-    @PutMapping("/{slug}")
+    @PostMapping("/{slug}")
     public ResponseEntity<BffResponse<TagVO>> updateTag(
             @PathVariable("slug") @NotBlank String slug,
             @RequestBody @Validated OperateTagReq req) {
@@ -93,7 +93,7 @@ public class DeviceTagController {
      * @param slug 标签Slug
      * @return 空响应
      */
-    @DeleteMapping("/{slug}")
+    @PostMapping("/{slug}/delete")
     public ResponseEntity<BffResponse<Void>> deleteTag(@PathVariable("slug") @NotBlank String slug) {
         UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
         deviceTagUseCase.deleteTag(userId, slug);
@@ -123,7 +123,7 @@ public class DeviceTagController {
      * @param req      关联标签请求
      * @return 设备关联的标签列表
      */
-    @PutMapping("/device/{deviceId}")
+    @PostMapping("/device/{deviceId}")
     public ResponseEntity<BffResponse<List<TagVO>>> linkTags(
             @PathVariable("deviceId") @NotNull Long deviceId,
             @RequestBody @Validated LinkTagsReq req) {

@@ -38,6 +38,14 @@ public enum ErrorCode {
     DEVICE_TAG_UPDATE_FAILED("CORE-2103", "标签更新失败", "标签更新失败，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
     DEVICE_TAG_DELETE_FAILED("CORE-2104", "标签删除失败", "标签删除失败，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
 
+    // ============ 设备自定义字段相关 (CORE-22xx) ============
+    DEVICE_CUSTOM_FIELD_DEF_NOT_FOUND("CORE-2200", "自定义字段不存在", "指定的自定义字段不存在或无权访问", HttpStatus.NOT_FOUND, false),
+    DEVICE_CUSTOM_FIELD_KEY_ALREADY_EXISTS("CORE-2201", "自定义字段标识已存在", "该字段标识已被使用，请更换名称或标识", HttpStatus.BAD_REQUEST, false),
+    DEVICE_CUSTOM_FIELD_QUOTA_EXCEEDED("CORE-2202", "自定义字段超出配额", "已达到当前套餐的自定义列上限，请升级套餐", HttpStatus.BAD_REQUEST, false),
+    DEVICE_CUSTOM_FIELD_PRO_REQUIRED("CORE-2203", "需要 Pro 订阅", "该功能需要 Pro 订阅，请升级套餐后使用", HttpStatus.FORBIDDEN, false),
+    DEVICE_CUSTOM_FIELD_VALUE_INVALID("CORE-2204", "自定义字段值不合法", "自定义字段值不合法，请检查输入", HttpStatus.BAD_REQUEST, false),
+    DEVICE_CUSTOM_FIELD_OPTION_INVALID("CORE-2205", "自定义字段选项不合法", "自定义字段选项不合法，请检查输入", HttpStatus.BAD_REQUEST, false),
+
     // ============ 认证相关 (CORE-24xx) ============
     UNAUTHORIZED("CORE-2401", "未授权访问", "请提供有效的认证信息", HttpStatus.UNAUTHORIZED, false),
     INVALID_CLOUD_AUTH_HEADER("CORE-2402", "CLOUD_AUTH头格式错误", "认证信息格式错误，请重新登录", HttpStatus.UNAUTHORIZED, false),

@@ -30,4 +30,9 @@ public class SubscriptionQuotaConfig {
      */
     private Integer programVersionLimit;
 
+    /**
+     * 设备自定义列（自定义字段定义）上限，-1 表示无限制
+     */
+    private Integer customColumnLimit;
+
 }
