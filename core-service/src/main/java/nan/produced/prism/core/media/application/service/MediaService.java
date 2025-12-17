@@ -172,7 +172,7 @@ public class MediaService {
         FileEntity originalFile = null;
         FileEntity coverFile = null;
         boolean hasInstantUpload = false;
-        var storageIncrements = new HashMap<StorageFileType, StorageIncrement>();
+        var storageIncrements = new EnumMap<StorageFileType, StorageIncrement>(StorageFileType.class);
 
         for (var fileItem : item.getFiles()) {
             var fileEntity = resolveFileEntity(fileItem);

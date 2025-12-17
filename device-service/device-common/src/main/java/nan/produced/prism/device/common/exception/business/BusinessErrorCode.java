@@ -8,7 +8,7 @@ import nan.produced.prism.device.common.exception.HttpStatusCode;
 @Getter
 public enum BusinessErrorCode implements ErrorCode {
 
-    /*======================= 通用系统错误 TM00XX =======================*/
+    /*======================= 通用系统错误 DEVICE-00xx =======================*/
 
     /**
      * 参数验证失败
@@ -50,7 +50,7 @@ public enum BusinessErrorCode implements ErrorCode {
      */
     DATA_FORMAT_ERROR("DEVICE-0008", "数据格式错误", ErrorLevel.WARN, HttpStatusCode.BAD_REQUEST),
 
-    /*======================= 认证模块错误 TM10XX =======================*/
+    /*======================= 认证模块错误 DEVICE-10xx =======================*/
 
     /**
      * 用户名或密码错误
@@ -83,18 +83,22 @@ public enum BusinessErrorCode implements ErrorCode {
     INVALID_SERVICE_TOKEN("DEVICE-1006", "服务签名验证失败", ErrorLevel.WARN, HttpStatusCode.UNAUTHORIZED),
 
 
-    /*======================= 终端/设备管理 TM20XX =======================*/
+    /*======================= 终端/设备管理 DEVICE-20xx =======================*/
 
     /**
      * 账号名已存在
      */
     TERMINAL_ACCOUNT_EXIST("DEVICE-2001", "账号名称已存在", ErrorLevel.WARN, HttpStatusCode.BAD_REQUEST),
 
-    /*======================= V1.1-websocket协议 TM30XX =======================*/
+    /*======================= V1.1-websocket协议 DEVICE-30xx =======================*/
 
     WS_INVALID_MESSAGE_TYPE("DEVICE-3001", "消息类型不存在", ErrorLevel.WARN, HttpStatusCode.BAD_REQUEST),
 
-    WS_INVALID_MESSAGE_DATA("DEVICE-3002", "消息内容存在问题", ErrorLevel.WARN, HttpStatusCode.BAD_REQUEST);
+    WS_INVALID_MESSAGE_DATA("DEVICE-3002", "消息内容存在问题", ErrorLevel.WARN, HttpStatusCode.BAD_REQUEST),
+
+    /*======================= 指令 =======================*/
+
+    COMMAND_CANNOT_BE_NULL("DEVICE-4001", "指令不能为空", ErrorLevel.WARN, HttpStatusCode.BAD_REQUEST);
 
     /*======================= 枚举属性 =======================*/
 

@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.exception.InfraException;
 import nan.produced.prism.core.common.response.ApiResponse;
-import nan.produced.prism.core.device.application.mapper.DeviceEntityMapper;
+import nan.produced.prism.core.device.application.converter.DeviceEntityConverter;
 import nan.produced.prism.core.device.application.port.inbound.DeviceManageUseCase;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
 import nan.produced.prism.core.device.domain.DeviceEntity;
@@ -25,7 +25,7 @@ public class DeviceManageApplicationService implements DeviceManageUseCase {
 
     private final DeviceRepository deviceRepository;
 
-    private final DeviceEntityMapper deviceEntityMapper;
+    private final DeviceEntityConverter deviceEntityConverter;
 
     private final UserQuotaFacade userQuotaFacade;
 
@@ -67,7 +67,7 @@ public class DeviceManageApplicationService implements DeviceManageUseCase {
             throw new InfraException(ErrorCode.EXTERNAL_SERVICE_ERROR, "device-service 返回空 deviceId");
         }
 
-        DeviceEntity newDevice = deviceEntityMapper.toNewEntity(createDeviceDTO, deviceId, LocalDateTime.now());
+        DeviceEntity newDevice = deviceEntityConverter.toNewEntity(createDeviceDTO, deviceId, LocalDateTime.now());
         deviceRepository.createDevice(newDevice);
         return deviceId;
     }

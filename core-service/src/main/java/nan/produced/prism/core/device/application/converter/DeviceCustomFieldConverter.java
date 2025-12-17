@@ -1,4 +1,4 @@
-package nan.produced.prism.core.device.application.mapper;
+package nan.produced.prism.core.device.application.converter;
 
 import nan.produced.prism.core.device.domain.customfield.DeviceCustomFieldDefEntity;
 import nan.produced.prism.core.device.domain.customfield.DeviceCustomFieldOptionEntity;
@@ -16,7 +16,7 @@ import org.mapstruct.NullValueCheckStrategy;
  * @author Nan
  */
 @Mapper(componentModel = "spring", nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS)
-public interface DeviceCustomFieldMapper {
+public interface DeviceCustomFieldConverter {
 
     @Mapping(target = "options", ignore = true)
     DeviceCustomFieldDefVO toDefVO(DeviceCustomFieldDefEntity entity);

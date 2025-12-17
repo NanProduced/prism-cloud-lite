@@ -1,4 +1,4 @@
-package nan.produced.prism.core.device.application.mapper;
+package nan.produced.prism.core.device.application.converter;
 
 import java.time.LocalDateTime;
 import nan.produced.prism.core.device.domain.DeviceEntity;
@@ -15,7 +15,7 @@ import org.mapstruct.NullValueCheckStrategy;
  * @author Nan
  */
 @Mapper(componentModel = "spring", nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS)
-public interface DeviceEntityMapper {
+public interface DeviceEntityConverter {
 
     @Mapping(target = "deviceId", source = "deviceId")
     @Mapping(target = "deviceName", source = "dto.displayName")

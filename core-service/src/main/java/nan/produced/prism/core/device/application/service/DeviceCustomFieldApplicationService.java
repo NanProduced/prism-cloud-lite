@@ -3,7 +3,6 @@ package nan.produced.prism.core.device.application.service;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -16,7 +15,7 @@ import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.util.IdGenerator;
 import nan.produced.prism.core.common.util.TextSlugifier;
-import nan.produced.prism.core.device.application.mapper.DeviceCustomFieldMapper;
+import nan.produced.prism.core.device.application.converter.DeviceCustomFieldConverter;
 import nan.produced.prism.core.device.application.port.inbound.DeviceCustomFieldOptionSpec;
 import nan.produced.prism.core.device.application.port.inbound.DeviceCustomFieldUseCase;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCustomFieldDefRepository;
@@ -47,7 +46,7 @@ public class DeviceCustomFieldApplicationService implements DeviceCustomFieldUse
     private final DeviceCustomFieldValueRepository customFieldValueRepository;
     private final DeviceRepository deviceRepository;
     private final UserQuotaFacade userQuotaFacade;
-    private final DeviceCustomFieldMapper deviceCustomFieldMapper;
+    private final DeviceCustomFieldConverter deviceCustomFieldConverter;
 
     @Override
     @Transactional(readOnly = true)
@@ -405,14 +404,14 @@ public class DeviceCustomFieldApplicationService implements DeviceCustomFieldUse
     }
 
     private DeviceCustomFieldDefVO toDefVO(DeviceCustomFieldDefEntity entity) {
-        DeviceCustomFieldDefVO vo = deviceCustomFieldMapper.toDefVO(entity);
+        DeviceCustomFieldDefVO vo = deviceCustomFieldConverter.toDefVO(entity);
 
         List<DeviceCustomFieldOptionVO> options = List.of();
         if (entity.getOptions() != null && !entity.getOptions().isEmpty()) {
             List<DeviceCustomFieldOptionEntity> optionEntities = new ArrayList<>(entity.getOptions());
             optionEntities.sort(OPTION_SORT);
             options = optionEntities.stream()
-                    .map(deviceCustomFieldMapper::toOptionVO)
+                    .map(deviceCustomFieldConverter::toOptionVO)
                     .toList();
         }
 

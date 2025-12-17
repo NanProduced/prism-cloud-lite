@@ -8,9 +8,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.core.common.response.BffResponse;
 import nan.produced.prism.core.common.util.TraceUtils;
+import nan.produced.prism.core.user.converter.UserProfileConverter;
 import nan.produced.prism.core.user.domain.UserProfileEntity;
 import nan.produced.prism.core.user.dto.UserProfileView;
-import nan.produced.prism.core.user.mapper.UserProfileMapper;
 import nan.produced.prism.core.user.service.UserProfileService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
     private final UserProfileService userProfileService;
-    private final UserProfileMapper userProfileMapper;
+    private final UserProfileConverter userProfileConverter;
 
     @Operation(
         summary = "获取当前用户资料",
@@ -40,7 +40,7 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<BffResponse<UserProfileView>> getCurrentUserProfile() {
         UserProfileEntity profile = userProfileService.getOrCreateCurrentUserProfile();
-        UserProfileView view = userProfileMapper.toView(profile);
+        UserProfileView view = userProfileConverter.toView(profile);
         return ResponseEntity.ok(BffResponse.success(view).withTraceId(TraceUtils.getTraceId()));
     }
 }

@@ -24,13 +24,7 @@ public class RedisKeyConstant {
     /**
      * 指令详情 - String
      */
-    public static final String COMMAND_DETAIL_KEY = "terminal:command:detail:%d:%d";   // 指令详情 deviceId:commandId
-
-    /**
-     * 全局指令ID序列 - String
-     * 通过Redis自增维护，重启后可继续递增
-     */
-    public static final String COMMAND_ID_SEQ_KEY = "terminal:command:id:seq";
+    public static final String COMMAND_DETAIL_KEY = "terminal:command:detail:%d:%d";   // 指令详情 deviceId:queueId
 
     /*===================  设备在线状态模板 ====================== */
 

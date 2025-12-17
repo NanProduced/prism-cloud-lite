@@ -36,7 +36,22 @@ public class CommonConstant {
         public static final String ONLINE = "online";
 
         public static final String OFFLINE = "offline";
+
     }
+
+    public static final class Command {
+
+        public static final String COMMAND_FEEDBACK = "commandFeedback";
+
+        public static final String CONFIRM = "confirm";
+
+        public static final String EXPIRED = "expired";
+
+        public static final String COMMAND_ID = "commandId";
+
+        public static final String QUEUE_ID = "queueId";
+    }
+
 
     public static final class Report {
 

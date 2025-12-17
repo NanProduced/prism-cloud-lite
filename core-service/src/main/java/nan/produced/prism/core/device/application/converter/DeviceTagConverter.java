@@ -1,4 +1,4 @@
-package nan.produced.prism.core.device.application.mapper;
+package nan.produced.prism.core.device.application.converter;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -15,7 +15,7 @@ import org.mapstruct.NullValueCheckStrategy;
  * @author Nan
  */
 @Mapper(componentModel = "spring", nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS)
-public interface DeviceTagMapper {
+public interface DeviceTagConverter {
 
     @Mapping(target = "tagSlug", source = "slug")
     TagVO toVO(DeviceTagEntity entity);

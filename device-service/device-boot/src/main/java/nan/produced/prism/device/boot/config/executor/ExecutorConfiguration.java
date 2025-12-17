@@ -117,4 +117,58 @@ public class ExecutorConfiguration {
         return executor;
     }
 
+    /**
+     * Redis消息监听器专用线程池
+     * 专用于Redis键过期事件监听处理，替代SimpleAsyncTaskExecutor避免线程泄漏
+     * <p>
+     * 【任务分析】实际执行：
+     * • RedisKeysExpirationListener.onMessage() - Redis键过期事件处理
+     * • handleDeviceStatusExpiration() - 设备状态过期处理 + RPC调用
+     * • handleDeviceCommandExpiration() - 设备指令过期处理 + 数据库操作
+     * <p>
+     * 【分类】I/O密集型 - Redis事件处理 + 数据库操作 + RPC调用
+     * 【策略】core = CPU×2, max = CPU×3 (支持Redis事件处理并发)
+     */
+    @Bean("redisMessageListenerExecutor")
+    public ThreadPoolTaskExecutor redisMessageListenerExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+
+        // 核心线程数 - I/O密集型：Redis事件处理 + 数据库操作
+        int corePoolSize = Math.max(4, CPU_COUNT * 2);
+        executor.setCorePoolSize(corePoolSize);
+
+        // 最大线程数 - 支持Redis事件处理高峰
+        int maxPoolSize = Math.max(16, CPU_COUNT * 3);
+        executor.setMaxPoolSize(maxPoolSize);
+
+        // 队列容量 - 缓冲Redis过期事件
+        executor.setQueueCapacity(1000);
+
+        // 线程空闲时间 - 较长保活，适应过期事件波动
+        executor.setKeepAliveSeconds(300);
+
+        // 线程命名
+        executor.setThreadNamePrefix("redis-listener-");
+
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(60);
+
+        // 拒绝策略：Redis过期键监听不重要，直接丢弃（非关键任务）
+        // 增强监控：记录拒绝事件
+        executor.setRejectedExecutionHandler((task, ext) -> {
+            log.warn("ThreadPool - Redis监听任务被拒绝，已丢弃（非关键任务）: pool=redis-listener, " +
+                            "activeCount={}, queueSize={}, maxPoolSize={}, taskClass={}",
+                    ext.getActiveCount(), ext.getQueue().size(), ext.getMaximumPoolSize(),
+                    task.getClass().getSimpleName());
+            // Redis过期键监听失败可接受，不影响核心业务
+        });
+
+        executor.initialize();
+
+        log.info("ThreadPool - Redis消息监听器线程池初始化完成: core={}, max={}, queue={} (CPU核心数: {})",
+                executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity(), CPU_COUNT);
+
+        return executor;
+    }
+
 }

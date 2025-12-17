@@ -10,7 +10,12 @@ import nan.produced.prism.device.api.dto.comand.DeviceApiCommand;
 import nan.produced.prism.device.api.dto.comand.DeviceApiCommandConfirm;
 import nan.produced.prism.device.api.dto.media.DeviceApiMedia;
 import nan.produced.prism.device.api.dto.program.DeviceApiProgram;
+import nan.produced.prism.device.application.domain.command.DeviceCommand;
+import nan.produced.prism.device.application.port.inbound.command.DeviceCommandUseCase;
 import nan.produced.prism.device.application.port.inbound.status.DeviceReportUseCase;
+import nan.produced.prism.device.boot.integration.command.DeviceCommandConverter;
+import nan.produced.prism.device.common.exception.DeviceResponseException;
+import nan.produced.prism.device.common.exception.business.BusinessErrorCode;
 import nan.produced.prism.device.infrastructure.security.DevicePrincipal;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
@@ -27,6 +32,9 @@ import java.util.List;
 public class DeviceInteractionController implements DeviceInteractionApi {
 
     private final DeviceReportUseCase deviceReportUseCase;
+
+    private final DeviceCommandUseCase deviceCommandUseCase;
+    private final DeviceCommandConverter deviceCommandConverter;
 
     /**
      * 上报终端信息，设备上报led_status到服务器。
@@ -45,14 +53,50 @@ public class DeviceInteractionController implements DeviceInteractionApi {
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
+    /**
+     * 获取终端指令的方法。此方法允许终端通过HTTP方式请求其待执行的指令。
+     *
+     * @param cltType 客户端类型，当前实现中未使用该参数
+     * @param deviceNum 设备编号，当前实现中未使用该参数
+     * @return 待执行的设备API命令列表；如果发生异常，则返回一个空列表
+     */
+    @Operation(
+            summary = "终端获取指令",
+            description = "终端通过HTTP方式获取指令",
+            tags = {"终端指令"}
+    )
     @Override
-    public List<DeviceApiCommand> getCommands(String clt_type, String device_num) {
-        return List.of();
+    public List<DeviceApiCommand> getCommands(String cltType, String deviceNum) {
+        // cltType、deviceNum这两个参数没用，历史问题
+        DevicePrincipal devicePrincipal= (DevicePrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        try {
+            List<DeviceCommand> pendingCommands = deviceCommandUseCase.getPendingCommands(devicePrincipal.getDeviceId());
+            return deviceCommandConverter.toDeviceApiCommand(pendingCommands);
+        } catch (Exception e) {
+            log.error("DeviceCommand - 获取设备指令异常, deviceNum: {}", devicePrincipal.getDeviceId(), e);
+            return List.of();
+        }
     }
 
+    @Operation(
+            summary = "终端确认指令",
+            description = "终端通过HTTP方式确认指令",
+            tags = {"终端指令"}
+    )
     @Override
     public ResponseEntity<Void> confirmCommand(Integer post, DeviceApiCommandConfirm commandConfirm) {
-        return null;
+        DevicePrincipal devicePrincipal= (DevicePrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        if (commandConfirm.getParent() == null) {
+            log.warn("DeviceCommand - 终端确认指令参数错误, deviceNum: {}", devicePrincipal.getDeviceId());
+            throw new DeviceResponseException(BusinessErrorCode.PARAMETER_MISSING);
+        }
+        try {
+            deviceCommandUseCase.confirmCommand(devicePrincipal.getDeviceId(), commandConfirm.getParent(), commandConfirm.getContent());
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            log.error("DeviceCommand - 终端确认指令异常, deviceNum: {}", devicePrincipal.getDeviceId(), e);
+            throw  new DeviceResponseException(BusinessErrorCode.SYSTEM_ERROR);
+        }
     }
 
     @Override

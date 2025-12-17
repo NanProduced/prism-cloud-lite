@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.util.TextSlugifier;
-import nan.produced.prism.core.device.application.mapper.DeviceTagMapper;
+import nan.produced.prism.core.device.application.converter.DeviceTagConverter;
 import nan.produced.prism.core.device.application.port.inbound.DeviceTagUseCase;
 import nan.produced.prism.core.device.application.port.outbound.DeviceTagRepository;
 import nan.produced.prism.core.device.domain.dto.TagVO;
@@ -31,7 +31,7 @@ public class DeviceTagApplicationService implements DeviceTagUseCase {
 
     private final DeviceTagRepository deviceTagRepository;
 
-    private final DeviceTagMapper deviceTagMapper;
+    private final DeviceTagConverter deviceTagConverter;
 
     @Override
     @Transactional
@@ -44,7 +44,7 @@ public class DeviceTagApplicationService implements DeviceTagUseCase {
         }
 
         var now = LocalDateTime.now();
-        var tag = deviceTagMapper.toNewEntity(
+        var tag = deviceTagConverter.toNewEntity(
                 userId,
                 System.currentTimeMillis(),
                 tagName,
@@ -56,7 +56,7 @@ public class DeviceTagApplicationService implements DeviceTagUseCase {
 
         var saved = deviceTagRepository.save(tag);
         log.debug("DeviceTagApplicationService - 创建标签成功: userId={}, slug={}", userId, slug);
-        return deviceTagMapper.toVO(saved);
+        return deviceTagConverter.toVO(saved);
     }
 
     @Override
@@ -74,12 +74,12 @@ public class DeviceTagApplicationService implements DeviceTagUseCase {
             tag.setSlug(newSlug);
         }
 
-        deviceTagMapper.applyUpdate(tag, tagName, color, icon, description, LocalDateTime.now());
+        deviceTagConverter.applyUpdate(tag, tagName, color, icon, description, LocalDateTime.now());
 
         var saved = deviceTagRepository.save(tag);
         log.info("DeviceTagApplicationService - 更新标签成功: userId={}, oldSlug={}, newSlug={}",
                 userId, slug, saved.getSlug());
-        return deviceTagMapper.toVO(saved);
+        return deviceTagConverter.toVO(saved);
     }
 
     @Override
@@ -99,21 +99,21 @@ public class DeviceTagApplicationService implements DeviceTagUseCase {
     @Override
     public TagVO getTagBySlug(UUID userId, String slug) {
         return deviceTagRepository.findByUserIdAndSlug(userId, slug)
-                .map(deviceTagMapper::toVO)
+                .map(deviceTagConverter::toVO)
                 .orElseThrow(() -> new BizException(ErrorCode.DEVICE_TAG_NOT_FOUND));
     }
 
     @Override
     public List<TagVO> getUserTags(UUID userId) {
         return deviceTagRepository.findByUserId(userId).stream()
-                .map(deviceTagMapper::toVO)
+                .map(deviceTagConverter::toVO)
                 .toList();
     }
 
     @Override
     public List<TagVO> getDeviceTags(UUID userId, Long deviceId) {
         return deviceTagRepository.findByDeviceId(deviceId, userId).stream()
-                .map(deviceTagMapper::toVO)
+                .map(deviceTagConverter::toVO)
                 .toList();
     }
 

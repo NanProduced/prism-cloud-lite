@@ -24,7 +24,7 @@ public class V11ProtocolMessageProcessor implements WsProtocolMessageProcessor {
 
     @Override
     public ProtocolVersion getSupportedVersion() {
-        return null;
+        return ProtocolVersion.V1_1;
     }
 
     @Override

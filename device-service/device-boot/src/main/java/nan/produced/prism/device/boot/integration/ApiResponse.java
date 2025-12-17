@@ -110,7 +110,7 @@ public class ApiResponse<T> {
         this.meta = ApiResponseMeta.builder()
                 .traceId(traceId)
                 .durationMs(durationMs)
-                .from("auth-service")
+                .from("device-service")
                 .build();
         return this;
     }

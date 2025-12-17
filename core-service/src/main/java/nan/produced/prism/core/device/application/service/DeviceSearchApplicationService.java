@@ -13,10 +13,10 @@ import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.device.api.dto.DeviceDetailResp;
 import nan.produced.prism.core.device.api.dto.FilterDeviceReq;
-import nan.produced.prism.core.device.application.mapper.DeviceDetailMapper;
-import nan.produced.prism.core.device.application.mapper.DeviceTagMapper;
+import nan.produced.prism.core.device.application.converter.DeviceDetailConverter;
+import nan.produced.prism.core.device.application.converter.DeviceTagConverter;
 import nan.produced.prism.core.device.application.port.inbound.DeviceSearchUseCase;
-import nan.produced.prism.core.device.application.mapper.DeviceListMapper;
+import nan.produced.prism.core.device.application.converter.DeviceListConverter;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCustomFieldDefRepository;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCustomFieldValueRepository;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
@@ -41,9 +41,9 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
     private final DeviceTagRepository deviceTagRepository;
     private final DeviceCustomFieldDefRepository customFieldDefRepository;
     private final DeviceCustomFieldValueRepository customFieldValueRepository;
-    private final DeviceListMapper deviceListMapper;
-    private final DeviceDetailMapper deviceDetailMapper;
-    private final DeviceTagMapper deviceTagMapper;
+    private final DeviceListConverter deviceListConverter;
+    private final DeviceDetailConverter deviceDetailConverter;
+    private final DeviceTagConverter deviceTagConverter;
 
     @Override
     @Transactional(readOnly = true)
@@ -66,11 +66,11 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
             throw new BizException(ErrorCode.DEVICE_NOT_FOUND_IN_CORE);
         }
 
-        DeviceDetailResp resp = deviceDetailMapper.toDetailResp(deviceEntity);
+        DeviceDetailResp resp = deviceDetailConverter.toDetailResp(deviceEntity);
 
         // tags
         List<TagVO> tagVOS = deviceTagRepository.findByDeviceId(deviceId, userId).stream()
-                .map(deviceTagMapper::toVO)
+                .map(deviceTagConverter::toVO)
                 .toList();
         resp.setTags(tagVOS);
 
@@ -130,7 +130,7 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
 
         return devices.stream()
                 .map(device -> {
-                    DeviceListVO vo = deviceListMapper.toListVO(device);
+                    DeviceListVO vo = deviceListConverter.toListVO(device);
                     vo.setTags(tagsByDevice.getOrDefault(device.getDeviceId(), List.of()));
                     vo.setCustomFieldValues(customFieldValuesByDevice.getOrDefault(device.getDeviceId(), Map.of()));
                     return vo;
@@ -147,7 +147,7 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
         Map<Long, List<TagVO>> result = new HashMap<>();
         for (DeviceTagMapEntity mapping : mappings) {
             if (mapping != null && mapping.getDeviceId() != null && mapping.getTag() != null) {
-                TagVO tag = deviceTagMapper.toVO(mapping.getTag());
+                TagVO tag = deviceTagConverter.toVO(mapping.getTag());
                 result.computeIfAbsent(mapping.getDeviceId(), ignored -> new ArrayList<>()).add(tag);
             }
         }
