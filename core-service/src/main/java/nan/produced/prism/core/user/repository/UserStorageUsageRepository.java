@@ -56,4 +56,30 @@ public interface UserStorageUsageRepository extends JpaRepository<UserStorageUsa
             @Param("fileType") StorageFileType fileType,
             @Param("fileCount") int fileCount,
             @Param("bytes") long bytes);
+
+    /**
+     * 减少存储使用量（原子操作，数值下限为 0）
+     *
+     * @param userId     用户ID
+     * @param sourceType 来源类型
+     * @param fileType   文件类型
+     * @param fileCount  文件数量减少量（正数）
+     * @param bytes      字节数减少量（正数）
+     * @return 更新的行数
+     */
+    @Modifying
+    @Query("""
+            UPDATE UserStorageUsageEntity u
+            SET u.fileCount = CASE WHEN (u.fileCount - :fileCount) < 0 THEN 0 ELSE (u.fileCount - :fileCount) END,
+                u.totalBytes = CASE WHEN (u.totalBytes - :bytes) < 0 THEN 0 ELSE (u.totalBytes - :bytes) END
+            WHERE u.userId = :userId
+              AND u.sourceType = :sourceType
+              AND u.fileType = :fileType
+            """)
+    int decrementUsage(
+            @Param("userId") UUID userId,
+            @Param("sourceType") StorageSourceType sourceType,
+            @Param("fileType") StorageFileType fileType,
+            @Param("fileCount") int fileCount,
+            @Param("bytes") long bytes);
 }

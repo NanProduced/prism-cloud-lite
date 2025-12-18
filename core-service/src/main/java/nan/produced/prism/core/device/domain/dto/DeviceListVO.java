@@ -115,9 +115,9 @@ public class DeviceListVO {
     private Long freeStorage;
 
     /**
-     * 设备截图 - s3预览地址
+     * 设备截图 - s3预览地址(cdn)
      */
-    @Schema(description = "设备截图预览地址（TODO: 截图业务未实现，暂返回 null）")
+    @Schema(description = "设备截图预览地址（CDN，返回最新截图）")
     private String lastScreenshotUrl;
 
     /**

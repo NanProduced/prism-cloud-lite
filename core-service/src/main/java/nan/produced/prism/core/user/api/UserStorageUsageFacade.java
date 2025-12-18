@@ -24,4 +24,20 @@ public interface UserStorageUsageFacade {
             StorageFileType fileType,
             int fileCount,
             long bytes);
+
+    /**
+     * 减少用户在指定来源下的存储用量，并同步更新配额冗余字段。
+     *
+     * @param userId     用户ID
+     * @param sourceType 来源类型
+     * @param fileType   文件类型
+     * @param fileCount  文件数量减少量（正数）
+     * @param bytes      字节数减少量（正数）
+     */
+    void decrementUsage(
+            UUID userId,
+            StorageSourceType sourceType,
+            StorageFileType fileType,
+            int fileCount,
+            long bytes);
 }

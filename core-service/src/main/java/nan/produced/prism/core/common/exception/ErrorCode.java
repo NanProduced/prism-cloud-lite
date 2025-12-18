@@ -31,6 +31,7 @@ public enum ErrorCode {
     DEVICE_DELETED_FAILED("CORE-2006", "设备删除失败", "设备删除失败，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
     DEVICE_REPORT_EVENT_HANDLE_FAILED("CORE-2007", "设备上报事件处理失败", "设备上报事件处理失败，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
     DEVICE_QUOTA_EXCEEDED("CORE-2008", "设备数量超出配额", "已达到当前套餐的设备上限，请升级套餐", HttpStatus.BAD_REQUEST, false),
+    DEVICE_SCREENSHOT_NOT_FOUND("CORE-2009", "设备截图不存在", "截图不存在或无权访问", HttpStatus.NOT_FOUND, false),
 
     // ============ 设备标签相关 (CORE-21xx) ============
     DEVICE_TAG_NOT_FOUND("CORE-2100", "设备标签不存在", "指定的标签不存在或无权访问", HttpStatus.NOT_FOUND, false),

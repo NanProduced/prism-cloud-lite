@@ -16,6 +16,7 @@ import nan.produced.prism.device.application.port.inbound.status.DeviceReportUse
 import nan.produced.prism.device.boot.integration.command.DeviceCommandConverter;
 import nan.produced.prism.device.common.exception.DeviceResponseException;
 import nan.produced.prism.device.common.exception.business.BusinessErrorCode;
+import nan.produced.prism.device.infrastructure.storage.s3.DeviceScreenshotS3Uploader;
 import nan.produced.prism.device.infrastructure.security.DevicePrincipal;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,7 @@ public class DeviceInteractionController implements DeviceInteractionApi {
 
     private final DeviceCommandUseCase deviceCommandUseCase;
     private final DeviceCommandConverter deviceCommandConverter;
+    private final DeviceScreenshotS3Uploader deviceScreenshotS3Uploader;
 
     /**
      * 上报终端信息，设备上报led_status到服务器。
@@ -147,7 +149,25 @@ public class DeviceInteractionController implements DeviceInteractionApi {
 
     @Override
     public ResponseEntity<Void> reportScreenshot(HttpServletRequest request) {
-        return null;
+        DevicePrincipal devicePrincipal = (DevicePrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        try {
+            byte[] bytes = request.getInputStream().readAllBytes();
+            if (bytes.length == 0) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+
+            String contentType = request.getContentType();
+            var result = deviceScreenshotS3Uploader.upload(devicePrincipal.getDeviceId(), bytes, contentType);
+            deviceReportUseCase.asyncPushScreenshotReport(
+                    devicePrincipal.getDeviceId(),
+                    result.s3Key(),
+                    result.sizeBytes(),
+                    result.contentType());
+            return ResponseEntity.status(HttpStatus.OK).build();
+        } catch (Exception e) {
+            log.error("Screenshot - 截图上传失败, deviceId={}", devicePrincipal.getDeviceId(), e);
+            throw new DeviceResponseException(BusinessErrorCode.OPERATION_FAILED);
+        }
     }
 
     @Override

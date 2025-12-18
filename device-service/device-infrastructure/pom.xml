@@ -22,6 +22,11 @@
             <groupId>nan.produced</groupId>
             <artifactId>device-application</artifactId>
         </dependency>
+        <!-- AWS S3 SDK (截图上传到对象存储) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>

@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Map;
 
 /**
  * 设备事件应用层服务
@@ -29,6 +30,8 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
     private final DevicePropertiesPort devicePropertiesPort;
 
     private final DeviceRepository deviceRepository;
+
+    private final DeviceScreenshotApplicationService deviceScreenshotApplicationService;
 
     /**
      * 处理设备上线状态
@@ -127,6 +130,11 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
                 case MessagingConstants.DeviceEventTypes.REPORT_DOWNLOADING_PROGRESS:
                     handleDownloadProgress(message.getDeviceId(),
                             message.getPayload().toString(), traceId);
+                    break;
+
+                // 设备截图
+                case MessagingConstants.DeviceEventTypes.REPORT_SCREENSHOT:
+                    handleScreenshotUploaded(message.getDeviceId(), message.getPayload(), traceId, message.getOccurredAt());
                     break;
 
                 default:
@@ -235,6 +243,46 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
         // 2. 更新下载任务进度
         // 3. 推送进度到 SPA 前端（通过 SSE/WebSocket）
         // 4. 判断是否完成，完成时触发后续流程
+    }
+
+    private void handleScreenshotUploaded(Long deviceId, Map<String, Object> payload, String traceId, Instant occurredAt) {
+        String s3Key = getString(payload, "s3Key");
+        long sizeBytes = getLong(payload, "sizeBytes");
+        String contentType = getString(payload, "contentType");
+
+        deviceScreenshotApplicationService.recordScreenshotUploaded(
+                deviceId,
+                s3Key,
+                sizeBytes,
+                contentType,
+                occurredAt,
+                traceId);
+    }
+
+    private String getString(Map<String, Object> payload, String key) {
+        if (payload == null || key == null) {
+            return null;
+        }
+        Object value = payload.get(key);
+        return value != null ? String.valueOf(value) : null;
+    }
+
+    private long getLong(Map<String, Object> payload, String key) {
+        if (payload == null || key == null) {
+            return 0L;
+        }
+        Object value = payload.get(key);
+        if (value == null) {
+            return 0L;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException ignored) {
+            return 0L;
+        }
     }
 
 }

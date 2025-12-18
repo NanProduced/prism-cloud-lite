@@ -48,4 +48,14 @@ public interface DeviceReportUseCase {
      * @param reportStr 上报数据
      */
     void asyncPushDownloadingReport(Long deviceId, String reportStr);
+
+    /**
+     * 设备截图上报（截图已上传到 S3 后，将元数据通过 MQ 推送给 core-service）
+     *
+     * @param deviceId     设备ID
+     * @param s3Key        S3 对象 Key（不包含 bucket/域名）
+     * @param sizeBytes    文件大小（bytes）
+     * @param contentType  文件 MIME 类型
+     */
+    void asyncPushScreenshotReport(Long deviceId, String s3Key, long sizeBytes, String contentType);
 }

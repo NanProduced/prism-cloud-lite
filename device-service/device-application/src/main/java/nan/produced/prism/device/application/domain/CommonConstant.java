@@ -90,6 +90,12 @@ public class CommonConstant {
          * <p>/wp-json/screen/v1/info</p>
          */
         public static final String DOWNLOADING_PROGRESS = "downloadingProgress";
+
+        /**
+         * 设备截图上报
+         * <p>/wp-json/wp/v2/media</p>
+         */
+        public static final String SCREENSHOT = "screenshot";
     }
 
 }

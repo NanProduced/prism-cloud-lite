@@ -20,6 +20,7 @@ import nan.produced.prism.core.device.application.converter.DeviceListConverter;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCustomFieldDefRepository;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCustomFieldValueRepository;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
+import nan.produced.prism.core.device.application.port.outbound.DeviceScreenshotRepository;
 import nan.produced.prism.core.device.application.port.outbound.DeviceTagRepository;
 import nan.produced.prism.core.device.domain.DeviceEntity;
 import nan.produced.prism.core.device.domain.customfield.CustomFieldType;
@@ -28,6 +29,8 @@ import nan.produced.prism.core.device.domain.customfield.DeviceCustomFieldValueE
 import nan.produced.prism.core.device.domain.dto.DeviceListVO;
 import nan.produced.prism.core.device.domain.dto.TagVO;
 import nan.produced.prism.core.device.domain.tags.DeviceTagMapEntity;
+import nan.produced.prism.core.device.domain.screenshot.DeviceScreenshotEntity;
+import nan.produced.prism.core.media.application.port.outbound.MediaObjectUrlPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -44,6 +47,8 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
     private final DeviceListConverter deviceListConverter;
     private final DeviceDetailConverter deviceDetailConverter;
     private final DeviceTagConverter deviceTagConverter;
+    private final DeviceScreenshotRepository deviceScreenshotRepository;
+    private final MediaObjectUrlPort mediaObjectUrlPort;
 
     @Override
     @Transactional(readOnly = true)
@@ -67,6 +72,7 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
         }
 
         DeviceDetailResp resp = deviceDetailConverter.toDetailResp(deviceEntity);
+        resp.setLastScreenshotUrl(loadLastScreenshotUrl(deviceId));
 
         // tags
         List<TagVO> tagVOS = deviceTagRepository.findByDeviceId(deviceId, userId).stream()
@@ -127,15 +133,48 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
 
         Map<Long, List<TagVO>> tagsByDevice = loadTags(userId, deviceIds);
         Map<Long, Map<String, Object>> customFieldValuesByDevice = loadCustomFieldValues(userId, deviceIds);
+        Map<Long, String> lastScreenshotUrlByDevice = loadLastScreenshotUrls(deviceIds);
 
         return devices.stream()
                 .map(device -> {
                     DeviceListVO vo = deviceListConverter.toListVO(device);
                     vo.setTags(tagsByDevice.getOrDefault(device.getDeviceId(), List.of()));
                     vo.setCustomFieldValues(customFieldValuesByDevice.getOrDefault(device.getDeviceId(), Map.of()));
+                    vo.setLastScreenshotUrl(lastScreenshotUrlByDevice.get(device.getDeviceId()));
                     return vo;
                 })
                 .toList();
+    }
+
+    private Map<Long, String> loadLastScreenshotUrls(List<Long> deviceIds) {
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<DeviceScreenshotEntity> latest = deviceScreenshotRepository.findLatestByDeviceIds(deviceIds);
+        if (latest == null || latest.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, String> result = new HashMap<>();
+        for (DeviceScreenshotEntity entity : latest) {
+            if (entity == null || entity.getDeviceId() == null || !StringUtils.hasText(entity.getS3Key())) {
+                continue;
+            }
+            result.put(entity.getDeviceId(), mediaObjectUrlPort.toPublicUrl(entity.getS3Key()));
+        }
+        return result;
+    }
+
+    private String loadLastScreenshotUrl(Long deviceId) {
+        if (deviceId == null) {
+            return null;
+        }
+        return deviceScreenshotRepository.findLatestByDeviceId(deviceId)
+                .map(DeviceScreenshotEntity::getS3Key)
+                .filter(StringUtils::hasText)
+                .map(mediaObjectUrlPort::toPublicUrl)
+                .orElse(null);
     }
 
     private Map<Long, List<TagVO>> loadTags(UUID userId, List<Long> deviceIds) {

@@ -107,6 +107,10 @@ public final class MessagingConstants {
          */
         public static final String REPORT_DOWNLOADING_PROGRESS = "report.downloadingProgress";
 
+        /**
+         * 设备数据上报 - 设备截图
+         */
+        public static final String REPORT_SCREENSHOT = "report.screenshot";
+
     }
 }
-

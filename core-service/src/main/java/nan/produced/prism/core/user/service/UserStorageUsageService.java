@@ -63,4 +63,44 @@ public class UserStorageUsageService implements UserStorageUsageFacade {
         log.debug("Storage usage incremented: userId={}, sourceType={}, fileType={}, fileCount+={}, bytes+={}",
                 userId, sourceType, fileType, fileCount, bytes);
     }
+
+    @Override
+    @Transactional
+    public void decrementUsage(
+            UUID userId,
+            StorageSourceType sourceType,
+            StorageFileType fileType,
+            int fileCount,
+            long bytes) {
+
+        if (userId == null || sourceType == null || fileType == null) {
+            return;
+        }
+
+        int normalizedFileCount = Math.max(0, fileCount);
+        long normalizedBytes = Math.max(0L, bytes);
+        if (normalizedFileCount == 0 && normalizedBytes == 0L) {
+            return;
+        }
+
+        int updated = userStorageUsageRepository.decrementUsage(
+                userId,
+                sourceType,
+                fileType,
+                normalizedFileCount,
+                normalizedBytes);
+
+        if (updated == 0) {
+            log.debug("Storage usage decrement skipped (no record): userId={}, sourceType={}, fileType={}, fileCount-={}, bytes-={}",
+                    userId, sourceType, fileType, normalizedFileCount, normalizedBytes);
+            return;
+        }
+
+        if (normalizedBytes != 0L) {
+            userQuotaUsageRepository.incrementStorageTotalBytes(userId, -normalizedBytes);
+        }
+
+        log.debug("Storage usage decremented: userId={}, sourceType={}, fileType={}, fileCount-={}, bytes-={}",
+                userId, sourceType, fileType, normalizedFileCount, normalizedBytes);
+    }
 }
