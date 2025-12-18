@@ -22,6 +22,11 @@ public class DeviceEventMessage {
 
     private String eventType;
 
+    /**
+     * report.* 特有的上报数据
+     */
+    private String reportData;
+
     @Builder.Default
     private Map<String, Object> payload = new HashMap<>();
 

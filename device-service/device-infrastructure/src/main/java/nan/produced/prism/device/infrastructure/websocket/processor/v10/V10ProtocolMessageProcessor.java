@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.device.application.domain.websocket.ProtocolVersion;
 import nan.produced.prism.device.application.domain.websocket.WsMessageProcessingContext;
 import nan.produced.prism.device.application.dto.websocket.v10.V10WebsocketMessage;
+import nan.produced.prism.device.application.port.inbound.status.DeviceReportUseCase;
 import nan.produced.prism.device.application.port.outbound.websocket.WsProtocolMessageProcessor;
 import nan.produced.prism.device.common.utils.JsonUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -31,6 +32,7 @@ public class V10ProtocolMessageProcessor implements WsProtocolMessageProcessor {
      * V1.0协议的心跳响应消息
      */
     private static final String HEARTBEAT_FIELD = "heartbeat";
+    private final DeviceReportUseCase deviceReportUseCase;
 
     @Override
     public ProtocolVersion getSupportedVersion() {
@@ -55,10 +57,11 @@ public class V10ProtocolMessageProcessor implements WsProtocolMessageProcessor {
                 return handleHeartbeat(context);
             }
 
-            // 处理GPS传感器数据（V1.0协议的主要业务逻辑）
-//            if (!CollectionUtils.isEmpty(message.getGps())) {
-//                return handleGpsMessage(context, message);
-//            }
+            // GPS数据
+            if (StringUtils.isNotBlank(message.getGps())) {
+                deviceReportUseCase.asyncPushSensorReport(context.getDeviceId(), message.getGps());
+                return TextMessageProcessResult.ofSuccess(true);
+            }
 
             else {
                 log.warn("V10ProtocolMessageProcessor - 未知消息类型: deviceId={}, message={}",

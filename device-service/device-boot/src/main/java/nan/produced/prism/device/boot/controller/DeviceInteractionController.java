@@ -134,7 +134,7 @@ public class DeviceInteractionController implements DeviceInteractionApi {
     public ResponseEntity<Void> reportSensorData(String report) {
         if (StringUtils.isBlank(report)) return ResponseEntity.status(HttpStatus.CREATED).build();
         DevicePrincipal devicePrincipal= (DevicePrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        deviceReportUseCase.asyncHandleSensorReport(devicePrincipal.getDeviceId(), report);
+        deviceReportUseCase.asyncPushSensorReport(devicePrincipal.getDeviceId(), report);
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
@@ -154,7 +154,7 @@ public class DeviceInteractionController implements DeviceInteractionApi {
     public ResponseEntity<Void> reportDownloading(String report) {
         if (StringUtils.isBlank(report)) return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
         DevicePrincipal devicePrincipal= (DevicePrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        deviceReportUseCase.asyncSaveDownloadingReport(devicePrincipal.getDeviceId(), report);
+        deviceReportUseCase.asyncPushDownloadingReport(devicePrincipal.getDeviceId(), report);
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 }

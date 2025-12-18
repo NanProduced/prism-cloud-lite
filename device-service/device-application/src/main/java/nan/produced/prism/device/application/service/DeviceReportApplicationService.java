@@ -33,6 +33,7 @@ public class DeviceReportApplicationService implements DeviceReportUseCase {
         DeviceEventMessage message = DeviceEventMessage.builder()
                         .deviceId(deviceId)
                         .eventType(CommonConstant.Report.PROPERTIES)
+                        .reportData( properties)
                         .occurredAt(Instant.now())
                         .build();
 
@@ -46,6 +47,7 @@ public class DeviceReportApplicationService implements DeviceReportUseCase {
         DeviceEventMessage message = DeviceEventMessage.builder()
                         .deviceId(deviceId)
                         .eventType(CommonConstant.Report.MEDIA_PLAY_RECORD)
+                        .reportData(reportStr)
                         .occurredAt(Instant.now())
                         .build();
 
@@ -60,6 +62,7 @@ public class DeviceReportApplicationService implements DeviceReportUseCase {
         DeviceEventMessage message = DeviceEventMessage.builder()
                         .deviceId(deviceId)
                         .eventType(CommonConstant.Report.PROGRAM_PLAY_RECORD)
+                        .reportData(reportStr)
                         .occurredAt(Instant.now())
                         .build();
 
@@ -73,6 +76,7 @@ public class DeviceReportApplicationService implements DeviceReportUseCase {
         DeviceEventMessage message = DeviceEventMessage.builder()
                         .deviceId(deviceId)
                         .eventType(CommonConstant.Report.DEVICE_LOG)
+                        .reportData(logs)
                         .occurredAt(Instant.now())
                         .build();
 
@@ -81,11 +85,12 @@ public class DeviceReportApplicationService implements DeviceReportUseCase {
     }
 
     @Override
-    public void asyncHandleSensorReport(Long deviceId, String reports) {
+    public void asyncPushSensorReport(Long deviceId, String reports) {
 
         DeviceEventMessage message = DeviceEventMessage.builder()
                         .deviceId(deviceId)
                         .eventType(CommonConstant.Report.SENSOR_DATA)
+                        .reportData(reports)
                         .occurredAt(Instant.now())
                         .build();
 
@@ -94,11 +99,12 @@ public class DeviceReportApplicationService implements DeviceReportUseCase {
     }
 
     @Override
-    public void asyncSaveDownloadingReport(Long deviceId, String reportStr) {
+    public void asyncPushDownloadingReport(Long deviceId, String reportStr) {
 
         DeviceEventMessage message = DeviceEventMessage.builder()
                         .deviceId(deviceId)
                         .eventType(CommonConstant.Report.DOWNLOADING_PROGRESS)
+                        .reportData(reportStr)
                         .occurredAt(Instant.now())
                         .build();
 

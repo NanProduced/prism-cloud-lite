@@ -40,12 +40,12 @@ public interface DeviceReportUseCase {
      * @param deviceId 设备Id
      * @param reports 传感器上报数据列表
      */
-    void asyncHandleSensorReport(Long deviceId, String reports);
+    void asyncPushSensorReport(Long deviceId, String reports);
 
     /**
      * 异步保存下载进度
      * @param deviceId 设备Id
      * @param reportStr 上报数据
      */
-    void asyncSaveDownloadingReport(Long deviceId, String reportStr);
+    void asyncPushDownloadingReport(Long deviceId, String reportStr);
 }

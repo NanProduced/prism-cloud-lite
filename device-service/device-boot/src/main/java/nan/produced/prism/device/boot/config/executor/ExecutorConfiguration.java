@@ -118,6 +118,56 @@ public class ExecutorConfiguration {
     }
 
     /**
+     * WebSocket业务处理器
+     * 专用于WebSocket消息处理中的耗时业务操作（如Redis查询、数据库操作）
+     * 与连接处理器分离，避免连接建立被业务处理阻塞
+     * <p>
+     * 【分类】I/O密集型 - Redis查询 + 数据库操作
+     * 【策略】core = CPU×2, max = CPU×4 (支持高并发消息处理)
+     */
+    @Bean("websocketBusinessExecutor")
+    public ThreadPoolTaskExecutor websocketBusinessExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+
+        // 核心线程数 - I/O密集型：Redis查询+数据库操作
+        int corePoolSize = Math.max(8, CPU_COUNT * 2);
+        executor.setCorePoolSize(corePoolSize);
+
+        // 最大线程数 - 支持高并发消息处理
+        int maxPoolSize = Math.max(32, CPU_COUNT * 4);
+        executor.setMaxPoolSize(maxPoolSize);
+
+        // 队列容量 - 缓冲消息处理请求
+        executor.setQueueCapacity(2000);
+
+        // 线程空闲时间
+        executor.setKeepAliveSeconds(120);
+
+        // 线程命名
+        executor.setThreadNamePrefix("ws-business-");
+
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(120);
+
+        // 拒绝策略：丢弃任务并记录（消息处理失败可以容忍，客户端可重试）
+        // 增强监控：记录详细的拒绝信息
+        executor.setRejectedExecutionHandler((task, ext) -> {
+            log.error("ThreadPool - WebSocket业务任务被拒绝，任务已丢弃（可容忍）: pool=ws-business, " +
+                            "activeCount={}, queueSize={}, maxPoolSize={}, taskClass={}",
+                    ext.getActiveCount(), ext.getQueue().size(), ext.getMaximumPoolSize(),
+                    task.getClass().getSimpleName());
+            // 可以考虑发送错误响应给客户端，或者客户端重试
+        });
+
+        executor.initialize();
+
+        log.info("ThreadPool - WebSocket业务处理器初始化完成: core={}, max={}, queue={} (CPU核心数: {})",
+                executor.getCorePoolSize(), executor.getMaxPoolSize(), executor.getQueueCapacity(), CPU_COUNT);
+
+        return executor;
+    }
+
+    /**
      * Redis消息监听器专用线程池
      * 专用于Redis键过期事件监听处理，替代SimpleAsyncTaskExecutor避免线程泄漏
      * <p>

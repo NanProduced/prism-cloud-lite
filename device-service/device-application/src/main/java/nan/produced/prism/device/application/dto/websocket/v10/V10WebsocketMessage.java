@@ -39,5 +39,5 @@ public class V10WebsocketMessage {
      * GPS数据列表
      * V1.0协议支持多条GPS数据上报
      */
-//    private List<GpsReport> gps;
+    private String gps;
 }
