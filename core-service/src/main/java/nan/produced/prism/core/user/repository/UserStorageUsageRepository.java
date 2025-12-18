@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -27,6 +28,8 @@ public interface UserStorageUsageRepository extends JpaRepository<UserStorageUsa
             UUID userId,
             StorageSourceType sourceType,
             StorageFileType fileType);
+
+    List<UserStorageUsageEntity> findByUserIdAndSourceType(UUID userId, StorageSourceType sourceType);
 
     /**
      * 增加存储使用量（原子操作）

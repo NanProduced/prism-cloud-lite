@@ -67,6 +67,9 @@ public enum ErrorCode {
     MEDIA_INVALID_FILE_REFERENCE("CORE-2703", "文件引用无效", "请提供有效的 s3Key 或 fileEntityId", HttpStatus.BAD_REQUEST, false),
     MEDIA_MISSING_ORIGINAL_FILE("CORE-2704", "缺少原始文件", "素材必须包含原始文件", HttpStatus.BAD_REQUEST, false),
     MEDIA_BATCH_FINALIZE_FAILED("CORE-2705", "批量落库失败", "素材创建失败，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
+    MEDIA_FOLDER_NOT_EMPTY("CORE-2706", "文件夹非空", "请先删除文件夹内的内容后再删除", HttpStatus.BAD_REQUEST, false),
+    MEDIA_INVALID_FOLDER_NAME("CORE-2707", "文件夹名称不合法", "文件夹名称不合法，请检查输入", HttpStatus.BAD_REQUEST, false),
+    MEDIA_INVALID_MOVE_TARGET("CORE-2708", "移动目标不合法", "无法移动到目标位置", HttpStatus.BAD_REQUEST, false),
 
     // ============ 系统异常 (SYS-5xxx) ============
     INTERNAL_SERVER_ERROR("SYS-5000", "系统内部错误", "服务器内部错误，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),

@@ -19,7 +19,10 @@ import java.net.URI;
  * - AWS_SECRET_ACCESS_KEY
  */
 @Configuration
-@EnableConfigurationProperties({S3Properties.class, UploadRouteProperties.class})
+@EnableConfigurationProperties({
+        S3Properties.class,
+        UploadRouteProperties.class,
+        MediaDeliveryProperties.class})
 public class S3Configuration {
 
     @Bean

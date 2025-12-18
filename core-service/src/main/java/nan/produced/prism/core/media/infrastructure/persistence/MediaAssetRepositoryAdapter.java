@@ -5,9 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.media.application.domain.MediaAssetEntity;
 import nan.produced.prism.core.media.application.repository.MediaAssetRepository;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -56,7 +59,21 @@ public class MediaAssetRepositoryAdapter implements MediaAssetRepository {
             log.warn("MediaAssetRepositoryAdapter - userId为空，返回空结果");
             return Collections.emptyList();
         }
+        if (!StringUtils.hasText(folderId)) {
+            return mediaAssetRepositoryJpa.findByUserIdAndFolderIdIsNull(userId);
+        }
         return mediaAssetRepositoryJpa.findByUserIdAndFolderId(userId, folderId);
+    }
+
+    @Override
+    public List<MediaAssetEntity> findWithFilesByUserIdAndFolderId(UUID userId, String folderId) {
+        if (userId == null) {
+            return Collections.emptyList();
+        }
+        if (!StringUtils.hasText(folderId)) {
+            return mediaAssetRepositoryJpa.findWithFilesByUserIdAndFolderIdIsNull(userId);
+        }
+        return mediaAssetRepositoryJpa.findWithFilesByUserIdAndFolderId(userId, folderId);
     }
 
     @Override
@@ -66,6 +83,22 @@ public class MediaAssetRepositoryAdapter implements MediaAssetRepository {
             return Optional.empty();
         }
         return mediaAssetRepositoryJpa.findById(id);
+    }
+
+    @Override
+    public Optional<MediaAssetEntity> findWithFilesById(String id) {
+        if (!StringUtils.hasText(id)) {
+            return Optional.empty();
+        }
+        return mediaAssetRepositoryJpa.findWithFilesById(id);
+    }
+
+    @Override
+    public Optional<MediaAssetEntity> findWithFilesByIdAndUserId(String id, UUID userId) {
+        if (!StringUtils.hasText(id) || userId == null) {
+            return Optional.empty();
+        }
+        return mediaAssetRepositoryJpa.findWithFilesByIdAndUserId(id, userId);
     }
 
     @Override
@@ -85,11 +118,51 @@ public class MediaAssetRepositoryAdapter implements MediaAssetRepository {
     }
 
     @Override
+    public void delete(MediaAssetEntity asset) {
+        if (asset == null) {
+            return;
+        }
+        mediaAssetRepositoryJpa.delete(asset);
+    }
+
+    @Override
     public boolean existsByIdAndUserId(String id, UUID userId) {
         if (id == null || id.isBlank() || userId == null) {
             log.warn("MediaAssetRepositoryAdapter - 检查素材存在性时参数为空: id={}, userId={}", id, userId);
             return false;
         }
         return mediaAssetRepositoryJpa.existsByIdAndUserId(id, userId);
+    }
+
+    @Override
+    public boolean existsByUserIdAndFolderId(UUID userId, String folderId) {
+        if (userId == null) {
+            return false;
+        }
+        if (!StringUtils.hasText(folderId)) {
+            return mediaAssetRepositoryJpa.existsByUserIdAndFolderIdIsNull(userId);
+        }
+        return mediaAssetRepositoryJpa.existsByUserIdAndFolderId(userId, folderId);
+    }
+
+    @Override
+    public Map<String, Long> countAssetsByFolderIds(UUID userId, List<String> folderIds) {
+        if (userId == null || folderIds == null || folderIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        var validFolderIds = folderIds.stream()
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+        if (validFolderIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        var counts = new HashMap<String, Long>();
+        for (var row : mediaAssetRepositoryJpa.countByUserIdAndFolderIdIn(validFolderIds, userId)) {
+            counts.put(row.getFolderId(), row.getCount());
+        }
+        return counts;
     }
 }

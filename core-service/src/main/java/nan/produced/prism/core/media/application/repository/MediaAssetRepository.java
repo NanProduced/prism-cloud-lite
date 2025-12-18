@@ -3,6 +3,7 @@ package nan.produced.prism.core.media.application.repository;
 import nan.produced.prism.core.media.application.domain.MediaAssetEntity;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -41,12 +42,27 @@ public interface MediaAssetRepository {
     List<MediaAssetEntity> findByUserIdAndFolderId(UUID userId, String folderId);
 
     /**
+     * 根据用户ID和文件夹ID查找素材列表（联表加载 original/cover 文件信息）
+     */
+    List<MediaAssetEntity> findWithFilesByUserIdAndFolderId(UUID userId, String folderId);
+
+    /**
      * 根据ID查找素材
      *
      * @param id 素材ID
      * @return 素材实体，不存在返回空
      */
     Optional<MediaAssetEntity> findById(String id);
+
+    /**
+     * 根据 ID 查找素材（联表加载 original/cover 文件信息）
+     */
+    Optional<MediaAssetEntity> findWithFilesById(String id);
+
+    /**
+     * 根据 ID 查找素材（需校验归属，联表加载 original/cover 文件信息）
+     */
+    Optional<MediaAssetEntity> findWithFilesByIdAndUserId(String id, UUID userId);
 
     /**
      * 保存素材
@@ -65,6 +81,11 @@ public interface MediaAssetRepository {
     List<MediaAssetEntity> saveAll(List<MediaAssetEntity> assets);
 
     /**
+     * 删除素材
+     */
+    void delete(MediaAssetEntity asset);
+
+    /**
      * 检查素材是否存在且属于用户
      *
      * @param id     素材ID
@@ -72,4 +93,14 @@ public interface MediaAssetRepository {
      * @return 存在返回true
      */
     boolean existsByIdAndUserId(String id, UUID userId);
+
+    /**
+     * 检查文件夹下是否存在素材
+     */
+    boolean existsByUserIdAndFolderId(UUID userId, String folderId);
+
+    /**
+     * 按 folderId 统计素材数量（group by folderId）
+     */
+    Map<String, Long> countAssetsByFolderIds(UUID userId, List<String> folderIds);
 }

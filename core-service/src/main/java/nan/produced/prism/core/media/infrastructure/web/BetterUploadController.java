@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/upload")
+@RequestMapping({ "/api/upload"})
 @RequiredArgsConstructor
 public class BetterUploadController {
 
