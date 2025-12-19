@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 
 /**
  * 终端指令领域对象
+ * <p>也就是设备端API接口的定义</p>
  *
  * @author Nan
  */
@@ -36,17 +37,20 @@ public class DeviceCommand {
 
     /**
      * 指令操作类型 (用于去重判断)
+     * <p>设备API URL</p>
      */
     private String authorUrl;
 
     /**
      * 指令内容JSON
+     * <p>设备API Body参数</p>
      */
     private String contentRaw;
 
     /**
      * 终端执行方式
-     * 0-GET, 1-POST, 2-PUT, 3-DELETE
+     * <p>0-GET, 1-POST, 2-PUT, 3-DELETE</p>
+     * <p>设备API HTTP method</p>
      */
     private Integer karma;
 
