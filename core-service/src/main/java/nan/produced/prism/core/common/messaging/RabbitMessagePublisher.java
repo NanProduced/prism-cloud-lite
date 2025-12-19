@@ -21,8 +21,8 @@ public class RabbitMessagePublisher {
         send(MessagingConstants.Exchanges.DEVICE_EVENTS, routingKey, payload);
     }
 
-    public void publishCoreNotification(String routingKey, TaskMessage message) {
-        TaskMessage payload = prepareTaskMessage(message);
+    public void publishCoreNotification(String routingKey, FrontendEventMessage message) {
+        FrontendEventMessage payload = prepareFrontendEventMessage(message);
         send(MessagingConstants.Exchanges.CORE_NOTIFICATIONS, routingKey, payload);
     }
 
@@ -43,8 +43,8 @@ public class RabbitMessagePublisher {
         return payload;
     }
 
-    private TaskMessage prepareTaskMessage(TaskMessage message) {
-        TaskMessage payload = message != null ? message : TaskMessage.builder().build();
+    private FrontendEventMessage prepareFrontendEventMessage(FrontendEventMessage message) {
+        FrontendEventMessage payload = message != null ? message : FrontendEventMessage.builder().build();
         if (payload.getOccurredAt() == null) {
             payload.setOccurredAt(Instant.now());
         }
@@ -54,8 +54,8 @@ public class RabbitMessagePublisher {
         if (payload.getVersion() == null) {
             payload.setVersion(MessagingConstants.MESSAGE_VERSION);
         }
-        if (payload.getPayload() == null) {
-            payload.setPayload(new HashMap<>());
+        if (payload.getData() == null) {
+            payload.setData(new HashMap<>());
         }
         return payload;
     }
@@ -68,4 +68,3 @@ public class RabbitMessagePublisher {
         }
     }
 }
-

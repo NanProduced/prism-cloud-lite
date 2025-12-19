@@ -61,6 +61,11 @@ public final class MessagingConstants {
         // 前端spa通知路由键
         public static final String NOTIFY_ALL = "notify.*";
 
+        /**
+         * 设备在线状态变化通知（面向前端）
+         */
+        public static final String NOTIFY_DEVICE_STATUS_CHANGED = "notify.device.status.changed";
+
         private RoutingKeys() {
         }
     }

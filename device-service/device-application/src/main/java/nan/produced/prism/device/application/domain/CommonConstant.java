@@ -25,6 +25,8 @@ public class CommonConstant {
 
         public static final String CLIENT_IP = "clientIp";
 
+        public static final String STATUS_EVENT_TYPE = "statusEventType";
+
         public static final String VERSION = "version";
 
         public static final String TOTAL_ONLINE_TIME = "totalOnlineTime";

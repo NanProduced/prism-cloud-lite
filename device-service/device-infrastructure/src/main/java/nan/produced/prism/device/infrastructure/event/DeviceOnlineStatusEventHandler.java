@@ -230,11 +230,12 @@ public class DeviceOnlineStatusEventHandler {
     private void pushDeviceOnline(DeviceOnlineStatusEvent event) {
         Map<String, Object> payload = Map.of(
                 REPORT_SOURCE, event.getReportSource().name(),
-                CLIENT_IP, event.getClientIp()
+                CLIENT_IP, event.getClientIp(),
+                STATUS_EVENT_TYPE, event.getEventType().name()
         );
         DeviceEventMessage message = DeviceEventMessage.builder()
                 .deviceId(event.getDeviceId())
-                .eventType(event.getEventType().name())
+                .eventType("status.online")
                 .payload(payload)
                 .occurredAt(Instant.ofEpochMilli(event.getEventTime()))
                 .build();
@@ -247,11 +248,12 @@ public class DeviceOnlineStatusEventHandler {
         Map<String, Object> payload = Map.of(
                 ONLINE_START_TIME, event.getOnlineStartTime(),
                 LAST_REPORT_TIME, event.getLastReportTime(),
-                CLIENT_IP, event.getClientIp()
+                CLIENT_IP, event.getClientIp(),
+                STATUS_EVENT_TYPE, event.getEventType().name()
         );
         DeviceEventMessage message = DeviceEventMessage.builder()
                 .deviceId(event.getDeviceId())
-                .eventType(event.getEventType().name())
+                .eventType("status.offline")
                 .payload(payload)
                 .occurredAt(Instant.ofEpochMilli(event.getEventTime()))
                 .build();

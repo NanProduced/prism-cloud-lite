@@ -5,7 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.messaging.DeviceEventMessage;
+import nan.produced.prism.core.common.messaging.FrontendEventMessage;
 import nan.produced.prism.core.common.messaging.MessagingConstants;
+import nan.produced.prism.core.common.messaging.RabbitMessagePublisher;
 import nan.produced.prism.core.device.application.port.inbound.DeviceEventUseCase;
 import nan.produced.prism.core.device.application.port.outbound.DevicePropertiesPort;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
@@ -15,6 +17,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 设备事件应用层服务
@@ -32,6 +35,8 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
     private final DeviceRepository deviceRepository;
 
     private final DeviceScreenshotApplicationService deviceScreenshotApplicationService;
+
+    private final RabbitMessagePublisher rabbitMessagePublisher;
 
     /**
      * 处理设备上线状态
@@ -51,9 +56,28 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
         else {
             deviceRepository.updateStatus(deviceId, 0, LocalDateTime.ofInstant(timestamp, ZoneId.of("UTC")));
         }
-        // TODO: 实现设备上线状态处理逻辑
-        // 1. 更新设备在线状态
-        // 2. 推送状态变化通知给 SPA
+
+        UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);
+        if (userId == null) {
+            log.warn("设备上线状态推送 - 未找到设备所属用户，跳过SSE通知: deviceId={}, traceId={}", deviceId, traceId);
+            return;
+        }
+
+        FrontendEventMessage message = FrontendEventMessage.builder()
+                .success(true)
+                .type("device.status.changed")
+                .scope(FrontendEventMessage.Scope.builder()
+                        .userId(userId)
+                        .deviceId(deviceId)
+                        .build())
+                .data(Map.of(
+                        "online", isOnline
+                ))
+                .occurredAt(timestamp)
+                .traceId(traceId)
+                .build();
+
+        rabbitMessagePublisher.publishCoreNotification(MessagingConstants.RoutingKeys.NOTIFY_DEVICE_STATUS_CHANGED, message);
     }
 
     /**
