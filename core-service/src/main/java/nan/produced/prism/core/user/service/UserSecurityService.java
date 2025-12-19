@@ -12,9 +12,12 @@ import nan.produced.prism.core.common.response.ApiResponse;
 import nan.produced.prism.core.integration.auth.client.AuthAccountSecurityInternalClient;
 import nan.produced.prism.core.integration.auth.dto.AuthChangePasswordRequest;
 import nan.produced.prism.core.integration.auth.dto.AuthRememberedDeviceView;
+import nan.produced.prism.core.integration.auth.dto.AuthSecurityHistoryPageView;
 import nan.produced.prism.core.security.CloudAuthContext;
 import nan.produced.prism.core.user.dto.UserActiveSessionView;
 import nan.produced.prism.core.user.dto.UserChangePasswordRequest;
+import nan.produced.prism.core.user.dto.UserSecurityEventView;
+import nan.produced.prism.core.user.dto.UserSecurityHistoryView;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -47,6 +50,35 @@ public class UserSecurityService {
                 it.current()
             ))
             .toList();
+    }
+
+    public UserSecurityHistoryView listCurrentUserSecurityHistory(int page, int size) {
+        UUID userId = requireCurrentUserUuid();
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(100, Math.max(1, size));
+
+        ApiResponse<AuthSecurityHistoryPageView> response = authAccountSecurityInternalClient.listSecurityHistory(userId, safePage, safeSize);
+        AuthSecurityHistoryPageView history = requireAuthSuccess(response, "查询安全历史失败");
+        if (history == null || history.items() == null) {
+            return new UserSecurityHistoryView(List.of(), safePage, safeSize, 0);
+        }
+        return new UserSecurityHistoryView(
+            history.items().stream()
+                .map(it -> new UserSecurityEventView(
+                    it.id(),
+                    it.type(),
+                    it.success(),
+                    it.ipAddress(),
+                    it.deviceName(),
+                    it.userAgent(),
+                    it.metadata(),
+                    it.createdAt()
+                ))
+                .toList(),
+            history.page(),
+            history.size(),
+            history.total()
+        );
     }
 
     public void revokeCurrentUserSession(String series, HttpServletRequest request, HttpServletResponse response) {

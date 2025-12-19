@@ -14,6 +14,7 @@ import nan.produced.prism.core.common.response.BffResponse;
 import nan.produced.prism.core.common.util.TraceUtils;
 import nan.produced.prism.core.user.dto.UserActiveSessionView;
 import nan.produced.prism.core.user.dto.UserChangePasswordRequest;
+import nan.produced.prism.core.user.dto.UserSecurityHistoryView;
 import nan.produced.prism.core.user.service.UserSecurityService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Tag(name = "账号安全（用户）", description = "Dashboard Settings - Security")
 @RestController
@@ -41,6 +43,20 @@ public class UserSecurityController {
     public ResponseEntity<BffResponse<List<UserActiveSessionView>>> listActiveSessions(HttpServletRequest request) {
         List<UserActiveSessionView> sessions = userSecurityService.listCurrentUserActiveSessions(request);
         return ResponseEntity.ok(BffResponse.success(sessions).withTraceId(TraceUtils.getTraceId()));
+    }
+
+    @Operation(summary = "获取安全历史（Security History）")
+    @ApiResponse(
+        responseCode = "200",
+        description = "成功返回安全审计历史",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserSecurityHistoryView.class)))
+    @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
+    @GetMapping("/history")
+    public ResponseEntity<BffResponse<UserSecurityHistoryView>> listSecurityHistory(
+        @RequestParam(value = "page", defaultValue = "0") int page,
+        @RequestParam(value = "size", defaultValue = "20") int size) {
+        UserSecurityHistoryView history = userSecurityService.listCurrentUserSecurityHistory(page, size);
+        return ResponseEntity.ok(BffResponse.success(history).withTraceId(TraceUtils.getTraceId()));
     }
 
     @Operation(summary = "注销单个会话")

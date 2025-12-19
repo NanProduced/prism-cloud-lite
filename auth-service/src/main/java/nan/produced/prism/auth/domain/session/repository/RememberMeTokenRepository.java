@@ -17,6 +17,8 @@ public interface RememberMeTokenRepository extends JpaRepository<RememberMeToken
 
     Optional<RememberMeTokenEntity> findBySeriesAndRevokedFalse(String series);
 
+    Optional<RememberMeTokenEntity> findBySeries(String series);
+
     List<RememberMeTokenEntity> findByUserIdAndRevokedFalseOrderByCreatedAtDesc(UUID userId);
 
     @Modifying(clearAutomatically = true)

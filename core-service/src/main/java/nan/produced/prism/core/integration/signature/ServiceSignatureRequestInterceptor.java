@@ -2,8 +2,12 @@ package nan.produced.prism.core.integration.signature;
 
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
+import jakarta.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import nan.produced.prism.core.common.util.TraceUtils;
+import org.springframework.util.StringUtils;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
  * 服务签名请求拦截器
@@ -33,6 +37,8 @@ public class ServiceSignatureRequestInterceptor implements RequestInterceptor {
         template.header("X-Timestamp", String.valueOf(timestamp));
         template.header("X-Signature", signature);
         template.header("X-Trace-Id", TraceUtils.getTraceId());
+
+        propagateClientContext(template);
     }
 
     private String extractBody(RequestTemplate template) {
@@ -54,5 +60,48 @@ public class ServiceSignatureRequestInterceptor implements RequestInterceptor {
         }
         int idx = rawPath.indexOf('?');
         return idx >= 0 ? rawPath.substring(0, idx) : rawPath;
+    }
+
+    /**
+     * Propagate end-user client context (ip/ua/device) to internal calls for audit purposes.
+     * <p>
+     * This is best-effort and should never be used for authorization decisions.
+     * </p>
+     */
+    private void propagateClientContext(RequestTemplate template) {
+        if (template == null) {
+            return;
+        }
+        if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs)) {
+            return;
+        }
+        HttpServletRequest request = attrs.getRequest();
+        if (request == null) {
+            return;
+        }
+
+        String clientIp = resolveClientIp(request);
+        if (StringUtils.hasText(clientIp)) {
+            template.header("X-Client-Ip", clientIp);
+        }
+        String userAgent = request.getHeader("User-Agent");
+        if (StringUtils.hasText(userAgent)) {
+            template.header("X-Client-User-Agent", userAgent);
+        }
+        String device = request.getHeader("X-Client-Device");
+        if (StringUtils.hasText(device)) {
+            template.header("X-Client-Device", device);
+        }
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (StringUtils.hasText(forwarded)) {
+            String[] parts = forwarded.split(",");
+            if (parts.length > 0) {
+                return parts[0].trim();
+            }
+        }
+        return request.getRemoteAddr();
     }
 }

@@ -22,6 +22,7 @@ import nan.produced.prism.auth.security.login.LoginAuthType;
 import nan.produced.prism.auth.security.login.LoginAuthTypeConstants;
 import nan.produced.prism.auth.security.login.otp.CommonLoginOtpService;
 import nan.produced.prism.auth.security.principal.PrismUserPrincipal;
+import nan.produced.prism.auth.security.audit.SecurityAuditService;
 import nan.produced.prism.auth.security.rememberme.RememberMeTokenService;
 import nan.produced.prism.auth.security.login.validator.OAuth2ContinueUrlValidator;
 import nan.produced.prism.auth.utils.TraceUtils;
@@ -54,6 +55,7 @@ public class AuthLoginController {
     private final OAuth2ContinueUrlValidator continueUrlValidator;
     private final CommonLoginOtpService loginOtpService;
     private final RememberMeTokenService rememberMeTokenService;
+    private final SecurityAuditService securityAuditService;
     private final HttpSessionSecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
     @PostMapping("/request-email-otp")
@@ -95,6 +97,7 @@ public class AuthLoginController {
             boolean rememberMe = Boolean.TRUE.equals(loginRequest.getRememberMe());
             PrismUserPrincipal principal = authentication.getPrincipal() instanceof PrismUserPrincipal user ? user : null;
             rememberMeTokenService.handleLoginSuccess(request, response, principal, rememberMe);
+            securityAuditService.recordLoginSuccess(request, principal, authType, rememberMe);
         }
         catch (AuthenticationException ex) {
             SecurityContextHolder.clearContext();

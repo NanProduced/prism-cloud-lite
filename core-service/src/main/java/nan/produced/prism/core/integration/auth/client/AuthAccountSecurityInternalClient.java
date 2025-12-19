@@ -5,6 +5,7 @@ import java.util.UUID;
 import nan.produced.prism.core.common.response.ApiResponse;
 import nan.produced.prism.core.integration.auth.dto.AuthChangePasswordRequest;
 import nan.produced.prism.core.integration.auth.dto.AuthRememberedDeviceView;
+import nan.produced.prism.core.integration.auth.dto.AuthSecurityHistoryPageView;
 import nan.produced.prism.core.integration.signature.ServiceSignatureFeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,11 @@ public interface AuthAccountSecurityInternalClient {
     @GetMapping("/remember-me/tokens")
     ApiResponse<List<AuthRememberedDeviceView>> listRememberMeTokens(@RequestParam("userId") UUID userId,
                                                                      @RequestParam(value = "activeSeries", required = false) String activeSeries);
+
+    @GetMapping("/history")
+    ApiResponse<AuthSecurityHistoryPageView> listSecurityHistory(@RequestParam("userId") UUID userId,
+                                                                 @RequestParam("page") int page,
+                                                                 @RequestParam("size") int size);
 
     @PostMapping("/remember-me/tokens/{series}/revoke")
     ApiResponse<Object> revokeRememberMeToken(@RequestParam("userId") UUID userId, @PathVariable("series") String series);

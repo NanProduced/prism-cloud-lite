@@ -1,15 +1,21 @@
 package nan.produced.prism.auth.internal.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.auth.common.exception.BizException;
 import nan.produced.prism.auth.common.response.ApiResponse;
+import nan.produced.prism.auth.domain.audit.SecurityEventEntity;
 import nan.produced.prism.auth.internal.dto.InternalChangePasswordRequest;
+import nan.produced.prism.auth.internal.dto.InternalSecurityEventView;
+import nan.produced.prism.auth.internal.dto.InternalSecurityHistoryPageView;
 import nan.produced.prism.auth.internal.service.InternalAccountSecurityService;
+import nan.produced.prism.auth.security.audit.SecurityAuditService;
 import nan.produced.prism.auth.security.rememberme.RememberMeTokenService;
 import nan.produced.prism.auth.security.rememberme.RememberMeTokenService.RememberedDeviceView;
 import nan.produced.prism.auth.utils.TraceUtils;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,6 +38,7 @@ public class InternalAccountSecurityController {
 
     private final RememberMeTokenService rememberMeTokenService;
     private final InternalAccountSecurityService internalAccountSecurityService;
+    private final SecurityAuditService securityAuditService;
 
     @GetMapping("/remember-me/tokens")
     public ResponseEntity<ApiResponse<List<RememberedDeviceView>>> listRememberMeTokens(
@@ -41,28 +48,56 @@ public class InternalAccountSecurityController {
         return ResponseEntity.ok(ApiResponse.success(devices).withMeta(TraceUtils.getTraceId(), null));
     }
 
+    @GetMapping("/history")
+    public ResponseEntity<ApiResponse<InternalSecurityHistoryPageView>> listSecurityHistory(
+        @RequestParam("userId") UUID userId,
+        @RequestParam(value = "page", defaultValue = "0") int page,
+        @RequestParam(value = "size", defaultValue = "20") int size) {
+        Page<SecurityEventEntity> events = securityAuditService.listUserEvents(userId, page, size);
+        List<InternalSecurityEventView> items = events.getContent().stream()
+            .map(it -> new InternalSecurityEventView(
+                it.getId(),
+                it.getEventType() == null ? null : it.getEventType().name(),
+                it.isSuccess(),
+                it.getIpAddress(),
+                it.getDeviceName(),
+                it.getUserAgent(),
+                it.getMetadata(),
+                it.getCreatedAt()
+            ))
+            .toList();
+        InternalSecurityHistoryPageView view = new InternalSecurityHistoryPageView(items, events.getNumber(), events.getSize(), events.getTotalElements());
+        return ResponseEntity.ok(ApiResponse.success(view).withMeta(TraceUtils.getTraceId(), null));
+    }
+
     @PostMapping("/remember-me/tokens/{series}/revoke")
     public ResponseEntity<ApiResponse<Object>> revokeRememberMeToken(@RequestParam("userId") UUID userId,
-                                                                     @PathVariable("series") String series) {
+                                                                     @PathVariable("series") String series,
+                                                                     HttpServletRequest request) {
         rememberMeTokenService.revokeToken(userId, series);
+        securityAuditService.recordSessionRevoked(userId, series, request);
         return ResponseEntity.ok(ApiResponse.success().withMeta(TraceUtils.getTraceId(), null));
     }
 
     @PostMapping("/remember-me/tokens/revoke-all")
-    public ResponseEntity<ApiResponse<Object>> revokeAllRememberMeTokens(@RequestParam("userId") UUID userId) {
+    public ResponseEntity<ApiResponse<Object>> revokeAllRememberMeTokens(@RequestParam("userId") UUID userId,
+                                                                         HttpServletRequest request) {
         rememberMeTokenService.revokeAll(userId);
+        securityAuditService.recordSessionsRevoked(userId, request);
         return ResponseEntity.ok(ApiResponse.success().withMeta(TraceUtils.getTraceId(), null));
     }
 
     @PostMapping("/password/change")
     public ResponseEntity<ApiResponse<Object>> changePassword(@RequestParam("userId") UUID userId,
-                                                              @RequestBody InternalChangePasswordRequest request) {
+                                                              @RequestBody InternalChangePasswordRequest body,
+                                                              HttpServletRequest request) {
         try {
             internalAccountSecurityService.changePassword(
                 userId,
-                request == null ? null : request.currentPassword(),
-                request == null ? null : request.newPassword()
+                body == null ? null : body.currentPassword(),
+                body == null ? null : body.newPassword()
             );
+            securityAuditService.recordPasswordChanged(userId, request);
             return ResponseEntity.ok(ApiResponse.success().withMeta(TraceUtils.getTraceId(), null));
         } catch (BizException ex) {
             return ResponseEntity.status(ex.getErrorCode().getHttpStatus())
