@@ -81,7 +81,7 @@ public class MediaLibraryController {
     /**
      * 重命名（文件夹/素材）
      */
-    @PatchMapping("/nodes/{id}")
+    @PostMapping("/nodes/{id}/rename")
     public ResponseEntity<BffResponse<MediaNodeDto>> renameNode(
             @PathVariable("id") String id,
             @RequestBody @Validated RenameNodeRequest request) {
@@ -106,7 +106,7 @@ public class MediaLibraryController {
     /**
      * 删除（文件夹/素材）
      */
-    @DeleteMapping("/nodes/{id}")
+    @PostMapping("/nodes/{id}/delete")
     public ResponseEntity<BffResponse<Void>> deleteNode(@PathVariable("id") String id) {
         var user = CloudAuthContext.getCurrentUser();
         UUID userId = UUID.fromString(user.userUuid());
@@ -114,4 +114,3 @@ public class MediaLibraryController {
         return ResponseEntity.ok(BffResponse.<Void>success(null).withTraceId(TraceUtils.getTraceId()));
     }
 }
-

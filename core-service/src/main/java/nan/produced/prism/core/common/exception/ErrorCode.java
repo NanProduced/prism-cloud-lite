@@ -52,6 +52,7 @@ public enum ErrorCode {
     UNAUTHORIZED("CORE-2401", "未授权访问", "请提供有效的认证信息", HttpStatus.UNAUTHORIZED, false),
     INVALID_CLOUD_AUTH_HEADER("CORE-2402", "CLOUD_AUTH头格式错误", "认证信息格式错误，请重新登录", HttpStatus.UNAUTHORIZED, false),
     NO_AUTHENTICATED_USER("CORE-2403", "当前上下文中没有认证用户", "请先完成登录", HttpStatus.UNAUTHORIZED, false),
+    INVALID_REQUEST("CORE-2404", "请求参数不合法", "请求参数不合法，请检查输入", HttpStatus.BAD_REQUEST, false),
 
     // ============ 内部代码异常 (CORE-25xx) ============
     INSTANTIATION_IS_PROHIBITED("CORE-2501", "实例化被禁止", "请勿实例化该类", HttpStatus.INTERNAL_SERVER_ERROR, true),

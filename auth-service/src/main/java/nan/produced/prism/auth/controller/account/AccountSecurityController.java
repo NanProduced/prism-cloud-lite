@@ -15,8 +15,8 @@ import nan.produced.prism.auth.security.rememberme.RememberMeTokenService;
 import nan.produced.prism.auth.security.rememberme.RememberMeTokenService.RememberedDeviceView;
 import nan.produced.prism.auth.utils.TraceUtils;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -49,7 +49,7 @@ public class AccountSecurityController {
         );
     }
 
-    @DeleteMapping("/remember-me/tokens/{series}")
+    @PostMapping("/remember-me/tokens/{series}/revoke")
     @Operation(summary = "注销单个记住的设备")
     public ResponseEntity<BffResponse<Object>> revokeRememberMeToken(@PathVariable String series,
                                                                      HttpServletResponse response) {
@@ -59,7 +59,7 @@ public class AccountSecurityController {
         return ResponseEntity.ok(BffResponse.success().withTraceId(TraceUtils.getTraceId()));
     }
 
-    @DeleteMapping("/remember-me/tokens")
+    @PostMapping("/remember-me/tokens/revoke-all")
     @Operation(summary = "注销全部记住的设备")
     public ResponseEntity<BffResponse<Object>> revokeAllRememberMeTokens(HttpServletResponse response) {
         PrismUserPrincipal principal = SecurityUtils.requirePrincipal();

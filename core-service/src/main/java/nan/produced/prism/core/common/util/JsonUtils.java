@@ -12,8 +12,10 @@ import nan.produced.prism.core.common.exception.InfraException;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -244,6 +246,92 @@ public class JsonUtils {
         } catch (IOException e) {
             throw new InfraException(ErrorCode.JSON_MERGE_EXCEPTION, e);
         }
+    }
+
+    /**
+     * 对 Map 结构执行 JSON Merge Patch（RFC 7396）合并。
+     *
+     * <p>用于“只存 overrides”的用户配置场景：前端仅提交变更的字段，后端按规则合并到已有配置中。</p>
+     *
+     * <p><b>与 {@link #mergeInto(String, Object)} 的区别：</b></p>
+     * <ul>
+     *   <li>{@code mergeInto} 面向强类型对象（POJO），基于 Jackson {@code readerForUpdating} 做字段更新；当 patch 中字段为
+     *   {@code null} 时，它会把字段写成 {@code null}（不会“删除字段/删除 key”）。</li>
+     *   <li>本方法面向 {@code Map<String, Object>}，提供“{@code null} 删除 key”的语义，用于撤销用户覆盖值、回退到前端默认值。</li>
+     * </ul>
+     *
+     * <p><b>合并规则（简化版）：</b></p>
+     * <ul>
+     *   <li>patch 中某 key 的 value 为 {@code null}：删除该 key（用于恢复默认值）。</li>
+     *   <li>patch value 为对象（Map）：当 target 同 key 也为对象时递归合并；否则直接替换为对象。</li>
+     *   <li>patch value 为数组/标量：直接替换。</li>
+     * </ul>
+     *
+     * <p><b>示例：</b></p>
+     * <pre>{@code
+     * target = {"a":1,"b":{"x":true,"y":2}}
+     * patch  = {"b":{"y":null,"z":3}}
+     * result = {"a":1,"b":{"x":true,"z":3}}
+     * }</pre>
+     *
+     * <p><b>注意：</b>此方法只处理 Map 结构；若需要把 JSON 字符串合并到强类型对象，请使用 {@link #mergeInto(String, Object)}。</p>
+     *
+     * @param target 现有配置（可为 null）
+     * @param patch  变更片段（可为 null）
+     * @return 合并后的新 Map（不会返回 null）
+     */
+    public static Map<String, Object> mergePatch(Map<String, Object> target, Map<String, Object> patch) {
+        Map<String, Object> result = target == null ? new HashMap<>() : new HashMap<>(target);
+        if (patch == null || patch.isEmpty()) {
+            return result;
+        }
+
+        for (Map.Entry<String, Object> entry : patch.entrySet()) {
+            String key = entry.getKey();
+            Object patchValue = entry.getValue();
+
+            if (patchValue == null) {
+                result.remove(key);
+                continue;
+            }
+
+            Object existingValue = result.get(key);
+            if (patchValue instanceof Map<?, ?> patchMapRaw) {
+                Map<String, Object> patchMap = normalizeToStringObjectMap(patchMapRaw);
+
+                if (existingValue instanceof Map<?, ?> existingMapRaw) {
+                    Map<String, Object> merged = mergePatch(normalizeToStringObjectMap(existingMapRaw), patchMap);
+                    if (merged.isEmpty()) {
+                        result.remove(key);
+                    }
+                    else {
+                        result.put(key, merged);
+                    }
+                }
+                else {
+                    result.put(key, new HashMap<>(patchMap));
+                }
+                continue;
+            }
+
+            result.put(key, patchValue);
+        }
+
+        return result;
+    }
+
+    private static Map<String, Object> normalizeToStringObjectMap(Map<?, ?> raw) {
+        Map<String, Object> result = new HashMap<>();
+        if (raw == null || raw.isEmpty()) {
+            return result;
+        }
+        for (Map.Entry<?, ?> entry : raw.entrySet()) {
+            if (entry.getKey() == null) {
+                continue;
+            }
+            result.put(entry.getKey().toString(), entry.getValue());
+        }
+        return result;
     }
 
     /**
@@ -658,5 +746,3 @@ public class JsonUtils {
     }
 
 }
-
-

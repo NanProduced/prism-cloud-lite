@@ -45,6 +45,7 @@ public class OpenApiConfig {
 
                 - **责任边界**：负责注册、账号激活、OAuth2/OIDC 授权以及 JWKS 公钥；登录凭证和业务 API 由 Gateway/Core 处理。
                 - **访问路径**：浏览器只访问 `/auth/**` 下的注册与公钥接口，其它 OAuth2 流程统一由 Gateway 暴露 `/oauth2/authorization/prism-gateway`；8081 端口只在本地/测试环境允许直接访问。
+                - **安全策略**：对外仅开放 GET/POST；不暴露 PUT/PATCH/DELETE 等 HTTP Method（详见 `.doc/specification/http-method-policy.md`）。
                 - **注册流程**：遵循“申请 OTP → 验证 OTP → 完成注册”的三步交互，接口返回 `BffResponse`，前端根据 `success` 与 `error.displayMessage` 做提示即可。
                 - **集成建议**：
                     * 需要刷新 JWKS 时调用 `/auth/.well-known/jwks.json`；

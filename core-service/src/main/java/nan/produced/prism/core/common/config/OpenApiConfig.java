@@ -23,6 +23,7 @@ public class OpenApiConfig {
                                 # 对接提示
 
                                 - 所有面向前端的接口都位于 `/api/v1/**`，必须由 Gateway 代理访问；
+                                - 安全策略：对外仅开放 GET/POST；所有写操作（创建/更新/删除/动作）统一使用 POST 表达（详见 `.doc/specification/http-method-policy.md`）；
                                 - 开发/测试可在 `http://localhost:8082/swagger-ui.html` 选择 **Core Service API**，查看由 Gateway 聚合的文档；
                                 - 直接访问 `http://localhost:8080/v3/api-docs` 仅用于后端调试，线上环境禁止绕过 Gateway；
                                 - 返回体统一为 `BffResponse<T>`，具体字段说明见《frontend-api-guide》以及 `service-standards.md`。
@@ -40,4 +41,3 @@ public class OpenApiConfig {
                 .components(new Components());
     }
 }
-

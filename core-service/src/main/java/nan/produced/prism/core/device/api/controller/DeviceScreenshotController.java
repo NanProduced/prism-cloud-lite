@@ -14,9 +14,9 @@ import nan.produced.prism.core.media.application.port.outbound.MediaObjectUrlPor
 import nan.produced.prism.core.security.CloudAuthContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -49,7 +49,7 @@ public class DeviceScreenshotController {
     }
 
     @Operation(summary = "删除某张截图", description = "删除截图记录并同步删除对象存储中的文件")
-    @DeleteMapping("/{deviceId:\\d+}/screenshots/{screenshotId}")
+    @PostMapping("/{deviceId:\\d+}/screenshots/{screenshotId}/delete")
     public ResponseEntity<BffResponse<Void>> deleteScreenshot(
             @PathVariable("deviceId") @NotNull Long deviceId,
             @PathVariable("screenshotId") @NotNull UUID screenshotId) {
@@ -60,7 +60,7 @@ public class DeviceScreenshotController {
     }
 
     @Operation(summary = "清空设备全部截图", description = "删除该设备全部截图记录并同步删除对象存储中的文件")
-    @DeleteMapping("/{deviceId:\\d+}/screenshots")
+    @PostMapping("/{deviceId:\\d+}/screenshots/clear")
     public ResponseEntity<BffResponse<Void>> clearScreenshots(
             @PathVariable("deviceId") @NotNull Long deviceId) {
 
@@ -69,4 +69,3 @@ public class DeviceScreenshotController {
         return ResponseEntity.ok(BffResponse.<Void>success().withTraceId(TraceUtils.getTraceId()));
     }
 }
-
