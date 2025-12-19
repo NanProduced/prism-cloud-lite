@@ -13,7 +13,6 @@ import nan.produced.prism.auth.security.SecurityProps;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.ContentCachingRequestWrapper;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -93,11 +92,11 @@ public class ServiceSignatureValidationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 4. 包装请求以支持多次读取请求体
-        ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request);
+        // 4. 包装请求（缓存 body，保证 Controller 仍可读取）
+        CachedBodyHttpServletRequest wrappedRequest = new CachedBodyHttpServletRequest(request);
 
         // 5. 读取请求体
-        String body = getRequestBody(wrappedRequest);
+        String body = wrappedRequest.getCachedBodyAsString();
         String method = request.getMethod();
         String path = request.getRequestURI();
 
@@ -157,17 +156,6 @@ public class ServiceSignatureValidationFilter extends OncePerRequestFilter {
         }
 
         return request.getRemoteAddr();
-    }
-
-    /**
-     * 读取请求体内容
-     */
-    private String getRequestBody(ContentCachingRequestWrapper request) throws IOException {
-        byte[] content = request.getContentAsByteArray();
-        if (content.length == 0) {
-            return "";
-        }
-        return new String(content, StandardCharsets.UTF_8);
     }
 
     /**

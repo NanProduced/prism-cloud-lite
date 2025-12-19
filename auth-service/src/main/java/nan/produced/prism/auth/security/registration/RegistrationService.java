@@ -12,6 +12,7 @@ import nan.produced.prism.auth.domain.user.LoginAliasType;
 import nan.produced.prism.auth.domain.user.repository.EndUserRepository;
 import nan.produced.prism.auth.domain.user.repository.LoginAliasRepository;
 import nan.produced.prism.auth.security.email.EmailService;
+import nan.produced.prism.auth.security.password.PasswordPolicy;
 import nan.produced.prism.auth.security.otp.OtpProps;
 import nan.produced.prism.auth.security.otp.EmailOtpService;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -101,7 +102,7 @@ public class RegistrationService {
         }
 
         // 验证密码强度（可能抛出BizException）
-        validatePassword(password);
+        PasswordPolicy.validateOrThrow(password);
 
         // 创建用户实体
         EndUserEntity user = new EndUserEntity();
@@ -125,26 +126,4 @@ public class RegistrationService {
         // 注册完成 用户资料将在首次登录后通过 JIT Provisioning 自动创建
     }
 
-    /**
-     * 验证密码强度
-     * @param password 密码
-     * @throws BizException 如果密码不符合强度要求
-     */
-    private void validatePassword(String password) {
-        if (password == null || password.length() < 8) {
-            throw new BizException(ErrorCode.INVALID_PASSWORD, "密码长度至少为8位");
-        }
-
-        if (!password.matches(".*[A-Z].*")) {
-            throw new BizException(ErrorCode.INVALID_PASSWORD, "密码必须包含至少一个大写字母");
-        }
-
-        if (!password.matches(".*[a-z].*")) {
-            throw new BizException(ErrorCode.INVALID_PASSWORD, "密码必须包含至少一个小写字母");
-        }
-
-        if (!password.matches(".*\\d.*")) {
-            throw new BizException(ErrorCode.INVALID_PASSWORD, "密码必须包含至少一个数字");
-        }
-    }
 }

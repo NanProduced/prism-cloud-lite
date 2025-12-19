@@ -11,6 +11,8 @@ public record UserProfileView(
     String email,
     @Schema(description = "显示名")
     String displayName,
+    @Schema(description = "头像预设 ID（平台不支持上传头像）")
+    String avatarId,
     @Schema(description = "套餐等级")
     String subscriptionTier,
     @Schema(description = "套餐到期时间")

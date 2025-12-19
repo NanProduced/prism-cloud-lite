@@ -11,7 +11,7 @@ import java.util.List;
  * @param userUuid 认证用户的 UUID（来自 JWT user_uuid claim）
  *                 Auth-Service 的内部 ID
  * @param roles    用户角色列表（来自 JWT roles claim）
- *                 例如: ["ROLE_USER", "ROLE_ADMIN"]
+ *                 例如: ["ROLE_END_USER", "ROLE_ADMIN"]
  * @param tier     订阅层级（来自 JWT tier claim）
  *                 例如: "FREE", "PRO"
  */

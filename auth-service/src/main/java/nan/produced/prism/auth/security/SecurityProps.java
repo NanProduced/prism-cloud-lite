@@ -177,6 +177,7 @@ public class SecurityProps {
         private String[] ignoreUrls = new String[]{
                 "/",
                 "/error",
+                "/internal/**",
                 "/login/**",    // 登录接口
                 "/register/**"  // 注册接口公开访问（JIT Provisioning 模式）
         };

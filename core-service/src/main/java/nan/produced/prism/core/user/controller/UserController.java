@@ -10,6 +10,7 @@ import nan.produced.prism.core.common.response.BffResponse;
 import nan.produced.prism.core.common.util.TraceUtils;
 import nan.produced.prism.core.user.converter.UserProfileConverter;
 import nan.produced.prism.core.user.domain.UserProfileEntity;
+import nan.produced.prism.core.user.dto.UserProfileSaveRequest;
 import nan.produced.prism.core.user.dto.UserProfileView;
 import nan.produced.prism.core.user.dto.UserSettingsOverridesView;
 import nan.produced.prism.core.user.service.UserProfileService;
@@ -42,6 +43,26 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<BffResponse<UserProfileView>> getCurrentUserProfile() {
         UserProfileEntity profile = userProfileService.getOrCreateCurrentUserProfile();
+        UserProfileView view = userProfileConverter.toView(profile);
+        return ResponseEntity.ok(BffResponse.success(view).withTraceId(TraceUtils.getTraceId()));
+    }
+
+    @Operation(
+        summary = "保存当前用户资料（Profile）",
+        description = """
+            支持更新显示名与头像预设（avatarId）。
+            - avatarId 为前端预置头像 ID，平台不支持上传头像；
+            - 未传入的字段不会修改。
+            """)
+    @ApiResponse(
+        responseCode = "200",
+        description = "成功返回更新后的用户资料",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserProfileView.class)))
+    @ApiResponse(responseCode = "400", description = "请求参数不合法")
+    @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
+    @PostMapping("/me")
+    public ResponseEntity<BffResponse<UserProfileView>> saveCurrentUserProfile(@RequestBody UserProfileSaveRequest request) {
+        UserProfileEntity profile = userProfileService.saveCurrentUserProfile(request);
         UserProfileView view = userProfileConverter.toView(profile);
         return ResponseEntity.ok(BffResponse.success(view).withTraceId(TraceUtils.getTraceId()));
     }

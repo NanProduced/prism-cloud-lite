@@ -26,7 +26,7 @@ public class ServiceSignatureRequestInterceptor implements RequestInterceptor {
     public void apply(RequestTemplate template) {
         long timestamp = System.currentTimeMillis();
         String body = extractBody(template);
-        String path = template.path();
+        String path = normalizePath(template.path());
         String signature = ServiceSignatureUtil.calculateSignature(template.method(), path, body, timestamp, properties.getSecret());
 
         template.header("X-Service-From", properties.getServiceFrom());
@@ -40,5 +40,19 @@ public class ServiceSignatureRequestInterceptor implements RequestInterceptor {
             return "";
         }
         return new String(template.body(), StandardCharsets.UTF_8);
+    }
+
+    /**
+     * Keep signature compatible with auth-service validation which uses {@code HttpServletRequest#getRequestURI()}.
+     * <p>
+     * {@code getRequestURI()} excludes query strings, so we must do the same on the caller side.
+     * </p>
+     */
+    private String normalizePath(String rawPath) {
+        if (rawPath == null) {
+            return "";
+        }
+        int idx = rawPath.indexOf('?');
+        return idx >= 0 ? rawPath.substring(0, idx) : rawPath;
     }
 }

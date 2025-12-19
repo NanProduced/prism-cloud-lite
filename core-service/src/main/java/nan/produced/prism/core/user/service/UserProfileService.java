@@ -2,18 +2,22 @@ package nan.produced.prism.core.user.service;
 
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.exception.InfraException;
 import nan.produced.prism.core.common.response.ApiResponse;
+import nan.produced.prism.core.common.util.JsonUtils;
 import nan.produced.prism.core.integration.auth.client.AuthInternalClient;
 import nan.produced.prism.core.integration.auth.dto.AuthInternalUserResponse;
 import nan.produced.prism.core.security.CloudAuthContext;
 import nan.produced.prism.core.security.CloudAuthUser;
 import nan.produced.prism.core.user.domain.UserProfileEntity;
 import nan.produced.prism.core.user.domain.UserQuotaUsageEntity;
+import nan.produced.prism.core.user.dto.UserProfileSaveRequest;
 import nan.produced.prism.core.user.repository.UserProfileRepository;
 import nan.produced.prism.core.user.repository.UserQuotaUsageRepository;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -150,5 +154,84 @@ public class UserProfileService {
 
     public boolean profileExists(String publicId) {
         return userProfileRepository.findByPublicId(publicId).isPresent();
+    }
+
+    /**
+     * 保存当前用户 Profile 设置（显示名、头像预设等）。
+     * <p>
+     * 注意：头像不支持上传，后端仅保存前端提供的 preset {@code avatarId}。
+     * </p>
+     */
+    @Transactional
+    public UserProfileEntity saveCurrentUserProfile(UserProfileSaveRequest request) {
+        if (request == null) {
+            throw new BizException(ErrorCode.INVALID_REQUEST, "request body is required");
+        }
+
+        UserProfileEntity profile = getOrCreateCurrentUserProfile();
+        boolean changed = false;
+
+        if (request.displayName() != null) {
+            String displayName = request.displayName().trim();
+            if (!StringUtils.hasText(displayName)) {
+                throw new BizException(ErrorCode.INVALID_REQUEST, "displayName is required");
+            }
+            if (displayName.length() > 80) {
+                throw new BizException(ErrorCode.INVALID_REQUEST, "displayName must be <= 80 characters");
+            }
+            profile.setDisplayName(displayName);
+            changed = true;
+        }
+
+        if (request.avatarId() != null) {
+            String avatarId = request.avatarId().trim();
+            if (!StringUtils.hasText(avatarId)) {
+                throw new BizException(ErrorCode.INVALID_REQUEST, "avatarId is required");
+            }
+            applyAvatarId(profile, avatarId);
+            changed = true;
+        }
+
+        if (!changed) {
+            return profile;
+        }
+
+        return userProfileRepository.save(profile);
+    }
+
+    private void applyAvatarId(UserProfileEntity profile, String avatarId) {
+        Map<String, Object> configs = profile.getConfigs() == null ? new HashMap<>() : new HashMap<>(profile.getConfigs());
+
+        Map<String, Object> currentSettings = extractMap(configs, "settings");
+        Map<String, Object> patchSettings = Map.of(
+            "profile", Map.of("avatarId", avatarId)
+        );
+
+        Map<String, Object> merged = JsonUtils.mergePatch(currentSettings, patchSettings);
+        if (merged.isEmpty()) {
+            configs.remove("settings");
+        }
+        else {
+            configs.put("settings", merged);
+        }
+
+        profile.setConfigs(configs);
+    }
+
+    private Map<String, Object> extractMap(Map<String, Object> root, String key) {
+        if (root == null || root.isEmpty()) {
+            return new HashMap<>();
+        }
+        Object value = root.get(key);
+        if (value instanceof Map<?, ?> raw) {
+            Map<String, Object> normalized = new HashMap<>();
+            raw.forEach((k, v) -> {
+                if (k != null) {
+                    normalized.put(k.toString(), v);
+                }
+            });
+            return normalized;
+        }
+        return new HashMap<>();
     }
 }

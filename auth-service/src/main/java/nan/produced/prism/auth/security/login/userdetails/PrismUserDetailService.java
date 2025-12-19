@@ -56,7 +56,7 @@ public class PrismUserDetailService implements UserDetailsService {
     }
 
     private Collection<String> defaultRoles(UserType userType) {
-        return userType == UserType.ADMIN ? List.of("ROLE_ADMIN") : List.of("ROLE_USER");
+        return userType == UserType.ADMIN ? List.of("ROLE_ADMIN") : List.of("ROLE_END_USER");
     }
 
     private LoginAliasType determineInputType(String input) {

@@ -23,7 +23,7 @@ import java.util.List;
  * {
  *   "publicId": "u_2Xk9P7qL",
  *   "userUuid": "123e4567-e89b-12d3-a456-426614174000",
- *   "roles": ["ROLE_USER"],
+ *   "roles": ["ROLE_END_USER"],
  *   "tier": "FREE"
  * }
  *

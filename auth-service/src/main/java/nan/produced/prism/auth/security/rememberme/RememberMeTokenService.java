@@ -185,7 +185,7 @@ public class RememberMeTokenService {
             return null;
         }
         return endUserRepository.findById(entity.getUserId())
-                .map(endUser -> PrismUserPrincipal.fromEndUser(endUser, List.of("ROLE_USER"), null, null))
+                .map(endUser -> PrismUserPrincipal.fromEndUser(endUser, List.of("ROLE_END_USER"), null, null))
                 .orElse(null);
     }
 
