@@ -84,7 +84,7 @@ public class SecurityAuditService {
             return Page.empty();
         }
         int safePage = Math.max(0, page);
-        int safeSize = Math.min(100, Math.max(1, size));
+        int safeSize = Math.clamp(size, 1, 100);
         Pageable pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by(Sort.Direction.DESC, "id")));
         return securityEventRepository.findByUserId(userId, pageable);
     }

@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @Entity
-@Table(name = "device_reconnect_record")
+@Table(name = "pcd_device_reconnect_record")
 public class DeviceReconnectRecordEntity {
 
     @Id

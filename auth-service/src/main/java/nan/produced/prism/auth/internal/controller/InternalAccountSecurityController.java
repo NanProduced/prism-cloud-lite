@@ -40,6 +40,12 @@ public class InternalAccountSecurityController {
     private final InternalAccountSecurityService internalAccountSecurityService;
     private final SecurityAuditService securityAuditService;
 
+    /**
+     * 获取登录设备列表
+     * @param userId 用户 ID
+     * @param activeSeries 激活的 Series
+     * @return
+     */
     @GetMapping("/remember-me/tokens")
     public ResponseEntity<ApiResponse<List<RememberedDeviceView>>> listRememberMeTokens(
         @RequestParam("userId") UUID userId,
@@ -48,6 +54,13 @@ public class InternalAccountSecurityController {
         return ResponseEntity.ok(ApiResponse.success(devices).withMeta(TraceUtils.getTraceId(), null));
     }
 
+    /**
+     * 获取安全事件列表
+     * @param userId 用户 ID
+     * @param page 页码
+     * @param size 每页数量
+     * @return 安全事件VO
+     */
     @GetMapping("/history")
     public ResponseEntity<ApiResponse<InternalSecurityHistoryPageView>> listSecurityHistory(
         @RequestParam("userId") UUID userId,

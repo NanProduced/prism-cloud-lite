@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Entity
-@Table(name = "device_account")
+@Table(name = "pcd_device_account")
 public class DeviceAccountEntity {
 
     /**

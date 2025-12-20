@@ -12,11 +12,13 @@ import lombok.Getter;
 import lombok.Setter;
 
 /**
- * API Key metadata for end-user programmatic access (client_credentials).
+ * 用于终端用户程序化访问 (client_credentials 模式) 的 API 密钥元数据。
  * <p>
- * The actual client secret is stored in {@code oauth2_registered_client} (hashed).
- * This table keeps a user-friendly index for listing/managing API keys.
+ * 实际的客户端密钥 (Client Secret) 存储在 {@code oauth2_registered_client} 中（已哈希处理）。
+ * 本表维护了一份便于用户使用的索引数据，用于列出和管理 API 密钥。
  * </p>
+ *
+ * @author Nan
  */
 @Getter
 @Setter

@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @Entity
-@Table(name = "device_online_time_record")
+@Table(name = "pcd_device_online_time_record")
 public class DeviceOnlineTimeRecordEntity {
 
     /**
