@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import nan.produced.prism.core.common.response.BffResponse;
 import nan.produced.prism.core.common.util.TraceUtils;
 import nan.produced.prism.core.program.api.dto.schedule.CreateScheduleReq;
+import nan.produced.prism.core.program.api.dto.schedule.ScheduleAuditLogResp;
 import nan.produced.prism.core.program.api.dto.schedule.ScheduleBindDevicesReq;
 import nan.produced.prism.core.program.api.dto.schedule.ScheduleBindDevicesResp;
 import nan.produced.prism.core.program.api.dto.schedule.ScheduleBindingDeviceResp;
@@ -166,5 +167,19 @@ public class ScheduleController {
         SchedulePushResp resp = scheduleApplicationService.pushSchedule(userId, scheduleId, req);
         return ResponseEntity.ok(BffResponse.success(resp).withTraceId(TraceUtils.getTraceId()));
     }
-}
 
+    @Operation(summary = "查询排程变更日志", description = "Lite：用于排程详情页展示变更历史（按时间倒序）。")
+    @ApiResponse(
+            responseCode = "200",
+            description = "成功返回变更日志",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ScheduleAuditLogResp.class)))
+    @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
+    @ApiResponse(responseCode = "404", description = "排程不存在或无权访问")
+    @GetMapping("/{scheduleId}/audit-logs")
+    public ResponseEntity<BffResponse<List<ScheduleAuditLogResp>>> listAuditLogs(
+            @PathVariable("scheduleId") @NotNull UUID scheduleId) {
+        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        List<ScheduleAuditLogResp> logs = scheduleApplicationService.listAuditLogs(userId, scheduleId);
+        return ResponseEntity.ok(BffResponse.success(logs).withTraceId(TraceUtils.getTraceId()));
+    }
+}

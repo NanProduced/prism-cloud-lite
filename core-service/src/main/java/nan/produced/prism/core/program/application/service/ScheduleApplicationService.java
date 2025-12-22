@@ -9,10 +9,12 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -28,9 +30,11 @@ import nan.produced.prism.core.device.domain.command.DeviceActionType;
 import nan.produced.prism.core.integration.device.client.DeviceInternalClient;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandReq;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandResp;
+import nan.produced.prism.core.program.application.constant.ProgramScheduleConstant;
 import nan.produced.prism.core.program.api.dto.schedule.CreateScheduleReq;
 import nan.produced.prism.core.program.api.dto.schedule.DeviceProgramAllowlistResp;
 import nan.produced.prism.core.program.api.dto.schedule.DeviceScheduleResp;
+import nan.produced.prism.core.program.api.dto.schedule.ScheduleAuditLogResp;
 import nan.produced.prism.core.program.api.dto.schedule.ScheduleBindDevicesReq;
 import nan.produced.prism.core.program.api.dto.schedule.ScheduleBindDevicesResp;
 import nan.produced.prism.core.program.api.dto.schedule.ScheduleBindDevicesResultResp;
@@ -50,6 +54,9 @@ import nan.produced.prism.core.program.domain.ProgramEntity;
 import nan.produced.prism.core.program.domain.ProgramDeploymentEntity;
 import nan.produced.prism.core.program.domain.ProgramReleaseEntity;
 import nan.produced.prism.core.program.domain.device.DeviceBasicEntity;
+import nan.produced.prism.core.program.domain.schedule.ScheduleAuditAction;
+import nan.produced.prism.core.program.domain.schedule.ScheduleAuditLogEntity;
+import nan.produced.prism.core.program.domain.schedule.ScheduleCommandType;
 import nan.produced.prism.core.program.domain.schedule.ScheduleCommandRuleEntity;
 import nan.produced.prism.core.program.domain.schedule.ScheduleContentsRuleEntity;
 import nan.produced.prism.core.program.domain.schedule.ScheduleDeviceBindingEntity;
@@ -59,6 +66,7 @@ import nan.produced.prism.core.program.infrastructure.persistence.ProgramAssignm
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramDeploymentRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramReleaseRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramRepositoryJpa;
+import nan.produced.prism.core.program.infrastructure.persistence.ScheduleAuditLogRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ScheduleCommandRuleRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ScheduleContentsRuleRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ScheduleDeviceBindingRepositoryJpa;
@@ -73,8 +81,6 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class ScheduleApplicationService {
 
-    private static final String SCHEDULE_COMMAND_RAW = "{\"program\":\"schedule\"}";
-
     private final ScheduleRepositoryJpa scheduleRepositoryJpa;
     private final ScheduleContentsRuleRepositoryJpa scheduleContentsRuleRepositoryJpa;
     private final ScheduleCommandRuleRepositoryJpa scheduleCommandRuleRepositoryJpa;
@@ -84,6 +90,7 @@ public class ScheduleApplicationService {
     private final ProgramReleaseRepositoryJpa programReleaseRepositoryJpa;
     private final ProgramRepositoryJpa programRepositoryJpa;
     private final DeviceBasicRepositoryJpa deviceBasicRepositoryJpa;
+    private final ScheduleAuditLogRepositoryJpa scheduleAuditLogRepositoryJpa;
     private final DeviceInternalClient deviceInternalClient;
     private final ScheduleDeviceDistributionService scheduleDeviceDistributionService;
 
@@ -155,6 +162,13 @@ public class ScheduleApplicationService {
         if (req.getCommandRules() != null) {
             replaceCommandRules(userId, schedule.getScheduleId(), req.getCommandRules(), now);
         }
+
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("name", schedule.getName());
+        details.put("enabled", schedule.getEnabled());
+        details.put("contentsRulesCount", req.getContentsRules() != null ? req.getContentsRules().size() : 0);
+        details.put("commandRulesCount", req.getCommandRules() != null ? req.getCommandRules().size() : 0);
+        writeAudit(userId, schedule.getScheduleId(), ScheduleAuditAction.CREATE, JsonUtils.toJson(details));
 
         return getScheduleDetail(userId, schedule.getScheduleId());
     }
@@ -236,6 +250,10 @@ public class ScheduleApplicationService {
             return getScheduleDetail(userId, scheduleId);
         }
 
+        String previousName = schedule.getName();
+        String previousDescription = schedule.getDescription();
+        Boolean previousEnabled = schedule.getEnabled();
+
         boolean changed = false;
         if (req.getName() != null) {
             if (!StringUtils.hasText(req.getName())) {
@@ -270,6 +288,24 @@ public class ScheduleApplicationService {
         if (changed) {
             schedule.setUpdatedAt(now);
             scheduleRepositoryJpa.save(schedule);
+
+            Map<String, Object> details = new LinkedHashMap<>();
+            if (!Objects.equals(previousName, schedule.getName())) {
+                details.put("name", Map.of("from", previousName, "to", schedule.getName()));
+            }
+            if (!Objects.equals(previousDescription, schedule.getDescription())) {
+                details.put("description", Map.of("from", previousDescription, "to", schedule.getDescription()));
+            }
+            if (!Objects.equals(previousEnabled, schedule.getEnabled())) {
+                details.put("enabled", Map.of("from", previousEnabled, "to", schedule.getEnabled()));
+            }
+            if (req.getContentsRules() != null) {
+                details.put("contentsRulesCount", req.getContentsRules().size());
+            }
+            if (req.getCommandRules() != null) {
+                details.put("commandRulesCount", req.getCommandRules().size());
+            }
+            writeAudit(userId, scheduleId, ScheduleAuditAction.UPDATE, JsonUtils.toJson(details));
         }
 
         return getScheduleDetail(userId, scheduleId);
@@ -278,6 +314,9 @@ public class ScheduleApplicationService {
     @Transactional
     public void deleteSchedule(UUID userId, UUID scheduleId) {
         ScheduleEntity schedule = findOwnedSchedule(userId, scheduleId);
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("name", schedule.getName());
+        writeAudit(userId, scheduleId, ScheduleAuditAction.DELETE, JsonUtils.toJson(details));
         scheduleRepositoryJpa.delete(schedule);
     }
 
@@ -343,7 +382,7 @@ public class ScheduleApplicationService {
             if (device == null) {
                 results.add(ScheduleBindDevicesResultResp.builder()
                         .deviceId(deviceId)
-                        .status("skip")
+                        .status(ProgramScheduleConstant.ScheduleBindingStatus.SKIP)
                         .build());
                 continue;
             }
@@ -362,7 +401,7 @@ public class ScheduleApplicationService {
                 bound++;
                 results.add(ScheduleBindDevicesResultResp.builder()
                         .deviceId(deviceId)
-                        .status("bound")
+                        .status(ProgramScheduleConstant.ScheduleBindingStatus.BOUND)
                         .build());
                 continue;
             }
@@ -370,7 +409,7 @@ public class ScheduleApplicationService {
             if (scheduleId.equals(existing.getScheduleId())) {
                 results.add(ScheduleBindDevicesResultResp.builder()
                         .deviceId(deviceId)
-                        .status("no-change")
+                        .status(ProgramScheduleConstant.ScheduleBindingStatus.NO_CHANGE)
                         .build());
                 continue;
             }
@@ -379,7 +418,7 @@ public class ScheduleApplicationService {
                 conflicts++;
                 results.add(ScheduleBindDevicesResultResp.builder()
                         .deviceId(deviceId)
-                        .status("conflict")
+                        .status(ProgramScheduleConstant.ScheduleBindingStatus.CONFLICT)
                         .previousScheduleId(existing.getScheduleId())
                         .build());
                 continue;
@@ -398,10 +437,33 @@ public class ScheduleApplicationService {
             bound++;
             results.add(ScheduleBindDevicesResultResp.builder()
                     .deviceId(deviceId)
-                    .status("bound")
+                    .status(ProgramScheduleConstant.ScheduleBindingStatus.BOUND)
                     .previousScheduleId(previousScheduleId)
                     .build());
         }
+
+        List<Long> boundDeviceIds = results.stream()
+                .filter(r -> r != null
+                        && ProgramScheduleConstant.ScheduleBindingStatus.BOUND.equals(r.getStatus())
+                        && r.getDeviceId() != null
+                        && r.getDeviceId() > 0)
+                .map(ScheduleBindDevicesResultResp::getDeviceId)
+                .toList();
+        List<Long> conflictDeviceIds = results.stream()
+                .filter(r -> r != null
+                        && ProgramScheduleConstant.ScheduleBindingStatus.CONFLICT.equals(r.getStatus())
+                        && r.getDeviceId() != null
+                        && r.getDeviceId() > 0)
+                .map(ScheduleBindDevicesResultResp::getDeviceId)
+                .toList();
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("replaceExisting", replaceExisting);
+        details.put("totalTargets", deviceIds.size());
+        details.put("bound", bound);
+        details.put("conflicts", conflicts);
+        details.put("boundDeviceIds", boundDeviceIds);
+        details.put("conflictDeviceIds", conflictDeviceIds);
+        writeAudit(userId, scheduleId, ScheduleAuditAction.BIND_DEVICES, JsonUtils.toJson(details));
 
         return ScheduleBindDevicesResp.builder()
                 .totalTargets(deviceIds.size())
@@ -436,6 +498,10 @@ public class ScheduleApplicationService {
         }
 
         scheduleDeviceBindingRepositoryJpa.delete(binding);
+
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("deviceId", deviceId);
+        writeAudit(userId, scheduleId, ScheduleAuditAction.UNBIND_DEVICE, JsonUtils.toJson(details));
     }
 
     @Transactional
@@ -486,13 +552,7 @@ public class ScheduleApplicationService {
             }
 
             String commandId = UUID.randomUUID().toString();
-            DeviceCommandReq command = DeviceCommandReq.builder()
-                    .deviceId(deviceId)
-                    .commandId(commandId)
-                    .authorUrl("")
-                    .karma(0)
-                    .content(DeviceCommandReq.Content.builder().raw(SCHEDULE_COMMAND_RAW).build())
-                    .build();
+            DeviceCommandReq command = buildScheduleTriggerCommand(deviceId, commandId);
             commands.add(command);
 
             SchedulePushResultResp r = SchedulePushResultResp.builder()
@@ -508,27 +568,37 @@ public class ScheduleApplicationService {
         if (!commands.isEmpty()) {
             DeviceCommandResp resp = callDeviceService(commands);
             accepted = resp.getAccepted();
-            if (resp.getResults() != null) {
-                for (DeviceCommandResp.CommandResult cr : resp.getResults()) {
-                    if (cr == null || cr.getCommandId() == null) {
-                        continue;
-                    }
-                    SchedulePushResultResp r = resultByCommandId.get(cr.getCommandId());
-                    if (r == null) {
-                        continue;
-                    }
-                    r.setAccepted(cr.isAccepted());
-                    r.setQueuedId(cr.getQueuedId());
-                    r.setErrorMessage(cr.getErrorMessage());
-                }
-            }
+            applyDeviceCommandResults(resp, resultByCommandId);
         }
+
+        List<Long> acceptedDeviceIds = results.stream()
+                .filter(r -> r != null && r.isAccepted() && r.getDeviceId() != null && r.getDeviceId() > 0)
+                .map(SchedulePushResultResp::getDeviceId)
+                .toList();
+        List<Long> failedDeviceIds = results.stream()
+                .filter(r -> r != null && !r.isAccepted() && r.getDeviceId() != null && r.getDeviceId() > 0)
+                .map(SchedulePushResultResp::getDeviceId)
+                .toList();
+        Map<String, Object> details = new LinkedHashMap<>();
+        details.put("totalTargets", requestedDeviceIds.size());
+        details.put("accepted", accepted);
+        details.put("acceptedDeviceIds", acceptedDeviceIds);
+        details.put("failedDeviceIds", failedDeviceIds);
+        writeAudit(userId, scheduleId, ScheduleAuditAction.PUSH, JsonUtils.toJson(details));
 
         return SchedulePushResp.builder()
                 .totalTargets(requestedDeviceIds.size())
                 .accepted(accepted)
                 .results(results)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ScheduleAuditLogResp> listAuditLogs(UUID userId, UUID scheduleId) {
+        findOwnedSchedule(userId, scheduleId);
+        return scheduleAuditLogRepositoryJpa.findByScheduleIdOrderByCreatedAtDesc(scheduleId).stream()
+                .map(this::toAuditLogResp)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -721,11 +791,11 @@ public class ScheduleApplicationService {
 
             String source;
             if (agg.directPublish && agg.schedule) {
-                source = "both";
+                source = ProgramScheduleConstant.DeviceProgramSource.BOTH;
             } else if (agg.directPublish) {
-                source = "direct-publish";
+                source = ProgramScheduleConstant.DeviceProgramSource.DIRECT_PUBLISH;
             } else {
-                source = "schedule";
+                source = ProgramScheduleConstant.DeviceProgramSource.SCHEDULE;
             }
 
             list.add(DeviceProgramAllowlistResp.builder()
@@ -776,7 +846,8 @@ public class ScheduleApplicationService {
             }
 
             String type = normalizeContentsType(req.getType());
-            if (!"rotation".equals(type) && !"spot".equals(type)) {
+            if (!ProgramScheduleConstant.ScheduleContentsType.ROTATION.equals(type)
+                    && !ProgramScheduleConstant.ScheduleContentsType.SPOT.equals(type)) {
                 throw new BizException(ErrorCode.SCHEDULE_RULE_INVALID, "invalid type: " + req.getType());
             }
 
@@ -898,30 +969,30 @@ public class ScheduleApplicationService {
         String scheduleName = resolveScheduleCommandName(actionType, bodyNode);
 
         ObjectNode payload = mapper.createObjectNode();
-        payload.put("name", scheduleName);
-        payload.put("type", "command");
+        payload.put(ProgramScheduleConstant.ScheduleProtocolKeys.NAME, scheduleName);
+        payload.put(ProgramScheduleConstant.ScheduleProtocolKeys.TYPE, ProgramScheduleConstant.ScheduleProtocolValues.TYPE_COMMAND);
 
         ObjectNode operation = mapper.createObjectNode();
-        operation.put("author_url", actionType.getUrl());
-        operation.put("karma", actionType.getKarma());
-        operation.put("content", buildScheduleOperationContent(action));
-        payload.set("operation", operation);
+        operation.put(ProgramScheduleConstant.ScheduleProtocolKeys.AUTHOR_URL, actionType.getUrl());
+        operation.put(ProgramScheduleConstant.ScheduleProtocolKeys.KARMA, actionType.getKarma());
+        operation.put(ProgramScheduleConstant.ScheduleProtocolKeys.CONTENT, buildScheduleOperationContent(action));
+        payload.set(ProgramScheduleConstant.ScheduleProtocolKeys.OPERATION, operation);
 
-        payload.set("op_time", buildOpTimeArray(mapper, req.getOpTime()));
+        payload.set(ProgramScheduleConstant.ScheduleProtocolKeys.OP_TIME, buildOpTimeArray(mapper, req.getOpTime()));
 
-        payload.put("if_limit_date", ifLimitDate);
+        payload.put(ProgramScheduleConstant.ScheduleProtocolKeys.IF_LIMIT_DATE, ifLimitDate);
         if (ifLimitDate) {
-            payload.set("limit_date", req.getLimitDate());
+            payload.set(ProgramScheduleConstant.ScheduleProtocolKeys.LIMIT_DATE, req.getLimitDate());
         }
 
-        payload.put("if_limit_weekday", ifLimitWeekday);
+        payload.put(ProgramScheduleConstant.ScheduleProtocolKeys.IF_LIMIT_WEEKDAY, ifLimitWeekday);
         if (ifLimitWeekday) {
-            payload.set("limit_weekday", req.getLimitWeekday());
+            payload.set(ProgramScheduleConstant.ScheduleProtocolKeys.LIMIT_WEEKDAY, req.getLimitWeekday());
         }
 
         ObjectNode content = buildCommandScheduleContent(mapper, actionType, bodyNode);
         if (content != null) {
-            payload.set("content", content);
+            payload.set(ProgramScheduleConstant.ScheduleProtocolKeys.CONTENT, content);
         }
 
         return payload;
@@ -939,30 +1010,30 @@ public class ScheduleApplicationService {
             throw new BizException(ErrorCode.SCHEDULE_RULE_INVALID, "command operation.type is required");
         }
         if (actionType == DeviceActionType.BRIGHTNESS) {
-            return "Brightness_Control";
+            return ScheduleCommandType.BRIGHTNESS.getScheduleName();
         }
         if (actionType == DeviceActionType.VOLUME) {
-            return "Volume_Control";
+            return ScheduleCommandType.VOLUME.getScheduleName();
         }
         if (actionType == DeviceActionType.COLOR_TEMP) {
-            return "Colortemp_Control";
+            return ScheduleCommandType.COLORTEMP.getScheduleName();
         }
         if (actionType == DeviceActionType.CLEAR_CACHE) {
-            return "Clear_Cache";
+            return ScheduleCommandType.CLEAR_CACHE.getScheduleName();
         }
         if (actionType == DeviceActionType.INPUT_MODE) {
-            return "Switch_Signal_Source";
+            return ScheduleCommandType.SWITCH_SIGNAL_SOURCE.getScheduleName();
         }
         if (actionType == DeviceActionType.POWER) {
-            String command = readText(bodyNode, "command");
+            String command = readText(bodyNode, ProgramScheduleConstant.DeviceActionBodyKeys.COMMAND);
             if (!StringUtils.hasText(command)) {
                 throw new BizException(ErrorCode.SCHEDULE_RULE_INVALID, "power command is required (sleep/wakeup/reboot)");
             }
             String normalized = command.trim().toLowerCase(Locale.ROOT);
             return switch (normalized) {
-                case "sleep" -> "Sleep";
-                case "wakeup" -> "Wakeup";
-                case "reboot" -> "Reboot";
+                case ProgramScheduleConstant.DeviceActionBodyValues.POWER_SLEEP -> ScheduleCommandType.SLEEP.getScheduleName();
+                case ProgramScheduleConstant.DeviceActionBodyValues.POWER_WAKEUP -> ScheduleCommandType.WAKEUP.getScheduleName();
+                case ProgramScheduleConstant.DeviceActionBodyValues.POWER_REBOOT -> ScheduleCommandType.REBOOT.getScheduleName();
                 default -> throw new BizException(ErrorCode.SCHEDULE_RULE_INVALID, "power command must be sleep/wakeup/reboot");
             };
         }
@@ -996,36 +1067,36 @@ public class ScheduleApplicationService {
         }
 
         if (actionType == DeviceActionType.BRIGHTNESS) {
-            Integer v = readInt(bodyNode, "brightness");
+            Integer v = readInt(bodyNode, ProgramScheduleConstant.DeviceActionBodyKeys.BRIGHTNESS);
             return buildValueContent(mapper, v);
         }
         if (actionType == DeviceActionType.VOLUME) {
-            Integer v = readInt(bodyNode, "musicvolume");
-            if (v == null) v = readInt(bodyNode, "volume");
+            Integer v = readInt(bodyNode, ProgramScheduleConstant.DeviceActionBodyKeys.MUSIC_VOLUME);
+            if (v == null) v = readInt(bodyNode, ProgramScheduleConstant.DeviceActionBodyKeys.VOLUME);
             return buildValueContent(mapper, v);
         }
         if (actionType == DeviceActionType.COLOR_TEMP) {
-            Integer v = readInt(bodyNode, "colortemp");
+            Integer v = readInt(bodyNode, ProgramScheduleConstant.DeviceActionBodyKeys.COLOR_TEMP);
             return buildValueContent(mapper, v);
         }
         if (actionType == DeviceActionType.INPUT_MODE) {
-            String inputmode = readText(bodyNode, "inputmode");
+            String inputmode = readText(bodyNode, ProgramScheduleConstant.DeviceActionBodyKeys.INPUT_MODE);
             if (!StringUtils.hasText(inputmode)) {
                 return null;
             }
             String normalized = inputmode.trim().toLowerCase(Locale.ROOT);
             String switchValue;
-            if ("hdmi".equals(normalized)) {
-                switchValue = "sync";
-            } else if ("dvi".equals(normalized)) {
-                switchValue = "async";
+            if (ProgramScheduleConstant.DeviceActionBodyValues.INPUT_MODE_HDMI.equals(normalized)) {
+                switchValue = ProgramScheduleConstant.ScheduleProtocolValues.SWITCH_VALUE_SYNC;
+            } else if (ProgramScheduleConstant.DeviceActionBodyValues.INPUT_MODE_DVI.equals(normalized)) {
+                switchValue = ProgramScheduleConstant.ScheduleProtocolValues.SWITCH_VALUE_ASYNC;
             } else {
                 return null;
             }
 
             ObjectNode content = mapper.createObjectNode();
-            content.put("name", "Switch");
-            content.put("value", switchValue);
+            content.put(ProgramScheduleConstant.ScheduleProtocolKeys.NAME, ProgramScheduleConstant.ScheduleProtocolValues.CONTENT_NAME_SWITCH);
+            content.put(ProgramScheduleConstant.ScheduleProtocolKeys.VALUE, switchValue);
             return content;
         }
 
@@ -1037,8 +1108,8 @@ public class ScheduleApplicationService {
             return null;
         }
         ObjectNode content = mapper.createObjectNode();
-        content.put("name", "Value");
-        content.put("value", v);
+        content.put(ProgramScheduleConstant.ScheduleProtocolKeys.NAME, ProgramScheduleConstant.ScheduleProtocolValues.CONTENT_NAME_VALUE);
+        content.put(ProgramScheduleConstant.ScheduleProtocolKeys.VALUE, v);
         return content;
     }
 
@@ -1401,6 +1472,35 @@ public class ScheduleApplicationService {
                 .orElseThrow(() -> new BizException(ErrorCode.SCHEDULE_NOT_FOUND));
     }
 
+    private void writeAudit(UUID userId, UUID scheduleId, ScheduleAuditAction action, String detailsJson) {
+        if (userId == null || scheduleId == null || action == null) {
+            return;
+        }
+        ScheduleAuditLogEntity entity = ScheduleAuditLogEntity.builder()
+                .id(IdGenerator.nextId())
+                .userId(userId)
+                .scheduleId(scheduleId)
+                .action(action)
+                .details(StringUtils.hasText(detailsJson) ? detailsJson : null)
+                .createdAt(OffsetDateTime.now(ZoneOffset.UTC))
+                .build();
+        scheduleAuditLogRepositoryJpa.save(entity);
+    }
+
+    private ScheduleAuditLogResp toAuditLogResp(ScheduleAuditLogEntity logEntity) {
+        if (logEntity == null) {
+            return null;
+        }
+        return ScheduleAuditLogResp.builder()
+                .id(logEntity.getId())
+                .userId(logEntity.getUserId())
+                .scheduleId(logEntity.getScheduleId())
+                .action(logEntity.getAction())
+                .details(logEntity.getDetails())
+                .createdAt(logEntity.getCreatedAt())
+                .build();
+    }
+
     private DeviceBasicEntity requireOwnedDevice(UUID userId, Long deviceId) {
         if (userId == null) {
             throw new BizException(ErrorCode.NO_AUTHENTICATED_USER);
@@ -1451,6 +1551,34 @@ public class ScheduleApplicationService {
             return JsonUtils.getDefaultObjectMapper().writeValueAsString(node);
         } catch (Exception e) {
             throw new BizException(ErrorCode.JSON_SERIALIZATION_EXCEPTION, e);
+        }
+    }
+
+    private DeviceCommandReq buildScheduleTriggerCommand(long deviceId, String commandId) {
+        return DeviceCommandReq.builder()
+                .deviceId(deviceId)
+                .commandId(commandId)
+                .authorUrl(ProgramScheduleConstant.DeviceCommandDefaults.AUTHOR_URL_EMPTY)
+                .karma(ProgramScheduleConstant.DeviceCommandDefaults.KARMA_DEFAULT)
+                .content(DeviceCommandReq.Content.builder().raw(ProgramScheduleConstant.DeviceCommandRaw.SCHEDULE).build())
+                .build();
+    }
+
+    private void applyDeviceCommandResults(DeviceCommandResp resp, Map<String, SchedulePushResultResp> resultByCommandId) {
+        if (resp == null || resp.getResults() == null || resultByCommandId == null || resultByCommandId.isEmpty()) {
+            return;
+        }
+        for (DeviceCommandResp.CommandResult cr : resp.getResults()) {
+            if (cr == null || cr.getCommandId() == null) {
+                continue;
+            }
+            SchedulePushResultResp r = resultByCommandId.get(cr.getCommandId());
+            if (r == null) {
+                continue;
+            }
+            r.setAccepted(cr.isAccepted());
+            r.setQueuedId(cr.getQueuedId());
+            r.setErrorMessage(cr.getErrorMessage());
         }
     }
 

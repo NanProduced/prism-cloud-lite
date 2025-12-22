@@ -34,6 +34,7 @@ import nan.produced.prism.core.media.application.domain.FileEntity;
 import nan.produced.prism.core.media.application.domain.MediaAssetEntity;
 import nan.produced.prism.core.media.application.port.outbound.MediaObjectUrlPort;
 import nan.produced.prism.core.media.application.repository.MediaAssetRepository;
+import nan.produced.prism.core.program.application.constant.ProgramScheduleConstant;
 import nan.produced.prism.core.program.api.dto.CreateProgramReq;
 import nan.produced.prism.core.program.api.dto.ProgramAuditLogResp;
 import nan.produced.prism.core.program.api.dto.ProgramDeploymentResp;
@@ -394,7 +395,7 @@ public class ProgramApplicationService {
             if (!shouldAffect) {
                 results.add(ProgramPublishDeviceResultResp.builder()
                         .deviceId(deviceId)
-                        .action("skip")
+                        .action(ProgramScheduleConstant.ProgramPublishAction.SKIP)
                         .affected(false)
                         .accepted(false)
                         .build());
@@ -418,13 +419,7 @@ public class ProgramApplicationService {
             programAssignmentRepositoryJpa.save(assignment);
 
             String commandId = UUID.randomUUID().toString();
-            DeviceCommandReq command = DeviceCommandReq.builder()
-                    .deviceId(deviceId)
-                    .commandId(commandId)
-                    .authorUrl("")
-                    .karma(0)
-                    .content(DeviceCommandReq.Content.builder().raw("{\"program\":\"dirty\"}").build())
-                    .build();
+            DeviceCommandReq command = buildProgramDirtyCommand(deviceId, commandId);
             commands.add(command);
 
             ProgramPublishDeviceResultResp deviceResult = ProgramPublishDeviceResultResp.builder()
@@ -440,20 +435,7 @@ public class ProgramApplicationService {
 
         if (!commands.isEmpty()) {
             DeviceCommandResp resp = callDeviceService(commands);
-            if (resp.getResults() != null) {
-                for (DeviceCommandResp.CommandResult cr : resp.getResults()) {
-                    if (cr == null || cr.getCommandId() == null) {
-                        continue;
-                    }
-                    ProgramPublishDeviceResultResp r = resultByCommandId.get(cr.getCommandId());
-                    if (r == null) {
-                        continue;
-                    }
-                    r.setAccepted(cr.isAccepted());
-                    r.setQueuedId(cr.getQueuedId());
-                    r.setErrorMessage(cr.getErrorMessage());
-                }
-            }
+            applyDeviceCommandResults(resp, resultByCommandId);
         }
 
         Map<String, Object> details = new LinkedHashMap<>();
@@ -518,7 +500,7 @@ public class ProgramApplicationService {
             if (existing == null) {
                 results.add(ProgramPublishDeviceResultResp.builder()
                         .deviceId(deviceId)
-                        .action("skip")
+                        .action(ProgramScheduleConstant.ProgramPublishAction.SKIP)
                         .affected(false)
                         .accepted(false)
                         .build());
@@ -529,18 +511,12 @@ public class ProgramApplicationService {
             removed++;
 
             String commandId = UUID.randomUUID().toString();
-            DeviceCommandReq command = DeviceCommandReq.builder()
-                    .deviceId(deviceId)
-                    .commandId(commandId)
-                    .authorUrl("")
-                    .karma(0)
-                    .content(DeviceCommandReq.Content.builder().raw("{\"program\":\"dirty\"}").build())
-                    .build();
+            DeviceCommandReq command = buildProgramDirtyCommand(deviceId, commandId);
             commands.add(command);
 
             ProgramPublishDeviceResultResp deviceResult = ProgramPublishDeviceResultResp.builder()
                     .deviceId(deviceId)
-                    .action("undeploy")
+                    .action(ProgramScheduleConstant.ProgramPublishAction.UNDEPLOY)
                     .affected(true)
                     .commandId(commandId)
                     .accepted(false)
@@ -551,20 +527,7 @@ public class ProgramApplicationService {
 
         if (!commands.isEmpty()) {
             DeviceCommandResp resp = callDeviceService(commands);
-            if (resp.getResults() != null) {
-                for (DeviceCommandResp.CommandResult cr : resp.getResults()) {
-                    if (cr == null || cr.getCommandId() == null) {
-                        continue;
-                    }
-                    ProgramPublishDeviceResultResp r = resultByCommandId.get(cr.getCommandId());
-                    if (r == null) {
-                        continue;
-                    }
-                    r.setAccepted(cr.isAccepted());
-                    r.setQueuedId(cr.getQueuedId());
-                    r.setErrorMessage(cr.getErrorMessage());
-                }
-            }
+            applyDeviceCommandResults(resp, resultByCommandId);
         }
 
         program.setUpdatedAt(now);
@@ -655,12 +618,44 @@ public class ProgramApplicationService {
 
     private String computeAction(Integer currentVersion, int targetVersion) {
         if (currentVersion == null) {
-            return "deploy";
+            return ProgramScheduleConstant.ProgramPublishAction.DEPLOY;
         }
         if (currentVersion == targetVersion) {
-            return "no-change";
+            return ProgramScheduleConstant.ProgramPublishAction.NO_CHANGE;
         }
-        return currentVersion < targetVersion ? "update" : "rollback";
+        return currentVersion < targetVersion
+                ? ProgramScheduleConstant.ProgramPublishAction.UPDATE
+                : ProgramScheduleConstant.ProgramPublishAction.ROLLBACK;
+    }
+
+    private DeviceCommandReq buildProgramDirtyCommand(long deviceId, String commandId) {
+        return DeviceCommandReq.builder()
+                .deviceId(deviceId)
+                .commandId(commandId)
+                .authorUrl(ProgramScheduleConstant.DeviceCommandDefaults.AUTHOR_URL_EMPTY)
+                .karma(ProgramScheduleConstant.DeviceCommandDefaults.KARMA_DEFAULT)
+                .content(DeviceCommandReq.Content.builder().raw(ProgramScheduleConstant.DeviceCommandRaw.PROGRAM_DIRTY).build())
+                .build();
+    }
+
+    private void applyDeviceCommandResults(
+            DeviceCommandResp resp,
+            Map<String, ProgramPublishDeviceResultResp> resultByCommandId) {
+        if (resp == null || resp.getResults() == null || resultByCommandId == null || resultByCommandId.isEmpty()) {
+            return;
+        }
+        for (DeviceCommandResp.CommandResult cr : resp.getResults()) {
+            if (cr == null || cr.getCommandId() == null) {
+                continue;
+            }
+            ProgramPublishDeviceResultResp r = resultByCommandId.get(cr.getCommandId());
+            if (r == null) {
+                continue;
+            }
+            r.setAccepted(cr.isAccepted());
+            r.setQueuedId(cr.getQueuedId());
+            r.setErrorMessage(cr.getErrorMessage());
+        }
     }
 
     private DeviceCommandResp callDeviceService(List<DeviceCommandReq> commands) {

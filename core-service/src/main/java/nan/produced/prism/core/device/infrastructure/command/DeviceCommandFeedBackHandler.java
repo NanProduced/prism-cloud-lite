@@ -2,6 +2,9 @@ package nan.produced.prism.core.device.infrastructure.command;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.core.common.messaging.FrontendEventMessage;
+import nan.produced.prism.core.common.messaging.MessagingConstants;
+import nan.produced.prism.core.common.messaging.RabbitMessagePublisher;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCommandFeedBackPort;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCommandLogRepository;
 import nan.produced.prism.core.device.domain.DeviceProperties;
@@ -12,6 +15,8 @@ import nan.produced.prism.core.device.domain.command.DeviceCommandStatus;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -24,6 +29,8 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
 
     private final RedisTemplate<String, Object> redisTemplate;
 
+    private final RabbitMessagePublisher rabbitMessagePublisher;
+
     private static final String COMMAND_LISTENER_KEY = "command:listener:%d:%s";
 
     @Override
@@ -35,6 +42,8 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
         }
         // 确认指令
         deviceCommandLogRepository.updateStatus(commandId, DeviceCommandStatus.CONFIRMED);
+        // 推送 SSE：operation.updated
+        publishOperationUpdated(commandLog, DeviceCommandStatus.CONFIRMED);
         // 如果需要根据属性上报监听上报状态
         if (commandLog.getTrackingLevel().equals(DeviceActionTrackingLevel.PROPERTY_MATCH)) {
             // 根据设备Id和指令类型监听指令结果
@@ -130,7 +139,62 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
      */
     private void markCommandCompleted(String key) {
         String commandId = (String) redisTemplate.opsForValue().getAndDelete(key);
+        if (commandId == null || commandId.isBlank()) {
+            return;
+        }
+
+        DeviceCommandLog commandLog = deviceCommandLogRepository.findByOperationId(commandId);
+        if (commandLog == null) {
+            log.warn("DeviceCommandFeedBackHandler - 指令完成但找不到日志, commandId={}", commandId);
+            deviceCommandLogRepository.updateStatus(commandId, DeviceCommandStatus.COMPLETED);
+            return;
+        }
+
         deviceCommandLogRepository.updateStatus(commandId, DeviceCommandStatus.COMPLETED);
+        // 推送 SSE：operation.updated
+        publishOperationUpdated(commandLog, DeviceCommandStatus.COMPLETED);
+    }
+
+    private void publishOperationUpdated(DeviceCommandLog commandLog, DeviceCommandStatus status) {
+        if (commandLog == null || commandLog.getUserId() == null) {
+            return;
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("operationType", "DEVICE_COMMAND");
+        if (status != null) {
+            data.put("status", status.name());
+        }
+        if (commandLog.getActionType() != null) {
+            data.put("actionType", commandLog.getActionType().name());
+        }
+        if (commandLog.getTrackingLevel() != null) {
+            data.put("trackingLevel", commandLog.getTrackingLevel().name());
+        }
+        data.put("accepted", commandLog.isAccepted());
+        data.put("covered", commandLog.isCovered());
+        if (commandLog.getSendMethod() != null) {
+            data.put("sendMethod", commandLog.getSendMethod());
+        }
+        if (commandLog.getQueuedId() != null) {
+            data.put("queuedId", commandLog.getQueuedId());
+        }
+        if (commandLog.getErrorMessage() != null) {
+            data.put("errorMessage", commandLog.getErrorMessage());
+        }
+
+        FrontendEventMessage message = FrontendEventMessage.builder()
+                .success(true)
+                .type("operation.updated")
+                .scope(FrontendEventMessage.Scope.builder()
+                        .userId(commandLog.getUserId())
+                        .deviceId(commandLog.getDeviceId())
+                        .operationId(commandLog.getOperationId())
+                        .build())
+                .data(data)
+                .build();
+
+        rabbitMessagePublisher.publishCoreNotification(MessagingConstants.RoutingKeys.NOTIFY_OPERATION_UPDATED, message);
     }
 
 }

@@ -66,6 +66,12 @@ public final class MessagingConstants {
          */
         public static final String NOTIFY_DEVICE_STATUS_CHANGED = "notify.device.status.changed";
 
+        /**
+         * 操作进度更新通知（面向前端）
+         * <p>示例：指令确认/完成等：type=operation.updated</p>
+         */
+        public static final String NOTIFY_OPERATION_UPDATED = "notify.operation.updated";
+
         private RoutingKeys() {
         }
     }

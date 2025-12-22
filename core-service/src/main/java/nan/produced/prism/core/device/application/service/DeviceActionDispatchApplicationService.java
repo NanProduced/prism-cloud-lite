@@ -1,6 +1,5 @@
 package nan.produced.prism.core.device.application.service;
 
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -23,7 +22,6 @@ import nan.produced.prism.core.device.application.port.outbound.DeviceCommandLog
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
 import nan.produced.prism.core.device.domain.DeviceEntity;
 import nan.produced.prism.core.device.domain.command.DeviceActionBase;
-import nan.produced.prism.core.device.domain.command.DeviceActionBodyBase;
 import nan.produced.prism.core.device.domain.command.DeviceCommandLog;
 import nan.produced.prism.core.device.domain.command.DeviceCommandStatus;
 import nan.produced.prism.core.integration.device.client.DeviceInternalClient;
@@ -68,7 +66,7 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
         DeviceCommandResp commandResp = callDeviceService(List.of(commandReq));
         DeviceCommandResp.CommandResult result = findResult(commandResp, commandId);
 
-        DeviceCommandLog log = buildDeviceCommandLog(userId, action, result, commandReq.getTtlMinutes());
+        DeviceCommandLog log = buildDeviceCommandLog(userId, deviceId, commandId, action, result, commandReq.getTtlMinutes());
         // 保存日志记录
         deviceCommandLogRepository.save(log);
 
@@ -122,6 +120,18 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
                 resultByCommandId.put(result.getCommandId(), result);
             }
         }
+
+        // 保存批量日志记录（每个设备一条）
+        List<DeviceCommandLog> logs = pending.stream()
+                .map(pendingDispatch -> buildDeviceCommandLog(
+                        userId,
+                        pendingDispatch.deviceId(),
+                        pendingDispatch.commandId(),
+                        pendingDispatch.action(),
+                        resultByCommandId.get(pendingDispatch.commandId()),
+                        pendingDispatch.action() != null ? pendingDispatch.action().getTtlMinutes() : null))
+                .toList();
+        deviceCommandLogRepository.saveAll(logs);
 
         List<DeviceActionDispatchResp> results = pending.stream()
                 .map(pendingDispatch -> deviceActionDispatchConverter.toDispatchResp(
@@ -205,28 +215,37 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
     /**
      * 构建指令日志
      * @param userId 用户Id
+     * @param deviceId 设备Id
+     * @param commandId 指令Id
      * @param action 指令操作封装
      * @param result 结果
      * @param commandTtl 指令 TTL
      * @return 指令日志
      */
-    private DeviceCommandLog buildDeviceCommandLog(UUID userId, DeviceActionBase action, DeviceCommandResp.CommandResult result, Long commandTtl) {
+    private DeviceCommandLog buildDeviceCommandLog(
+            UUID userId,
+            Long deviceId,
+            String commandId,
+            DeviceActionBase action,
+            DeviceCommandResp.CommandResult result,
+            Long commandTtl) {
 
+        boolean accepted = result != null && result.isAccepted();
         return DeviceCommandLog.builder()
                 .id(IdGenerator.nextId())
                 .userId(userId)
-                .deviceId(result.getDeviceId())
-                .operationId(result.getCommandId())
-                .actionType(action.getType())
-                .trackingLevel(action.getType().getTrackingLevel())
-                .status(result.isAccepted() ? DeviceCommandStatus.PUBLISHED : DeviceCommandStatus.FAILED)
-                .payload(JsonUtils.toJson(action.getBody()))
+                .deviceId(deviceId)
+                .operationId(commandId)
+                .actionType(action != null ? action.getType() : null)
+                .trackingLevel(action != null && action.getType() != null ? action.getType().getTrackingLevel() : null)
+                .status(accepted ? DeviceCommandStatus.PUBLISHED : DeviceCommandStatus.FAILED)
+                .payload(JsonUtils.toJson(action != null ? action.getBody() : null))
                 .ttlMinutes(commandTtl)
-                .sendMethod(result.getSendMethod())
-                .queuedId(result.getQueuedId())
-                .accepted(result.isAccepted())
-                .covered(result.isCovered())
-                .errorMessage(result.getErrorMessage())
+                .sendMethod(result != null ? result.getSendMethod() : null)
+                .queuedId(result != null ? result.getQueuedId() : null)
+                .accepted(accepted)
+                .covered(result != null && result.isCovered())
+                .errorMessage(result != null ? result.getErrorMessage() : "device-service 未返回结果")
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
                 .build();
