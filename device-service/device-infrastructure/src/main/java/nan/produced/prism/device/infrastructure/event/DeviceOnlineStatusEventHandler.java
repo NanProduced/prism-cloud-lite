@@ -3,12 +3,11 @@ package nan.produced.prism.device.infrastructure.event;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.device.application.domain.CommonConstant;
 import nan.produced.prism.device.application.domain.event.DeviceOnlineStatusEvent;
-import nan.produced.prism.device.application.dto.record.DeviceOnlineTimeRecord;
 import nan.produced.prism.device.application.messaging.DeviceEventMessage;
 import nan.produced.prism.device.application.port.outbound.event.DeviceEventPublisherPort;
 import nan.produced.prism.device.application.port.outbound.repository.DeviceAccountRepository;
-import nan.produced.prism.device.application.port.outbound.repository.DeviceOnlineTimeRecordRepository;
 import nan.produced.prism.device.application.port.outbound.status.DeviceLoginUpdatePort;
 import nan.produced.prism.device.common.utils.TimeUtils;
 import org.springframework.context.event.EventListener;
@@ -34,8 +33,6 @@ import static nan.produced.prism.device.application.domain.CommonConstant.Device
 public class DeviceOnlineStatusEventHandler {
 
     private final DeviceAccountRepository deviceAccountRepository;
-
-    private final DeviceOnlineTimeRecordRepository deviceOnlineTimeRecordRepository;
 
     private final DeviceLoginUpdatePort deviceLoginUpdatePort;
 
@@ -96,8 +93,8 @@ public class DeviceOnlineStatusEventHandler {
         log.debug("DeviceStatusEvent - 标记设备离线事件: deviceId={}", event.getDeviceId());
         // 推送设备离线事件(Mq)
         pushDeviceOffline(event);
-        // 记录在线时长
-        saveTerminalOnlineTime(event);
+        // 推送在线时长
+        pushDeviceOnlineTime(event);
 
     }
 
@@ -155,13 +152,13 @@ public class DeviceOnlineStatusEventHandler {
         }
     }
 
-    // ==================== 记录在线时长辅助方法 ====================
+    // ==================== mq推送在线时长辅助方法 ====================
 
     /**
-     * 保存设备在线时长记录
+     * 推送设备在线时长记录
      * @param event 设备离线事件
      */
-    private void saveTerminalOnlineTime(DeviceOnlineStatusEvent event) {
+    private void pushDeviceOnlineTime(DeviceOnlineStatusEvent event) {
 
         if (event.getOnlineStartTime() == null || event.getLastReportTime() == null) {
             log.error("DeviceOnlineTime - 上线/离线时间为空，保存失败: deviceId={}, event={}", event.getDeviceId(), event);
@@ -183,17 +180,20 @@ public class DeviceOnlineStatusEventHandler {
             return;
         }
 
-        DeviceOnlineTimeRecord onlineTimeRecord = DeviceOnlineTimeRecord.builder()
+        Map<String, Object> payload = Map.of(
+                ONLINE_TIME, event.getOnlineStartTime(),
+                OFFLINE_TIME, event.getLastReportTime()
+        );
+
+        DeviceEventMessage message = DeviceEventMessage.builder()
                 .deviceId(event.getDeviceId())
-                .startTime(TimeUtils.convertTimestampToLocalDateTime(event.getOnlineStartTime()))
-                .endTime(TimeUtils.convertTimestampToLocalDateTime(event.getLastReportTime()))
+                .eventType(ONLINE_TIME)
+                .payload(payload)
+                .occurredAt(Instant.ofEpochMilli(event.getEventTime()))
                 .build();
 
-        deviceOnlineTimeRecordRepository.saveDeviceOnlineTimeRecord(onlineTimeRecord);
-        long durationSeconds = durationMs / 1000;
+        deviceEventPublisherPort.publishReport(CommonConstant.Report.ONLINE_TIME, message);
 
-        log.debug("DeviceOnlineTime - 设备在线时长记录保存成功: deviceId={}, duration={}s",
-                event.getDeviceId(), durationSeconds);
     }
 
     // ==================== mq设备在线状态推送辅助方法 ====================

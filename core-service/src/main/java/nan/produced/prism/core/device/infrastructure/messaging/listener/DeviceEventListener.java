@@ -17,7 +17,7 @@ import static nan.produced.prism.core.common.exception.ErrorCode.MQ_MESSAGE_CONS
 /**
  * 设备事件消息监听器
  * 监听来自 device-service 的设备上报数据（device.events 交换机）
- *
+ * <p>
  * 监听的消息类型：
  * - status.* 设备在线/离线状态变化
  * - command.* 指令执行结果

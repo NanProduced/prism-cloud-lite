@@ -164,6 +164,10 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
                     handleScreenshotUploaded(message.getDeviceId(), message.getPayload(), traceId, message.getOccurredAt());
                     break;
 
+                case MessagingConstants.DeviceEventTypes.REPORT_ONLINE_TIME:
+                    handleOnlineTime(message.getDeviceId(), message.getPayload(), traceId);
+                    break;
+
                 default:
                     log.warn("不支持的事件类型: eventType={}, traceId={}", eventType, traceId);
             }
@@ -285,6 +289,17 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
                 contentType,
                 occurredAt,
                 traceId);
+    }
+
+    /**
+     * 处理设备在线时长数据上报
+     * @param deviceId 设备ID
+     * @param payload  数据
+     * @param traceId 追踪ID
+     */
+    private void handleOnlineTime(Long deviceId, Map<String, Object> payload, String traceId) {
+        Long onlineTime = getLong(payload, "onlineTime");
+        Long offlineTime = getLong(payload, "offlineTime");
     }
 
     private String getString(Map<String, Object> payload, String key) {

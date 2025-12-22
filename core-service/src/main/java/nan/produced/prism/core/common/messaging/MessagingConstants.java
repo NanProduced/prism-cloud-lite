@@ -73,16 +73,6 @@ public final class MessagingConstants {
     public static final class DeviceEventTypes {
 
         /**
-         * 设备状态 - 在线
-         */
-        public static final String STATUS_ONLINE = "status.online";
-
-        /**
-         * 设备状态 - 离线
-         */
-        public static final String STATUS_OFFLINE = "status.offline";
-
-        /**
          * 设备数据上报 - 设备属性
          */
         public static final String REPORT_PROPERTIES = "report.properties";
@@ -116,6 +106,8 @@ public final class MessagingConstants {
          * 设备数据上报 - 设备截图
          */
         public static final String REPORT_SCREENSHOT = "report.screenshot";
+
+        public static final String REPORT_ONLINE_TIME = "report.onlineTime";
 
     }
 }

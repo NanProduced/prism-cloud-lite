@@ -29,11 +29,9 @@ public class CommonConstant {
 
         public static final String VERSION = "version";
 
-        public static final String TOTAL_ONLINE_TIME = "totalOnlineTime";
+        public static final String ONLINE_TIME = "onlineTime";
 
-        public static final String CREATED_AT = "createdAt";
-
-        public static final String UPDATED_AT = "updatedAt";
+        public static final String OFFLINE_TIME = "offlineTime";
 
         public static final String ONLINE = "online";
 
@@ -98,6 +96,12 @@ public class CommonConstant {
          * <p>/wp-json/wp/v2/media</p>
          */
         public static final String SCREENSHOT = "screenshot";
+
+        /**
+         * 设备在线时长上报
+         * <p>device-service生成</p>
+         */
+        public static final String ONLINE_TIME = "onlineTime";
     }
 
 }
