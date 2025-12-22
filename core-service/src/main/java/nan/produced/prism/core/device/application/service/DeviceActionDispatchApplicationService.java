@@ -1,5 +1,7 @@
 package nan.produced.prism.core.device.application.service;
 
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -9,15 +11,21 @@ import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.exception.InfraException;
 import nan.produced.prism.core.common.response.ApiResponse;
+import nan.produced.prism.core.common.util.IdGenerator;
+import nan.produced.prism.core.common.util.JsonUtils;
 import nan.produced.prism.core.device.api.dto.BatchDeviceActionDispatchItemReq;
 import nan.produced.prism.core.device.api.dto.BatchDeviceActionDispatchReq;
 import nan.produced.prism.core.device.api.dto.BatchDeviceActionDispatchResp;
 import nan.produced.prism.core.device.api.dto.DeviceActionDispatchResp;
 import nan.produced.prism.core.device.application.converter.DeviceActionDispatchConverter;
 import nan.produced.prism.core.device.application.port.inbound.DeviceActionDispatchUseCase;
+import nan.produced.prism.core.device.application.port.outbound.DeviceCommandLogRepository;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
 import nan.produced.prism.core.device.domain.DeviceEntity;
 import nan.produced.prism.core.device.domain.command.DeviceActionBase;
+import nan.produced.prism.core.device.domain.command.DeviceActionBodyBase;
+import nan.produced.prism.core.device.domain.command.DeviceCommandLog;
+import nan.produced.prism.core.device.domain.command.DeviceCommandStatus;
 import nan.produced.prism.core.integration.device.client.DeviceInternalClient;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandReq;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandResp;
@@ -29,6 +37,7 @@ import org.springframework.stereotype.Service;
 public class DeviceActionDispatchApplicationService implements DeviceActionDispatchUseCase {
 
     private final DeviceRepository deviceRepository;
+    private final DeviceCommandLogRepository deviceCommandLogRepository;
     private final DeviceInternalClient deviceInternalClient;
     private final DeviceActionDispatchConverter deviceActionDispatchConverter;
 
@@ -58,6 +67,10 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
         // 调用 device-service
         DeviceCommandResp commandResp = callDeviceService(List.of(commandReq));
         DeviceCommandResp.CommandResult result = findResult(commandResp, commandId);
+
+        DeviceCommandLog log = buildDeviceCommandLog(userId, action, result, commandReq.getTtlMinutes());
+        // 保存日志记录
+        deviceCommandLogRepository.save(log);
 
         return deviceActionDispatchConverter.toDispatchResp(deviceId, commandId, action, result);
     }
@@ -187,6 +200,36 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
         }
         // 兜底：若下游未回填 commandId，则返回第一条结果
         return resp.getResults().getFirst();
+    }
+
+    /**
+     * 构建指令日志
+     * @param userId 用户Id
+     * @param action 指令操作封装
+     * @param result 结果
+     * @param commandTtl 指令 TTL
+     * @return 指令日志
+     */
+    private DeviceCommandLog buildDeviceCommandLog(UUID userId, DeviceActionBase action, DeviceCommandResp.CommandResult result, Long commandTtl) {
+
+        return DeviceCommandLog.builder()
+                .id(IdGenerator.nextId())
+                .userId(userId)
+                .deviceId(result.getDeviceId())
+                .operationId(result.getCommandId())
+                .actionType(action.getType())
+                .trackingLevel(action.getType().getTrackingLevel())
+                .status(result.isAccepted() ? DeviceCommandStatus.PUBLISHED : DeviceCommandStatus.FAILED)
+                .payload(JsonUtils.toJson(action.getBody()))
+                .ttlMinutes(commandTtl)
+                .sendMethod(result.getSendMethod())
+                .queuedId(result.getQueuedId())
+                .accepted(result.isAccepted())
+                .covered(result.isCovered())
+                .errorMessage(result.getErrorMessage())
+                .createdAt(OffsetDateTime.now())
+                .updatedAt(OffsetDateTime.now())
+                .build();
     }
 
     private boolean isDeviceServiceSuccessCode(String code) {

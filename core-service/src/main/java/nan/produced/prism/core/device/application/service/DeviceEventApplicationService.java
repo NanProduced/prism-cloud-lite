@@ -9,9 +9,12 @@ import nan.produced.prism.core.common.messaging.FrontendEventMessage;
 import nan.produced.prism.core.common.messaging.MessagingConstants;
 import nan.produced.prism.core.common.messaging.RabbitMessagePublisher;
 import nan.produced.prism.core.common.api.ProgramDownloadProgressUseCase;
+import nan.produced.prism.core.common.util.JsonUtils;
 import nan.produced.prism.core.device.application.port.inbound.DeviceEventUseCase;
+import nan.produced.prism.core.device.application.port.outbound.DeviceCommandFeedBackPort;
 import nan.produced.prism.core.device.application.port.outbound.DevicePropertiesPort;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
+import nan.produced.prism.core.device.domain.DeviceProperties;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -32,6 +35,8 @@ import java.util.UUID;
 public class DeviceEventApplicationService implements DeviceEventUseCase {
 
     private final DevicePropertiesPort devicePropertiesPort;
+
+    private final DeviceCommandFeedBackPort deviceCommandFeedBackPort;
 
     private final DeviceRepository deviceRepository;
 
@@ -92,14 +97,17 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
     public void handleCommandResult(DeviceEventMessage message) {
 
         switch (message.getEventType()) {
-
+            case MessagingConstants.CommandTypes.CONFIRM -> deviceCommandFeedBackPort.handleCommandConfirm(
+                    (String) message.getPayload().get("commandId"),
+                    message.getDeviceId(),
+                    (Integer) message.getPayload().get("queueId")
+            );
+            case MessagingConstants.CommandTypes.EXPIRED -> deviceCommandFeedBackPort.handleCommandExpired(
+                    message.getDeviceId(),
+                    (Integer) message.getPayload().get("queueId")
+            );
+            default -> log.warn("不支持的指令结果: eventType={}, traceId={}", message.getEventType(), message.getTraceId());
         }
-
-        // TODO: 实现指令执行结果处理逻辑
-        // 1. 解析指令执行结果
-        // 2. 更新指令状态为已完成
-        // 3. 推送结果给相关用户
-        // 4. 触发后续业务流程
     }
 
     /**
@@ -189,9 +197,11 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
     private void handleDeviceProperties(Long deviceId, String properties, String traceId) {
         log.debug("处理设备属性上报: deviceId={}, properties={}, traceId={}",
                 deviceId, properties, traceId);
-
-        devicePropertiesPort.handleDeviceProperties(deviceId, properties, traceId);
-        // 触发相关业务逻辑（如状态变化通知）
+        DeviceProperties deviceProperties = JsonUtils.fromJson(properties, DeviceProperties.class);
+        // 存储
+        devicePropertiesPort.handleDeviceProperties(deviceId, deviceProperties, traceId);
+        // 检查指令结果
+        deviceCommandFeedBackPort.chackCommandResult(deviceId, deviceProperties);
     }
 
     /**

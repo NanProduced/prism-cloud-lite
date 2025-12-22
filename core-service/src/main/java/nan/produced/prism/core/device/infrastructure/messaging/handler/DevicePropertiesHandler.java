@@ -15,9 +15,6 @@ import org.springframework.stereotype.Component;
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-
 import static nan.produced.prism.core.common.exception.ErrorCode.DEVICE_NOT_FOUND_IN_CORE;
 
 /**
@@ -33,9 +30,8 @@ public class DevicePropertiesHandler implements DevicePropertiesPort {
     private final DeviceRepository deviceRepository;
 
     @Override
-    public void handleDeviceProperties(Long deviceId, String properties, String traceId) {
+    public void handleDeviceProperties(Long deviceId, DeviceProperties deviceProperties, String traceId) {
         LocalDateTime now = LocalDateTime.now();
-        DeviceProperties deviceProperties = JsonUtils.fromJson(properties, DeviceProperties.class);
         populateReportTime(deviceProperties, System.currentTimeMillis() / 1000);
         DeviceEntity existingDevice = deviceRepository.findByDeviceId(deviceId);
         if (existingDevice == null) {

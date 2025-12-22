@@ -16,8 +16,11 @@ public enum DeviceActionType {
     @Schema(description = "亮度调节（PUT api/brightness）")
     BRIGHTNESS("api/brightness", DeviceCommandMethod.PUT, DeviceActionTrackingLevel.PROPERTY_MATCH),
 
+    /**
+     * 这个指令没有对应上报（观察在线状态即可）
+     */
     @Schema(description = "电源控制-休眠/唤醒/重启 （POST api/action）")
-    POWER("api/action", DeviceCommandMethod.POST, DeviceActionTrackingLevel.PROPERTY_MATCH),
+    POWER("api/action", DeviceCommandMethod.POST, DeviceActionTrackingLevel.ACK_ONLY),
 
     @Schema(description = "色温调节（PUT api/colortemp）")
     COLOR_TEMP("api/colortemp", DeviceCommandMethod.PUT, DeviceActionTrackingLevel.PROPERTY_MATCH),

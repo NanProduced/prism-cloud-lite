@@ -12,6 +12,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 @Schema(description = "动作追踪等级")
 public enum DeviceActionTrackingLevel {
 
+    @Schema(description = "仅根据推送消息更新渲染页面数据")
+    UPDATE_ONLY,
+
     @Schema(description = "仅追踪接收/过期")
     ACK_ONLY,
 
