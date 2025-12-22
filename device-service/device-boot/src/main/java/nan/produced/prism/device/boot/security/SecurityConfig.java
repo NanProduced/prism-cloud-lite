@@ -50,6 +50,8 @@ public class SecurityConfig {
                         .cacheControl(Customizer.withDefaults()))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(securityProps.getWhiteList().getIgnores().toArray(String[]::new)).permitAll()
+                        // 内部服务调用入口：由 ServiceSignatureValidatorFilter 进行签名与 IP 白名单校验
+                        .requestMatchers("/internal/**").permitAll()
                         .requestMatchers(securityProps.getDeviceApi()).authenticated()
                         .anyRequest().denyAll())
                 .addFilterAfter(deviceBasicAuthFilter, UsernamePasswordAuthenticationFilter.class)

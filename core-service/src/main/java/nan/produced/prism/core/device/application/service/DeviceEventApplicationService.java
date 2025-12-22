@@ -11,6 +11,7 @@ import nan.produced.prism.core.common.messaging.RabbitMessagePublisher;
 import nan.produced.prism.core.device.application.port.inbound.DeviceEventUseCase;
 import nan.produced.prism.core.device.application.port.outbound.DevicePropertiesPort;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
+import nan.produced.prism.core.program.application.port.inbound.ProgramDownloadProgressUseCase;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -35,6 +36,8 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
     private final DeviceRepository deviceRepository;
 
     private final DeviceScreenshotApplicationService deviceScreenshotApplicationService;
+
+    private final ProgramDownloadProgressUseCase programDownloadProgressApplicationService;
 
     private final RabbitMessagePublisher rabbitMessagePublisher;
 
@@ -123,37 +126,37 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
                 // 属性上报事件
                 case MessagingConstants.DeviceEventTypes.REPORT_PROPERTIES:
                     handleDeviceProperties(message.getDeviceId(),
-                            message.getPayload().toString(), traceId);
+                            message.getReportData(), traceId);
                     break;
 
                 // 素材播放记录
                 case MessagingConstants.DeviceEventTypes.REPORT_MEDIA_PLAY_RECORD:
                     handleMediaPlayRecord(message.getDeviceId(),
-                            message.getPayload().toString(), traceId);
+                            message.getReportData(), traceId);
                     break;
 
                 // 节目播放记录
                 case MessagingConstants.DeviceEventTypes.REPORT_PROGRAM_PLAY_RECORD:
                     handleProgramPlayRecord(message.getDeviceId(),
-                            message.getPayload().toString(), traceId);
+                            message.getReportData(), traceId);
                     break;
 
                 // 设备日志
                 case MessagingConstants.DeviceEventTypes.REPORT_DEVICE_LOG:
                     handleDeviceLog(message.getDeviceId(),
-                            message.getPayload().toString(), traceId);
+                            message.getReportData(), traceId);
                     break;
 
                 // 传感器数据
                 case MessagingConstants.DeviceEventTypes.REPORT_SENSOR_DATA:
                     handleSensorReport(message.getDeviceId(),
-                            message.getPayload().toString(), traceId);
+                            message.getReportData(), traceId);
                     break;
 
                 // 下载进度
                 case MessagingConstants.DeviceEventTypes.REPORT_DOWNLOADING_PROGRESS:
                     handleDownloadProgress(message.getDeviceId(),
-                            message.getPayload().toString(), traceId);
+                            message.getReportData(), traceId, message.getOccurredAt());
                     break;
 
                 // 设备截图
@@ -258,15 +261,16 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
      * @param deviceId 设备ID
      * @param progress 下载进度数据 JSON 字符串
      * @param traceId 追踪ID
-     */
-    private void handleDownloadProgress(Long deviceId, String progress, String traceId) {
-        log.debug("处理下载进度: deviceId={}, traceId={}", deviceId, traceId);
+     * @param occurredAt 上报时间
+     **/
+    private void handleDownloadProgress(Long deviceId, String progress, String traceId, Instant occurredAt) {
+        if (deviceId == null || progress == null || progress.isBlank()) {
+            return;
+        }
 
-        // TODO: 实现下载进度处理逻辑
-        // 1. 解析下载进度数据
-        // 2. 更新下载任务进度
-        // 3. 推送进度到 SPA 前端（通过 SSE/WebSocket）
-        // 4. 判断是否完成，完成时触发后续流程
+        log.debug("处理下载进度: deviceId={}, traceId={}", deviceId, traceId);
+        UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);
+        programDownloadProgressApplicationService.handleDownloadingProgress(deviceId, userId, progress, occurredAt, traceId);
     }
 
     private void handleScreenshotUploaded(Long deviceId, Map<String, Object> payload, String traceId, Instant occurredAt) {

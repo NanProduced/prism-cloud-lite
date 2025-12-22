@@ -5,12 +5,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.device.application.domain.event.DeviceOnlineStatusEvent;
 import nan.produced.prism.device.application.dto.record.DeviceOnlineTimeRecord;
-import nan.produced.prism.device.application.dto.record.DeviceReconnectRecord;
 import nan.produced.prism.device.application.messaging.DeviceEventMessage;
 import nan.produced.prism.device.application.port.outbound.event.DeviceEventPublisherPort;
 import nan.produced.prism.device.application.port.outbound.repository.DeviceAccountRepository;
 import nan.produced.prism.device.application.port.outbound.repository.DeviceOnlineTimeRecordRepository;
-import nan.produced.prism.device.application.port.outbound.repository.DeviceReconnectRecordRepository;
 import nan.produced.prism.device.application.port.outbound.status.DeviceLoginUpdatePort;
 import nan.produced.prism.device.common.utils.TimeUtils;
 import org.springframework.context.event.EventListener;
@@ -38,8 +36,6 @@ public class DeviceOnlineStatusEventHandler {
     private final DeviceAccountRepository deviceAccountRepository;
 
     private final DeviceOnlineTimeRecordRepository deviceOnlineTimeRecordRepository;
-
-    private final DeviceReconnectRecordRepository deviceReconnectRecordRepository;
 
     private final DeviceLoginUpdatePort deviceLoginUpdatePort;
 
@@ -90,8 +86,6 @@ public class DeviceOnlineStatusEventHandler {
         pushDeviceOnline(event);
         // 重连时提交到缓冲池异步更新
         updateLoginTimeAsync(event);
-        // 记录重连信息
-        saveTerminalReconnect(event);
     }
 
     /**
@@ -159,29 +153,6 @@ public class DeviceOnlineStatusEventHandler {
         } catch (Exception e) {
             log.error("DeviceLoginUpdate - 提交登录时间异步更新失败: deviceId={}", event.getDeviceId(), e);
         }
-    }
-
-
-
-    // ==================== 终端异常重连记录辅助方法 ====================
-
-    /**
-     * 保存设备重连信息
-     * @param event 重连事件
-     */
-    private void saveTerminalReconnect(DeviceOnlineStatusEvent event) {
-
-        DeviceReconnectRecord reconnectRecord = DeviceReconnectRecord.builder()
-                .deviceId(event.getDeviceId())
-                .startOnlineTime(TimeUtils.convertTimestampToLocalDateTime(event.getOnlineStartTime()))
-                .lastReportTime(TimeUtils.convertTimestampToLocalDateTime(event.getLastReportTime()))
-                .reconnectTime(TimeUtils.convertTimestampToLocalDateTime(event.getEventTime()))
-                .reconnectIp(event.getClientIp())
-                .reconnectSource(event.getReportSource().name())
-                .build();
-
-        deviceReconnectRecordRepository.saveReconnectRecord(reconnectRecord);
-        log.debug("DeviceReconnect - 设备重连信息保存成功: deviceId={}, info={}", event.getDeviceId(), event);
     }
 
     // ==================== 记录在线时长辅助方法 ====================

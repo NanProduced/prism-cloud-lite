@@ -20,6 +20,11 @@ public class DeviceEventMessage {
 
     private String eventType;
 
+    /**
+     * report.* 特有的上报数据（device-service 将原始 JSON 透传为字符串）
+     */
+    private String reportData;
+
     @Builder.Default
     private Map<String, Object> payload = new HashMap<>();
 
@@ -31,4 +36,3 @@ public class DeviceEventMessage {
 
     private String version;
 }
-

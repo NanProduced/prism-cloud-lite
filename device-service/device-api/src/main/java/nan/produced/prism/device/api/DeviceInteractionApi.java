@@ -82,7 +82,7 @@ public interface DeviceInteractionApi {
      * 终端获取排程信息
      * @return 排程JSON
      */
-    @GetMapping("/wp-json/wp/v3/schedules")
+    @GetMapping(value = "/wp-json/wp/v3/schedules", produces = "application/json")
     String getSchedule();
 
     /**

@@ -2,8 +2,11 @@ package nan.produced.prism.device.boot.security.integration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.ReadListener;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,9 +18,11 @@ import nan.produced.prism.device.common.utils.SignatureUtils;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.util.ContentCachingRequestWrapper;
 
 import java.io.IOException;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -95,11 +100,11 @@ public class ServiceSignatureValidatorFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 4. 包装请求以支持多次读取请求体
-        ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(request);
+        // 4. 缓存 body 并包装 request：避免读取 body 后下游 @RequestBody 读不到
+        CachedBodyHttpServletRequest wrappedRequest = new CachedBodyHttpServletRequest(request);
 
-        // 5. 读取请求体
-        String body = getRequestBody(wrappedRequest);
+        // 5. 读取请求体（用于签名校验）
+        String body = wrappedRequest.getCachedBodyAsString();
         String method = request.getMethod();
         String path = request.getRequestURI();
 
@@ -162,14 +167,53 @@ public class ServiceSignatureValidatorFilter extends OncePerRequestFilter {
     }
 
     /**
-     * 读取请求体内容
+     * 缓存请求体的包装器：解决过滤器读取 body 后，下游 @RequestBody 读不到的问题。
      */
-    private String getRequestBody(ContentCachingRequestWrapper request) throws IOException {
-        byte[] content = request.getContentAsByteArray();
-        if (content.length == 0) {
-            return "";
+    static class CachedBodyHttpServletRequest extends HttpServletRequestWrapper {
+        private final byte[] cachedBody;
+
+        CachedBodyHttpServletRequest(HttpServletRequest request) throws IOException {
+            super(request);
+            this.cachedBody = request.getInputStream().readAllBytes();
         }
-        return new String(content, StandardCharsets.UTF_8);
+
+        String getCachedBodyAsString() {
+            if (cachedBody == null || cachedBody.length == 0) {
+                return "";
+            }
+            return new String(cachedBody, StandardCharsets.UTF_8);
+        }
+
+        @Override
+        public ServletInputStream getInputStream() {
+            ByteArrayInputStream inputStream = new ByteArrayInputStream(cachedBody != null ? cachedBody : new byte[0]);
+            return new ServletInputStream() {
+                @Override
+                public int read() {
+                    return inputStream.read();
+                }
+
+                @Override
+                public boolean isFinished() {
+                    return inputStream.available() == 0;
+                }
+
+                @Override
+                public boolean isReady() {
+                    return true;
+                }
+
+                @Override
+                public void setReadListener(ReadListener readListener) {
+                    // sync read
+                }
+            };
+        }
+
+        @Override
+        public BufferedReader getReader() {
+            return new BufferedReader(new InputStreamReader(getInputStream(), StandardCharsets.UTF_8));
+        }
     }
 
     /**

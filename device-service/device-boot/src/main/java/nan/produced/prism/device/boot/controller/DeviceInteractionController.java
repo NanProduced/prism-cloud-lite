@@ -3,6 +3,10 @@ package nan.produced.prism.device.boot.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.device.api.DeviceInteractionApi;
@@ -14,6 +18,10 @@ import nan.produced.prism.device.application.domain.command.DeviceCommand;
 import nan.produced.prism.device.application.port.inbound.command.DeviceCommandUseCase;
 import nan.produced.prism.device.application.port.inbound.status.DeviceReportUseCase;
 import nan.produced.prism.device.boot.integration.command.DeviceCommandConverter;
+import nan.produced.prism.device.boot.integration.core.CoreProgramDistributionService;
+import nan.produced.prism.device.boot.integration.core.CoreScheduleDistributionService;
+import nan.produced.prism.device.boot.integration.core.dto.CoreDeviceProgramDTO;
+import nan.produced.prism.device.boot.integration.core.dto.CoreDeviceProgramMediaDTO;
 import nan.produced.prism.device.common.exception.DeviceResponseException;
 import nan.produced.prism.device.common.exception.business.BusinessErrorCode;
 import nan.produced.prism.device.infrastructure.storage.s3.DeviceScreenshotS3Uploader;
@@ -23,6 +31,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.util.List;
 
@@ -37,6 +46,10 @@ public class DeviceInteractionController implements DeviceInteractionApi {
     private final DeviceCommandUseCase deviceCommandUseCase;
     private final DeviceCommandConverter deviceCommandConverter;
     private final DeviceScreenshotS3Uploader deviceScreenshotS3Uploader;
+    private final CoreProgramDistributionService coreProgramDistributionService;
+    private final CoreScheduleDistributionService coreScheduleDistributionService;
+
+    private static final DateTimeFormatter WP_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     /**
      * 上报终端信息，设备上报led_status到服务器。
@@ -103,12 +116,97 @@ public class DeviceInteractionController implements DeviceInteractionApi {
 
     @Override
     public List<DeviceApiProgram> getPrograms(String clt_type) {
-        return List.of();
+        DevicePrincipal devicePrincipal = (DevicePrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long deviceId = devicePrincipal.getDeviceId();
+        String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+
+        // 重要：device-service 不直查 core DB。节目/素材数据由 core-service internal 接口提供。
+        List<CoreDeviceProgramDTO> programs = coreProgramDistributionService.listDevicePrograms(deviceId);
+        if (programs == null || programs.isEmpty()) {
+            return List.of();
+        }
+
+        List<DeviceApiProgram> list = new ArrayList<>();
+        for (CoreDeviceProgramDTO program : programs) {
+            if (program == null || program.getDeviceProgramId() == null) {
+                continue;
+            }
+
+            Integer programId = program.getDeviceProgramId();
+            OffsetDateTime createdAt = program.getCreatedAt();
+            OffsetDateTime assignedAt = program.getAssignedAt();
+
+            String title = program.getTitle() != null ? program.getTitle() : "";
+
+            String createdStr = formatWpTime(createdAt != null ? createdAt : assignedAt);
+            String modifiedStr = formatWpTime(assignedAt != null ? assignedAt : createdAt);
+
+            DeviceApiProgram.Title t = new DeviceApiProgram.Title();
+            t.setRendered(title);
+
+            DeviceApiProgram.AttachmentUrl attachmentUrl = new DeviceApiProgram.AttachmentUrl();
+            attachmentUrl.setHref(baseUrl + "/wp-json/wp/v2/media?parent=" + programId);
+
+            DeviceApiProgram.Links links = new DeviceApiProgram.Links();
+            links.setAttachmentUrls(List.of(attachmentUrl));
+
+            list.add(DeviceApiProgram.builder()
+                    .id(programId)
+                    .date(createdStr)
+                    .dateGmt(createdStr)
+                    .modified(modifiedStr)
+                    .modifiedGmt(modifiedStr)
+                    .type("program")
+                    .title(t)
+                    .links(links)
+                    .build());
+        }
+
+        return list;
     }
 
     @Override
     public List<DeviceApiMedia> getMedia(Integer parent) {
-        return List.of();
+        if (parent == null) {
+            return List.of();
+        }
+        DevicePrincipal devicePrincipal = (DevicePrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long deviceId = devicePrincipal.getDeviceId();
+
+        // /wp-json/wp/v2/media 必须返回可直接下载的 URL（CDN/对象存储公开地址），设备端不支持后端流式代理下载。
+        List<CoreDeviceProgramMediaDTO> media = coreProgramDistributionService.listDeviceProgramMedia(deviceId, parent);
+        if (media == null || media.isEmpty()) {
+            return List.of();
+        }
+
+        List<DeviceApiMedia> list = new ArrayList<>();
+        for (CoreDeviceProgramMediaDTO item : media) {
+            if (item == null || !StringUtils.isNotBlank(item.getUrl()) || item.getSizeBytes() == null || item.getSizeBytes() <= 0) {
+                continue;
+            }
+            list.add(DeviceApiMedia.builder()
+                    .attachmentFileSize(toIntSize(item.getSizeBytes()))
+                    .sourceUrl(item.getUrl())
+                    .build());
+        }
+        return list;
+    }
+
+    private String formatWpTime(OffsetDateTime time) {
+        if (time == null) {
+            return WP_TIME_FORMAT.format(OffsetDateTime.now(ZoneOffset.UTC));
+        }
+        return WP_TIME_FORMAT.format(time.withOffsetSameInstant(ZoneOffset.UTC));
+    }
+
+    private int toIntSize(long sizeBytes) {
+        if (sizeBytes <= 0) {
+            return 0;
+        }
+        if (sizeBytes > Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        return (int) sizeBytes;
     }
 
     @Override
@@ -129,7 +227,9 @@ public class DeviceInteractionController implements DeviceInteractionApi {
 
     @Override
     public String getSchedule() {
-        return "";
+        DevicePrincipal devicePrincipal = (DevicePrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long deviceId = devicePrincipal.getDeviceId();
+        return coreScheduleDistributionService.getDeviceScheduleJson(deviceId);
     }
 
     @Override

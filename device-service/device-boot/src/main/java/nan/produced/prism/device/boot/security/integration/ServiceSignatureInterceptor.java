@@ -4,6 +4,7 @@ import feign.RequestInterceptor;
 import feign.RequestTemplate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.device.boot.security.DeviceSecurityProps;
 import nan.produced.prism.device.common.exception.business.BusinessException;
 import nan.produced.prism.device.common.utils.SignatureUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,12 +31,12 @@ public class ServiceSignatureInterceptor implements RequestInterceptor {
     @Value("${spring.application.name}")
     private String serviceId;
 
-    @Value("${prism.security.service-signature.secret:}")
-    private String signatureSecret;
+    private final DeviceSecurityProps securityProps;
 
     @Override
     public void apply(RequestTemplate template) {
         try {
+            String signatureSecret = securityProps.getServiceSignature().getSecret();
             if (signatureSecret == null || signatureSecret.isBlank()) {
                 log.warn("服务签名密钥未配置，跳过签名");
                 return;

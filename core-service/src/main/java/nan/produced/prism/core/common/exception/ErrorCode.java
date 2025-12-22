@@ -73,6 +73,15 @@ public enum ErrorCode {
     MEDIA_INVALID_FOLDER_NAME("CORE-2707", "文件夹名称不合法", "文件夹名称不合法，请检查输入", HttpStatus.BAD_REQUEST, false),
     MEDIA_INVALID_MOVE_TARGET("CORE-2708", "移动目标不合法", "无法移动到目标位置", HttpStatus.BAD_REQUEST, false),
 
+    // ============ 节目相关 (CORE-28xx) ============
+    PROGRAM_NOT_FOUND("CORE-2800", "节目不存在", "节目不存在或无权访问", HttpStatus.NOT_FOUND, false),
+    PROGRAM_DRAFT_NOT_FOUND("CORE-2801", "节目草稿不存在", "草稿不存在或无权访问", HttpStatus.NOT_FOUND, false),
+    PROGRAM_VERSION_NOT_FOUND("CORE-2802", "节目版本不存在", "版本不存在或无权访问", HttpStatus.NOT_FOUND, false),
+    PROGRAM_VERSION_LIMIT_EXCEEDED("CORE-2803", "节目版本已达上限", "已达到版本上限（Lite=10）", HttpStatus.BAD_REQUEST, false),
+    PROGRAM_PUBLISH_TARGET_EMPTY("CORE-2804", "发布目标为空", "请选择至少一台设备", HttpStatus.BAD_REQUEST, false),
+    PROGRAM_VSN_JSON_INVALID("CORE-2805", "VSN JSON 不合法", "节目内容不合法，请检查后重试", HttpStatus.BAD_REQUEST, false),
+    PROGRAM_MATERIAL_INVALID("CORE-2806", "节目引用素材不合法", "节目引用的素材信息不完整，请重新上传或重试", HttpStatus.BAD_REQUEST, false),
+
     // ============ 系统异常 (SYS-5xxx) ============
     INTERNAL_SERVER_ERROR("SYS-5000", "系统内部错误", "服务器内部错误，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
     EXTERNAL_SERVICE_ERROR("SYS-5001", "外部服务调用失败", "依赖服务暂时不可用，请稍后重试", HttpStatus.BAD_GATEWAY, true);

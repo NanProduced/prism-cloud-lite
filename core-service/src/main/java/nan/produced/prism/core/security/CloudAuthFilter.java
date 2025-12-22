@@ -44,6 +44,19 @@ public class CloudAuthFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
+        String requestUri = httpRequest.getRequestURI();
+
+        // 内部接口不走 CLOUD_AUTH（由服务签名校验过滤器鉴权），避免 internal 调用被 401 拦截。
+        // 注意：internal 接口禁止承载面向用户的业务能力，仅用于微服务间只读/受控能力。
+        if (requestUri != null && requestUri.startsWith("/internal/")) {
+            try {
+                chain.doFilter(request, response);
+            } finally {
+                CloudAuthContext.clear();
+            }
+            return;
+        }
+
         String cloudAuthHeader = httpRequest.getHeader(CloudAuthHeaderParser.HEADER_NAME);
 
         // 如果没有 CLOUD_AUTH 头，返回 401（符合规范的统一响应格式）
