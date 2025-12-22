@@ -7,19 +7,19 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import nan.produced.prism.core.device.domain.command.DeviceActionBase;
 import nan.produced.prism.core.device.domain.command.DeviceActionType;
-import nan.produced.prism.core.device.domain.command.body.BrightnessBody;
+import nan.produced.prism.core.device.domain.command.body.TimezoneBody;
 
-@Schema(description = "亮度调节动作")
+@Schema(description = "时区/时间设置动作")
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class BrightnessAction extends DeviceActionBase {
+public class TimezoneAction extends DeviceActionBase {
 
     @Valid
     @NotNull
-    @Schema(description = "修改亮度操作参数", requiredMode = Schema.RequiredMode.REQUIRED)
-    private BrightnessBody body;
+    @Schema(description = "动作参数", requiredMode = Schema.RequiredMode.REQUIRED)
+    private TimezoneBody body;
 
-    public BrightnessAction() {
-        setType(DeviceActionType.BRIGHTNESS);
+    public TimezoneAction() {
+        setType(DeviceActionType.TIMEZONE);
     }
 }

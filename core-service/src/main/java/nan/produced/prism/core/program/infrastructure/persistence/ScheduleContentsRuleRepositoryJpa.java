@@ -12,4 +12,6 @@ public interface ScheduleContentsRuleRepositoryJpa extends JpaRepository<Schedul
     List<ScheduleContentsRuleEntity> findByScheduleIdOrderByPriorityAsc(UUID scheduleId);
 
     boolean existsByScheduleIdAndReleaseProgramId(UUID scheduleId, Integer releaseProgramId);
+
+    void deleteByScheduleId(UUID scheduleId);
 }

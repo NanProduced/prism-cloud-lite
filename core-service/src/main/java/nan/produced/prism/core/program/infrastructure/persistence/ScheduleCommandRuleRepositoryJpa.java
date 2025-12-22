@@ -10,5 +10,6 @@ import org.springframework.stereotype.Repository;
 public interface ScheduleCommandRuleRepositoryJpa extends JpaRepository<ScheduleCommandRuleEntity, Long> {
 
     List<ScheduleCommandRuleEntity> findByScheduleIdOrderByUpdatedAtDesc(UUID scheduleId);
-}
 
+    void deleteByScheduleId(UUID scheduleId);
+}

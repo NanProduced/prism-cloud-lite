@@ -13,12 +13,36 @@ import lombok.Getter;
 @Schema(description = "设备动作类型")
 public enum DeviceActionType {
 
-    @Schema(description = "亮度调节（PUT /api/brightness）")
-    BRIGHTNESS("/api/brightness", DeviceCommandMethod.PUT, DeviceActionTrackingLevel.PROPERTY_MATCH);
+    @Schema(description = "亮度调节（PUT api/brightness）")
+    BRIGHTNESS("api/brightness", DeviceCommandMethod.PUT, DeviceActionTrackingLevel.PROPERTY_MATCH),
 
+    @Schema(description = "电源控制-休眠/唤醒/重启 （POST api/action）")
+    POWER("api/action", DeviceCommandMethod.POST, DeviceActionTrackingLevel.PROPERTY_MATCH),
+
+    @Schema(description = "色温调节（PUT api/colortemp）")
+    COLOR_TEMP("api/colortemp", DeviceCommandMethod.PUT, DeviceActionTrackingLevel.PROPERTY_MATCH),
+
+    @Schema(description = "音量调节（PUT api/volume）")
+    VOLUME("api/volume", DeviceCommandMethod.PUT, DeviceActionTrackingLevel.PROPERTY_MATCH),
+
+    @Schema(description = "清除缓存（DELETE api/clrresunused）")
+    CLEAR_CACHE("api/clrresunused", DeviceCommandMethod.DELETE, DeviceActionTrackingLevel.PROPERTY_MATCH),
+
+    @Schema(description = "切换信号源:HDMI/DVI （PUT api/inputmode）")
+    INPUT_MODE("api/inputmode", DeviceCommandMethod.PUT, DeviceActionTrackingLevel.PROPERTY_MATCH),
+
+    @Schema(description = "时区/时间设置（PUT api/newrtc）")
+    TIMEZONE("api/newrtc", DeviceCommandMethod.PUT, DeviceActionTrackingLevel.PROPERTY_MATCH),
+
+    @Schema(description = "地区/语言设置（PUT api/locale）")
+    LOCALE("api/locale", DeviceCommandMethod.PUT, DeviceActionTrackingLevel.PROPERTY_MATCH),
+
+    @Schema(description = "素材/节目统计上报开关设置（PUT api/contentreport）")
+    CONTENT_REPORT_SWITCH("api/contentreport", DeviceCommandMethod.PUT, DeviceActionTrackingLevel.PROPERTY_MATCH);
 
     /**
      * 对应DeviceCommand.authorUrl
+     * <p>注意：由于设备端逻辑，url中的api前不需要加'/'</p>
      */
     private final String url;
 

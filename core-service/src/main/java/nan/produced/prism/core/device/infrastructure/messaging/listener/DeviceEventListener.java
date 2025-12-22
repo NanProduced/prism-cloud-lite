@@ -69,13 +69,7 @@ public class DeviceEventListener {
     @Async("deviceEventExecutor")
     @RabbitListener(queues = MessagingConstants.Queues.DEVICE_COMMAND)
     public void handleDeviceCommandEvent(DeviceEventMessage message) {
-        handleEvent(COMMAND_CATEGORY, message, () ->
-                deviceEventUseCase.handleCommandResult(
-                        message.getDeviceId(),
-                        message.getPayload().toString(),
-                        message.getTraceId()
-                )
-        );
+        handleEvent(COMMAND_CATEGORY, message, () -> deviceEventUseCase.handleCommandResult(message));
     }
 
     /**

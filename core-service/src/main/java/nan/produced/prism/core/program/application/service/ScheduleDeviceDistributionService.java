@@ -2,9 +2,8 @@ package nan.produced.prism.core.program.application.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -12,6 +11,10 @@ import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.util.JsonUtils;
+import nan.produced.prism.core.program.api.dto.internal.InternalDeviceScheduleCommandRuleResp;
+import nan.produced.prism.core.program.api.dto.internal.InternalDeviceScheduleContentsOperationResp;
+import nan.produced.prism.core.program.api.dto.internal.InternalDeviceScheduleContentsRuleResp;
+import nan.produced.prism.core.program.api.dto.internal.InternalDeviceSchedulesResp;
 import nan.produced.prism.core.program.domain.ProgramReleaseEntity;
 import nan.produced.prism.core.program.domain.schedule.ScheduleCommandRuleEntity;
 import nan.produced.prism.core.program.domain.schedule.ScheduleContentsRuleEntity;
@@ -36,6 +39,8 @@ import org.springframework.util.StringUtils;
 public class ScheduleDeviceDistributionService {
 
     private static final String EMPTY_SCHEDULE_JSON = "{\"contentsSchedule\":[],\"commandSchedule\":[]}";
+    private static final InternalDeviceSchedulesResp EMPTY_SCHEDULE =
+            InternalDeviceSchedulesResp.builder().contentsSchedule(List.of()).commandSchedule(List.of()).build();
 
     private final ScheduleDeviceBindingRepositoryJpa scheduleDeviceBindingRepositoryJpa;
     private final ScheduleRepositoryJpa scheduleRepositoryJpa;
@@ -44,53 +49,56 @@ public class ScheduleDeviceDistributionService {
     private final ProgramReleaseRepositoryJpa programReleaseRepositoryJpa;
 
     public String getDeviceScheduleJson(Long deviceId) {
-        if (deviceId == null || deviceId <= 0) {
+        InternalDeviceSchedulesResp resp = getDeviceSchedules(deviceId);
+        try {
+            return JsonUtils.getDefaultObjectMapper().writeValueAsString(resp);
+        } catch (Exception e) {
+            log.warn("ScheduleDeviceDistribution - serialize failed, deviceId={}", deviceId, e);
             return EMPTY_SCHEDULE_JSON;
+        }
+    }
+
+    public InternalDeviceSchedulesResp getDeviceSchedules(Long deviceId) {
+        if (deviceId == null || deviceId <= 0) {
+            return EMPTY_SCHEDULE;
         }
 
         ScheduleDeviceBindingEntity binding = scheduleDeviceBindingRepositoryJpa.findByDeviceId(deviceId).orElse(null);
         if (binding == null || binding.getScheduleId() == null) {
-            return EMPTY_SCHEDULE_JSON;
+            return EMPTY_SCHEDULE;
         }
 
         ScheduleEntity schedule = scheduleRepositoryJpa.findById(binding.getScheduleId()).orElse(null);
         if (schedule == null || !Boolean.TRUE.equals(schedule.getEnabled())) {
-            return EMPTY_SCHEDULE_JSON;
+            return EMPTY_SCHEDULE;
         }
 
         ObjectMapper objectMapper = JsonUtils.getDefaultObjectMapper();
-        ObjectNode root = objectMapper.createObjectNode();
-
-        ArrayNode contents = objectMapper.createArrayNode();
-        ArrayNode commands = objectMapper.createArrayNode();
+        List<InternalDeviceScheduleContentsRuleResp> contents = new ArrayList<>();
+        List<InternalDeviceScheduleCommandRuleResp> commands = new ArrayList<>();
 
         List<ScheduleContentsRuleEntity> contentRules = scheduleContentsRuleRepositoryJpa.findByScheduleIdOrderByPriorityAsc(binding.getScheduleId());
         Map<Integer, ProgramReleaseEntity> releaseById = loadReleases(contentRules);
 
         for (ScheduleContentsRuleEntity rule : contentRules) {
-            ObjectNode node = toDeviceContentsRule(objectMapper, rule, releaseById);
-            if (node != null) {
-                contents.add(node);
+            InternalDeviceScheduleContentsRuleResp resp = toDeviceContentsRule(objectMapper, rule, releaseById);
+            if (resp != null) {
+                contents.add(resp);
             }
         }
 
         List<ScheduleCommandRuleEntity> commandRules = scheduleCommandRuleRepositoryJpa.findByScheduleIdOrderByUpdatedAtDesc(binding.getScheduleId());
         for (ScheduleCommandRuleEntity rule : commandRules) {
-            JsonNode node = parseJson(objectMapper, rule != null ? rule.getPayloadJson() : null);
-            if (node != null && node.isObject()) {
-                commands.add(node);
+            InternalDeviceScheduleCommandRuleResp cmd = parseCommandRule(objectMapper, rule != null ? rule.getPayloadJson() : null);
+            if (cmd != null) {
+                commands.add(cmd);
             }
         }
 
-        root.set("contentsSchedule", contents);
-        root.set("commandSchedule", commands);
-
-        try {
-            return objectMapper.writeValueAsString(root);
-        } catch (Exception e) {
-            log.warn("ScheduleDeviceDistribution - serialize failed, deviceId={}, scheduleId={}", deviceId, binding.getScheduleId(), e);
-            return EMPTY_SCHEDULE_JSON;
-        }
+        return InternalDeviceSchedulesResp.builder()
+                .contentsSchedule(contents)
+                .commandSchedule(commands)
+                .build();
     }
 
     private Map<Integer, ProgramReleaseEntity> loadReleases(List<ScheduleContentsRuleEntity> rules) {
@@ -115,7 +123,10 @@ public class ScheduleDeviceDistributionService {
         return map;
     }
 
-    private ObjectNode toDeviceContentsRule(ObjectMapper objectMapper, ScheduleContentsRuleEntity rule, Map<Integer, ProgramReleaseEntity> releaseById) {
+    private InternalDeviceScheduleContentsRuleResp toDeviceContentsRule(
+            ObjectMapper objectMapper,
+            ScheduleContentsRuleEntity rule,
+            Map<Integer, ProgramReleaseEntity> releaseById) {
         if (objectMapper == null || rule == null || rule.getReleaseProgramId() == null) {
             return null;
         }
@@ -137,48 +148,47 @@ public class ScheduleDeviceDistributionService {
 
         int typePriority = "spot".equals(type) ? 100 : 200;
 
-        ObjectNode node = objectMapper.createObjectNode();
-        node.put("type_priority", typePriority);
-        node.put("priority", rule.getPriority() != null ? rule.getPriority() : 0);
-
         boolean ifLimitTime = Boolean.TRUE.equals(rule.getIfLimitTime());
-        node.put("if_limit_time", ifLimitTime);
+        JsonNode limitTime = null;
         if (ifLimitTime) {
-            JsonNode limitTime = parseJson(objectMapper, rule.getLimitTime());
-            if (limitTime != null && limitTime.isObject()) {
-                node.set("limit_time", limitTime);
-            }
+            JsonNode node = parseJson(objectMapper, rule.getLimitTime());
+            limitTime = node != null && node.isObject() ? node : null;
         }
 
         boolean ifLimitDate = Boolean.TRUE.equals(rule.getIfLimitDate());
-        node.put("if_limit_date", ifLimitDate);
+        JsonNode limitDate = null;
         if (ifLimitDate) {
-            JsonNode limitDate = parseJson(objectMapper, rule.getLimitDate());
-            if (limitDate != null && limitDate.isObject()) {
-                node.set("limit_date", limitDate);
-            }
+            JsonNode node = parseJson(objectMapper, rule.getLimitDate());
+            limitDate = node != null && node.isObject() ? node : null;
         }
 
         boolean ifLimitWeekday = Boolean.TRUE.equals(rule.getIfLimitWeekday());
-        node.put("if_limit_weekday", ifLimitWeekday);
+        JsonNode limitWeekday = null;
         if (ifLimitWeekday) {
-            JsonNode limitWeekday = parseJson(objectMapper, rule.getLimitWeekday());
-            if (limitWeekday != null && limitWeekday.isArray()) {
-                node.set("limit_weekday", limitWeekday);
-            }
+            JsonNode node = parseJson(objectMapper, rule.getLimitWeekday());
+            limitWeekday = node != null && node.isArray() ? node : null;
         }
 
-        ObjectNode operation = objectMapper.createObjectNode();
-        operation.put("id", release.getDeviceProgramId());
-        operation.put("name", release.getDeviceTitleSnapshot() != null ? release.getDeviceTitleSnapshot() : "");
-        operation.put("vsn", vsn);
-        operation.put("source", "internet");
+        InternalDeviceScheduleContentsOperationResp operation = InternalDeviceScheduleContentsOperationResp.builder()
+                .id(release.getDeviceProgramId())
+                .name(release.getDeviceTitleSnapshot() != null ? release.getDeviceTitleSnapshot() : "")
+                .vsn(vsn)
+                .source("internet")
+                .build();
 
-        node.set("operation", operation);
-        node.put("type", type);
-        node.put("name", "Play_Program");
-
-        return node;
+        return InternalDeviceScheduleContentsRuleResp.builder()
+                .typePriority(typePriority)
+                .priority(rule.getPriority() != null ? rule.getPriority() : 0)
+                .ifLimitTime(ifLimitTime)
+                .limitTime(limitTime)
+                .ifLimitDate(ifLimitDate)
+                .limitDate(limitDate)
+                .ifLimitWeekday(ifLimitWeekday)
+                .limitWeekday(limitWeekday)
+                .operation(operation)
+                .type(type)
+                .name("Play_Program")
+                .build();
     }
 
     private JsonNode parseJson(ObjectMapper objectMapper, String json) {
@@ -187,6 +197,17 @@ public class ScheduleDeviceDistributionService {
         }
         try {
             return objectMapper.readTree(json);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private InternalDeviceScheduleCommandRuleResp parseCommandRule(ObjectMapper objectMapper, String json) {
+        if (objectMapper == null || !StringUtils.hasText(json)) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json, InternalDeviceScheduleCommandRuleResp.class);
         } catch (Exception e) {
             return null;
         }
@@ -208,4 +229,3 @@ public class ScheduleDeviceDistributionService {
                 + ".vsn";
     }
 }
-

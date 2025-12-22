@@ -1,4 +1,4 @@
-package nan.produced.prism.core.program.application.port.inbound;
+package nan.produced.prism.core.common.api;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -10,4 +10,3 @@ public interface ProgramDownloadProgressUseCase {
 
     void handleDownloadingProgress(Long deviceId, UUID userId, String reportData, Instant occurredAt, String traceId);
 }
-

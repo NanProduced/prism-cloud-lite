@@ -7,19 +7,20 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import nan.produced.prism.core.device.domain.command.DeviceActionBase;
 import nan.produced.prism.core.device.domain.command.DeviceActionType;
-import nan.produced.prism.core.device.domain.command.body.BrightnessBody;
+import nan.produced.prism.core.device.domain.command.body.InputModeBody;
 
-@Schema(description = "亮度调节动作")
+@Schema(description = "信号源切换动作")
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class BrightnessAction extends DeviceActionBase {
+public class InputModeAction extends DeviceActionBase {
 
     @Valid
     @NotNull
-    @Schema(description = "修改亮度操作参数", requiredMode = Schema.RequiredMode.REQUIRED)
-    private BrightnessBody body;
+    @Schema(description = "修改信号源操作参数", requiredMode = Schema.RequiredMode.REQUIRED)
+    private InputModeBody body;
 
-    public BrightnessAction() {
-        setType(DeviceActionType.BRIGHTNESS);
+    public InputModeAction() {
+        setType(DeviceActionType.INPUT_MODE);
     }
+
 }

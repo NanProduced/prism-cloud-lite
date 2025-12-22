@@ -70,6 +70,13 @@ public final class MessagingConstants {
         }
     }
 
+    public static final class CommandTypes {
+
+        public static final String CONFIRM = "confirm";
+
+        public static final String EXPIRED = "expired";
+    }
+
     public static final class DeviceEventTypes {
 
         /**

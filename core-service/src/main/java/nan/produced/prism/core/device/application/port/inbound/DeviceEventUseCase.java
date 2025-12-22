@@ -26,11 +26,9 @@ public interface DeviceEventUseCase {
     /**
      * 处理设备指令执行结果
      *
-     * @param deviceId 设备ID
-     * @param commandResult 指令执行结果
-     * @param traceId 追踪ID
+     * @param message 设备事件消息
      */
-    void handleCommandResult(Long deviceId, String commandResult, String traceId);
+    void handleCommandResult(DeviceEventMessage message);
 
     /**
      * 处理设备事件消息

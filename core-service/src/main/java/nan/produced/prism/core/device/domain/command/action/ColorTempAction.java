@@ -7,19 +7,21 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import nan.produced.prism.core.device.domain.command.DeviceActionBase;
 import nan.produced.prism.core.device.domain.command.DeviceActionType;
-import nan.produced.prism.core.device.domain.command.body.BrightnessBody;
+import nan.produced.prism.core.device.domain.command.body.ColorTempBody;
 
-@Schema(description = "亮度调节动作")
+@Schema(description = "修改色温动作")
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class BrightnessAction extends DeviceActionBase {
+public class ColorTempAction extends DeviceActionBase {
 
     @Valid
     @NotNull
-    @Schema(description = "修改亮度操作参数", requiredMode = Schema.RequiredMode.REQUIRED)
-    private BrightnessBody body;
+    @Schema(description = "修改色温操作参数", requiredMode = Schema.RequiredMode.REQUIRED)
+    private ColorTempBody body;
 
-    public BrightnessAction() {
-        setType(DeviceActionType.BRIGHTNESS);
+    public ColorTempAction() {
+        setType(DeviceActionType.COLOR_TEMP);
     }
+
+
 }

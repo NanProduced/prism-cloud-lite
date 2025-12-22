@@ -8,18 +8,52 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import nan.produced.prism.core.device.domain.command.action.BrightnessAction;
+import nan.produced.prism.core.device.domain.command.action.ClearCacheAction;
+import nan.produced.prism.core.device.domain.command.action.ColorTempAction;
+import nan.produced.prism.core.device.domain.command.action.ContentReportSwitchAction;
+import nan.produced.prism.core.device.domain.command.action.InputModeAction;
+import nan.produced.prism.core.device.domain.command.action.LocaleAction;
+import nan.produced.prism.core.device.domain.command.action.PowerAction;
+import nan.produced.prism.core.device.domain.command.action.TimezoneAction;
+import nan.produced.prism.core.device.domain.command.action.VolumeAction;
 
 @Schema(
         description = "设备动作（单入口多动作）",
         discriminatorProperty = "type",
-        oneOf = {BrightnessAction.class},
+        oneOf = {
+                BrightnessAction.class,
+                PowerAction.class,
+                ColorTempAction.class,
+                VolumeAction.class,
+                ClearCacheAction.class,
+                InputModeAction.class,
+                TimezoneAction.class,
+                LocaleAction.class,
+                ContentReportSwitchAction.class
+        },
         discriminatorMapping = {
-                @DiscriminatorMapping(value = "BRIGHTNESS", schema = BrightnessAction.class)
+                @DiscriminatorMapping(value = "BRIGHTNESS", schema = BrightnessAction.class),
+                @DiscriminatorMapping(value = "POWER", schema = PowerAction.class),
+                @DiscriminatorMapping(value = "COLOR_TEMP", schema = ColorTempAction.class),
+                @DiscriminatorMapping(value = "VOLUME", schema = VolumeAction.class),
+                @DiscriminatorMapping(value = "CLEAR_CACHE", schema = ClearCacheAction.class),
+                @DiscriminatorMapping(value = "INPUT_MODE", schema = InputModeAction.class),
+                @DiscriminatorMapping(value = "TIMEZONE", schema = TimezoneAction.class),
+                @DiscriminatorMapping(value = "LOCALE", schema = LocaleAction.class),
+                @DiscriminatorMapping(value = "CONTENT_REPORT_SWITCH", schema = ContentReportSwitchAction.class)
         }
 )
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
 @JsonSubTypes({
-        @JsonSubTypes.Type(value = BrightnessAction.class, name = "BRIGHTNESS")
+        @JsonSubTypes.Type(value = BrightnessAction.class, name = "BRIGHTNESS"),
+        @JsonSubTypes.Type(value = PowerAction.class, name = "POWER"),
+        @JsonSubTypes.Type(value = ColorTempAction.class, name = "COLOR_TEMP"),
+        @JsonSubTypes.Type(value = VolumeAction.class, name = "VOLUME"),
+        @JsonSubTypes.Type(value = ClearCacheAction.class, name = "CLEAR_CACHE"),
+        @JsonSubTypes.Type(value = InputModeAction.class, name = "INPUT_MODE"),
+        @JsonSubTypes.Type(value = TimezoneAction.class, name = "TIMEZONE"),
+        @JsonSubTypes.Type(value = LocaleAction.class, name = "LOCALE"),
+        @JsonSubTypes.Type(value = ContentReportSwitchAction.class, name = "CONTENT_REPORT_SWITCH")
 })
 @Data
 public abstract class DeviceActionBase {

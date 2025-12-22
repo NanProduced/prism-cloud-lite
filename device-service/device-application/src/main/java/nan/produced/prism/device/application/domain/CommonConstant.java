@@ -41,8 +41,6 @@ public class CommonConstant {
 
     public static final class Command {
 
-        public static final String COMMAND_FEEDBACK = "commandFeedback";
-
         public static final String CONFIRM = "confirm";
 
         public static final String EXPIRED = "expired";

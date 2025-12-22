@@ -8,10 +8,10 @@ import nan.produced.prism.core.common.messaging.DeviceEventMessage;
 import nan.produced.prism.core.common.messaging.FrontendEventMessage;
 import nan.produced.prism.core.common.messaging.MessagingConstants;
 import nan.produced.prism.core.common.messaging.RabbitMessagePublisher;
+import nan.produced.prism.core.common.api.ProgramDownloadProgressUseCase;
 import nan.produced.prism.core.device.application.port.inbound.DeviceEventUseCase;
 import nan.produced.prism.core.device.application.port.outbound.DevicePropertiesPort;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
-import nan.produced.prism.core.program.application.port.inbound.ProgramDownloadProgressUseCase;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -86,13 +86,14 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
     /**
      * 处理设备指令执行结果
      *
-     * @param deviceId 设备ID
-     * @param commandResult 指令执行结果
-     * @param traceId 追踪ID
+     * @param message 设备事件消息
      */
     @Override
-    public void handleCommandResult(Long deviceId, String commandResult, String traceId) {
-        log.debug("处理指令执行结果: deviceId={}, traceId={}", deviceId, traceId);
+    public void handleCommandResult(DeviceEventMessage message) {
+
+        switch (message.getEventType()) {
+
+        }
 
         // TODO: 实现指令执行结果处理逻辑
         // 1. 解析指令执行结果

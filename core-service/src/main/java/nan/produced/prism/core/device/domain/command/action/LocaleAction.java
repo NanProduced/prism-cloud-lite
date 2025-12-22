@@ -7,19 +7,19 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import nan.produced.prism.core.device.domain.command.DeviceActionBase;
 import nan.produced.prism.core.device.domain.command.DeviceActionType;
-import nan.produced.prism.core.device.domain.command.body.BrightnessBody;
+import nan.produced.prism.core.device.domain.command.body.LocaleBody;
 
-@Schema(description = "亮度调节动作")
+@Schema(description = "地区/语言切换动作")
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class BrightnessAction extends DeviceActionBase {
+public class LocaleAction extends DeviceActionBase {
 
     @Valid
     @NotNull
-    @Schema(description = "修改亮度操作参数", requiredMode = Schema.RequiredMode.REQUIRED)
-    private BrightnessBody body;
+    @Schema(description = "地区/语言切换参数", requiredMode = Schema.RequiredMode.REQUIRED)
+    private LocaleBody body;
 
-    public BrightnessAction() {
-        setType(DeviceActionType.BRIGHTNESS);
+    public LocaleAction() {
+        setType(DeviceActionType.LOCALE);
     }
 }

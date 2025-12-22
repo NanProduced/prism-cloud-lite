@@ -126,7 +126,7 @@ public class RedisKeyExpirationListener implements MessageListener {
         Map<String, Object> payload = Map.of(CommonConstant.Command.QUEUE_ID, queueId);
         DeviceEventMessage eventMessage = DeviceEventMessage.builder()
                 .deviceId(deviceId)
-                .eventType(CommonConstant.Command.COMMAND_FEEDBACK)
+                .eventType(CommonConstant.Command.EXPIRED)
                 .payload(payload)
                 .retryable(true)
                 .build();

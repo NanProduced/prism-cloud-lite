@@ -57,7 +57,7 @@ public class DeviceCommandApplicationService implements DeviceCommandUseCase {
     public void confirmCommand(Long deviceId, Integer queueId, String result) {
         DeviceCommand command = deviceCommandQueuePort.removeCommand(deviceId, queueId);
         if (command != null) {
-            deviceEventPublisherPort.publishCommand(CommonConstant.Command.CONFIRM, buildDeviceConfirmEvent(command.getCommandId(), command.getDeviceId()));
+            deviceEventPublisherPort.publishCommand(CommonConstant.Command.CONFIRM, buildDeviceConfirmEvent(command.getCommandId(), command.getDeviceId(), command.getQueueId()));
         }
     }
 
@@ -102,11 +102,14 @@ public class DeviceCommandApplicationService implements DeviceCommandUseCase {
         }
     }
 
-    private DeviceEventMessage buildDeviceConfirmEvent(String commandId, Long deviceId) {
-        Map<String, Object> payload = Map.of(CommonConstant.Command.COMMAND_ID, commandId);
+    private DeviceEventMessage buildDeviceConfirmEvent(String commandId, Long deviceId, Integer queueId) {
+        Map<String, Object> payload = Map.of(
+                CommonConstant.Command.COMMAND_ID, commandId,
+                CommonConstant.Command.QUEUE_ID, queueId
+        );
         return DeviceEventMessage.builder()
                 .deviceId(deviceId)
-                .eventType(CommonConstant.Command.COMMAND_FEEDBACK)
+                .eventType(CommonConstant.Command.CONFIRM)
                 .payload(payload)
                 .retryable(true)
                 .build();

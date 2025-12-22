@@ -82,6 +82,13 @@ public enum ErrorCode {
     PROGRAM_VSN_JSON_INVALID("CORE-2805", "VSN JSON 不合法", "节目内容不合法，请检查后重试", HttpStatus.BAD_REQUEST, false),
     PROGRAM_MATERIAL_INVALID("CORE-2806", "节目引用素材不合法", "节目引用的素材信息不完整，请重新上传或重试", HttpStatus.BAD_REQUEST, false),
 
+    // ============ 排程相关 (CORE-29xx) ============
+    SCHEDULE_NOT_FOUND("CORE-2900", "排程不存在", "排程不存在或无权访问", HttpStatus.NOT_FOUND, false),
+    SCHEDULE_NAME_REQUIRED("CORE-2901", "排程名称不能为空", "请输入排程名称", HttpStatus.BAD_REQUEST, false),
+    SCHEDULE_RELEASE_NOT_FOUND("CORE-2902", "排程引用的节目版本不存在", "请先发布节目后再配置排程", HttpStatus.BAD_REQUEST, false),
+    SCHEDULE_RULE_INVALID("CORE-2903", "排程规则不合法", "排程规则不合法，请检查后重试", HttpStatus.BAD_REQUEST, false),
+    SCHEDULE_CONTENTS_PRIORITY_DUPLICATE("CORE-2904", "排程节目规则 priority 重复", "priority 不允许重复，请调整后重试", HttpStatus.BAD_REQUEST, false),
+
     // ============ 系统异常 (SYS-5xxx) ============
     INTERNAL_SERVER_ERROR("SYS-5000", "系统内部错误", "服务器内部错误，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
     EXTERNAL_SERVICE_ERROR("SYS-5001", "外部服务调用失败", "依赖服务暂时不可用，请稍后重试", HttpStatus.BAD_GATEWAY, true);
