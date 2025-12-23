@@ -15,6 +15,7 @@ import nan.produced.prism.core.device.application.port.outbound.DeviceCommandFee
 import nan.produced.prism.core.device.application.port.outbound.DevicePropertiesPort;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
 import nan.produced.prism.core.device.domain.DeviceProperties;
+import nan.produced.prism.core.telemetry.api.DeviceOnlineTimeFacade;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -43,6 +44,8 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
     private final DeviceScreenshotApplicationService deviceScreenshotApplicationService;
 
     private final ProgramDownloadProgressUseCase programDownloadProgressApplicationService;
+
+    private final DeviceOnlineTimeFacade deviceOnlineTimeFacade;
 
     private final RabbitMessagePublisher rabbitMessagePublisher;
 
@@ -309,8 +312,22 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
      * @param traceId 追踪ID
      */
     private void handleOnlineTime(Long deviceId, Map<String, Object> payload, String traceId) {
-        Long onlineTime = getLong(payload, "onlineTime");
-        Long offlineTime = getLong(payload, "offlineTime");
+        if (deviceId == null || payload == null) {
+            return;
+        }
+
+        long onlineTime = getLong(payload, "onlineTime");
+        long offlineTime = getLong(payload, "offlineTime");
+
+        UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);
+        if (userId == null) {
+            log.warn("OnlineTime - 未找到设备所属用户，跳过落库: deviceId={}, traceId={}", deviceId, traceId);
+            return;
+        }
+
+        Instant onlineAt = Instant.ofEpochMilli(onlineTime);
+        Instant offlineAt = Instant.ofEpochMilli(offlineTime);
+        deviceOnlineTimeFacade.recordOnlineSession(userId, deviceId, onlineAt, offlineAt, traceId);
     }
 
     private String getString(Map<String, Object> payload, String key) {
