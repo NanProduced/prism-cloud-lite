@@ -18,7 +18,7 @@ public class DeviceApiMedia {
     @JsonProperty("attachment_filesize")
     private Integer attachmentFileSize;
 
-    @Schema(description = "文件命名格式为XXX_文件MD5_文件字节数.vsn")
+    @Schema(description = "文件命名格式为XXX_文件MD5_文件字节数.ext")
     @JsonProperty("source_url")
     private String sourceUrl;
 }

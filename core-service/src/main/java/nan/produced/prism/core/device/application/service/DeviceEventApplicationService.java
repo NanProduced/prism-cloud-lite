@@ -1,5 +1,6 @@
 package nan.produced.prism.core.device.application.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.BizException;
@@ -10,17 +11,21 @@ import nan.produced.prism.core.common.messaging.MessagingConstants;
 import nan.produced.prism.core.common.messaging.RabbitMessagePublisher;
 import nan.produced.prism.core.common.api.ProgramDownloadProgressUseCase;
 import nan.produced.prism.core.common.util.JsonUtils;
+import nan.produced.prism.core.device.application.converter.DeviceLogConverter;
 import nan.produced.prism.core.device.application.port.inbound.DeviceEventUseCase;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCommandFeedBackPort;
 import nan.produced.prism.core.device.application.port.outbound.DevicePropertiesPort;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
 import nan.produced.prism.core.device.domain.DeviceProperties;
+import nan.produced.prism.core.device.domain.report.log.DeviceLog;
+import nan.produced.prism.core.device.domain.report.log.DeviceLogEntity;
 import nan.produced.prism.core.telemetry.api.DeviceOnlineTimeFacade;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -46,6 +51,8 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
     private final ProgramDownloadProgressUseCase programDownloadProgressApplicationService;
 
     private final DeviceOnlineTimeFacade deviceOnlineTimeFacade;
+
+    private final DeviceLogConverter deviceLogConverter;
 
     private final RabbitMessagePublisher rabbitMessagePublisher;
 
@@ -248,12 +255,10 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
      */
     private void handleDeviceLog(Long deviceId, String logs, String traceId) {
         log.debug("处理设备日志上报: deviceId={}, traceId={}", deviceId, traceId);
+        List<DeviceLog> deviceLogs = JsonUtils.fromJson(logs, new TypeReference<List<DeviceLog>>() {});
+        List<DeviceLogEntity> deviceLogEntities = deviceLogConverter.convert(deviceLogs, deviceId);
 
-        // TODO: 实现设备日志处理逻辑
-        // 1. 解析日志数据
-        // 2. 存储日志到日志系统（或对象存储）
-        // 3. 分析日志提取错误信息
-        // 4. 触发告警（如果有严重错误）
+        // TODO: 存储到数据库
     }
 
     /**

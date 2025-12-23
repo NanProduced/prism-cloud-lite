@@ -1,11 +1,10 @@
 package nan.produced.prism.device.infrastructure.storage.s3;
 
 import java.time.Instant;
-import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import nan.produced.prism.device.common.utils.ContentTypeUtils;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -24,7 +23,7 @@ public class DeviceScreenshotS3Uploader {
             throw new IllegalArgumentException("deviceId/bytes is required");
         }
 
-        String normalizedContentType = normalizeContentType(contentType);
+        String normalizedContentType = ContentTypeUtils.normalize(contentType, "image/jpeg");
 
         String deviceFolderKey = folderKey(deviceId);
         ensureFolder(deviceFolderKey);
@@ -57,39 +56,9 @@ public class DeviceScreenshotS3Uploader {
     }
 
     private String buildObjectKey(Long deviceId, String contentType) {
-        String ext = guessExtension(contentType);
+        String ext = ContentTypeUtils.guessExtensionOrDefault(contentType, "bin");
         String filename = Instant.now().toEpochMilli() + "-" + UUID.randomUUID() + "." + ext;
         return ROOT_PREFIX + "/" + deviceId + "/" + filename;
-    }
-
-    private String normalizeContentType(String contentType) {
-        if (!StringUtils.hasText(contentType)) {
-            return "image/jpeg";
-        }
-        return contentType.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private String guessExtension(String contentType) {
-        if (!StringUtils.hasText(contentType)) {
-            return "jpeg";
-        }
-        String ct = contentType.toLowerCase(Locale.ROOT);
-        if (ct.contains("png")) {
-            return "png";
-        }
-        if (ct.contains("webp")) {
-            return "webp";
-        }
-        if (ct.contains("gif")) {
-            return "gif";
-        }
-        if (ct.contains("bmp")) {
-            return "bmp";
-        }
-        if (ct.contains("jpeg") || ct.contains("jpg")) {
-            return "jpeg";
-        }
-        return "bin";
     }
 
     /**
@@ -102,4 +71,3 @@ public class DeviceScreenshotS3Uploader {
     public record UploadResult(String s3Key, long sizeBytes, String contentType, Instant uploadedAt) {
     }
 }
-

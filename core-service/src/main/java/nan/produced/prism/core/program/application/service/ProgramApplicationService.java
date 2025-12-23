@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.dataformat.xml.JacksonXmlModule;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -21,12 +23,16 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.core.common.config.StoragePathProperties;
 import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.exception.InfraException;
 import nan.produced.prism.core.common.response.ApiResponse;
+import nan.produced.prism.core.common.util.ContentTypeUtils;
 import nan.produced.prism.core.common.util.IdGenerator;
+import nan.produced.prism.core.common.util.FileNameUtils;
 import nan.produced.prism.core.common.util.JsonUtils;
+import nan.produced.prism.core.common.util.ObjectKeyUtils;
 import nan.produced.prism.core.integration.device.client.DeviceInternalClient;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandReq;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandResp;
@@ -95,6 +101,7 @@ public class ProgramApplicationService {
     private final MediaAssetRepository mediaAssetRepository;
     private final DeviceInternalClient deviceInternalClient;
     private final MediaObjectUrlPort mediaObjectUrlPort;
+    private final StoragePathProperties storagePathProperties;
     private final S3Client s3Client;
 
     @Value("${prism.media.s3.bucket}")
@@ -725,7 +732,7 @@ public class ProgramApplicationService {
         if (!(root instanceof ObjectNode)) {
             throw new BizException(ErrorCode.PROGRAM_VSN_JSON_INVALID, "vsnJson root must be an object");
         }
-        if (((ObjectNode) root).get("Programs") == null) {
+        if (root.get(ProgramVsnConstants.KEY_PROGRAMS) == null) {
             throw new BizException(ErrorCode.PROGRAM_VSN_JSON_INVALID, "vsnJson must contain root.Programs");
         }
 
@@ -734,7 +741,7 @@ public class ProgramApplicationService {
 
         Map<String, MaterialFile> materialById = new HashMap<>();
         for (String resourceId : resourceIds) {
-            if (!StringUtils.hasText(resourceId) || "0".equals(resourceId)) {
+            if (!StringUtils.hasText(resourceId) || ProgramVsnConstants.RESOURCE_ID_EMPTY.equals(resourceId)) {
                 continue;
             }
 
@@ -752,14 +759,15 @@ public class ProgramApplicationService {
                 throw new BizException(ErrorCode.PROGRAM_MATERIAL_INVALID, "material md5/size is required: " + resourceId);
             }
 
-            String md5 = originalFile.getMd5().trim().toLowerCase(Locale.ROOT);
+            String md5 = originalFile.getMd5().trim().toUpperCase(Locale.ROOT);
             long sizeBytes = originalFile.getSize();
-            String contentType = StringUtils.hasText(originalFile.getMimeType()) ? originalFile.getMimeType().trim() : "application/octet-stream";
-            String ext = guessMediaExtension(originalFile);
+            String contentType = ContentTypeUtils.normalize(originalFile.getMimeType(), "application/octet-stream");
+            String ext = FileNameUtils.resolveExtensionOrDefault(originalFile.getS3Key(), contentType, "bin");
 
-            String originName = "F_" + md5 + "_" + sizeBytes;
-            String filename = originName + "." + ext;
-            String filePath = ".\\_Res_.files\\" + filename;
+            String fileBaseName = "F_" + md5 + "_" + sizeBytes;
+            String filename = fileBaseName + "." + ext;
+            String filePath = storagePathProperties.getProgram().getVsnResFilesPath() + filename;
+            String originName = resourceId;
 
             materialById.put(resourceId, new MaterialFile(
                     resourceId,
@@ -773,6 +781,7 @@ public class ProgramApplicationService {
         }
 
         fillFileSources(root, materialById);
+        removeInternalFields(root);
 
         String frozenVsnJson;
         try {
@@ -851,18 +860,18 @@ public class ProgramApplicationService {
     private CoverInfo buildReleaseCover(UUID programId, int version, ProgramPublishReq req, ProgramDraftEntity draft) {
         if (StringUtils.hasText(req.getCoverBase64())) {
             CoverUpload coverUpload = parseCover(req.getCoverBase64(), req.getCoverContentType());
-            String normalized = normalizeContentType(coverUpload.contentType());
-            String ext = guessExtension(normalized);
-            String objectKey = "program/" + programId + "/release/v" + version + "/cover." + ext;
+            String normalized = ContentTypeUtils.normalize(coverUpload.contentType(), "application/octet-stream");
+            String ext = ContentTypeUtils.guessExtensionOrDefault(normalized, "bin");
+            String objectKey = buildReleaseObjectKey(programId, version, "cover." + ext);
 
             putObject(objectKey, coverUpload.bytes(), normalized);
             return new CoverInfo(objectKey, normalized, (long) coverUpload.bytes().length);
         }
 
         if (draft != null && StringUtils.hasText(draft.getCoverObjectKey())) {
-            String normalized = normalizeContentType(draft.getCoverContentType());
-            String ext = guessExtension(normalized);
-            String objectKey = "program/" + programId + "/release/v" + version + "/cover." + ext;
+            String normalized = ContentTypeUtils.normalize(draft.getCoverContentType(), "application/octet-stream");
+            String ext = ContentTypeUtils.guessExtensionOrDefault(normalized, "bin");
+            String objectKey = buildReleaseObjectKey(programId, version, "cover." + ext);
             copyObject(draft.getCoverObjectKey(), objectKey);
             return new CoverInfo(objectKey, normalized, draft.getCoverSizeBytes());
         }
@@ -897,9 +906,20 @@ public class ProgramApplicationService {
     }
 
     private String putReleaseObject(UUID programId, int version, String filename, byte[] bytes, String contentType) {
-        String objectKey = "program/" + programId + "/release/v" + version + "/" + filename;
+        String objectKey = buildReleaseObjectKey(programId, version, filename);
         putObject(objectKey, bytes, contentType);
         return objectKey;
+    }
+
+    private String buildReleaseObjectKey(UUID programId, int version, String filename) {
+        StoragePathProperties.Program program = storagePathProperties.getProgram();
+        String versionDir = program.getReleaseVersionPrefix() + version;
+        return ObjectKeyUtils.join(
+                program.getRootPrefix(),
+                programId.toString(),
+                program.getReleaseDir(),
+                versionDir,
+                filename);
     }
 
     private void collectResourceIds(JsonNode node, Set<String> out) {
@@ -908,16 +928,16 @@ public class ProgramApplicationService {
         }
         if (node.isObject()) {
             var obj = (ObjectNode) node;
-            JsonNode idNode = obj.get("Resource_ID");
+            JsonNode idNode = obj.get(ProgramVsnConstants.KEY_RESOURCE_ID);
             if (idNode != null && !idNode.isNull() && idNode.isValueNode()) {
                 String id = idNode.asText();
-                if (StringUtils.hasText(id) && !"0".equals(id)) {
+                if (StringUtils.hasText(id) && !ProgramVsnConstants.RESOURCE_ID_EMPTY.equals(id)) {
                     out.add(id);
                 }
             }
 
             obj.fieldNames().forEachRemaining(field -> {
-                if (field != null && field.startsWith("__")) {
+                if (field != null && field.startsWith(ProgramVsnConstants.INTERNAL_FIELD_PREFIX)) {
                     return;
                 }
                 collectResourceIds(obj.get(field), out);
@@ -940,17 +960,17 @@ public class ProgramApplicationService {
         if (node.isObject()) {
             ObjectNode obj = (ObjectNode) node;
 
-            JsonNode idNode = obj.get("Resource_ID");
+            JsonNode idNode = obj.get(ProgramVsnConstants.KEY_RESOURCE_ID);
             if (idNode != null && !idNode.isNull() && idNode.isValueNode()) {
                 String resourceId = idNode.asText();
-                if (StringUtils.hasText(resourceId) && !"0".equals(resourceId)) {
+                if (StringUtils.hasText(resourceId) && !ProgramVsnConstants.RESOURCE_ID_EMPTY.equals(resourceId)) {
                     MaterialFile material = materialsById.get(resourceId);
                     if (material == null) {
                         throw new BizException(ErrorCode.MEDIA_ASSET_NOT_FOUND, "material not found: " + resourceId);
                     }
-                    putIfBlank(obj, "IsRelative", "1");
-                    putIfBlank(obj, "OriginName", material.originName());
-                    putIfBlank(obj, "FilePath", material.filePath());
+                    obj.put(ProgramVsnConstants.KEY_IS_RELATIVE, ProgramVsnConstants.FLAG_TRUE);
+                    obj.put(ProgramVsnConstants.KEY_ORIGIN_NAME, material.originName());
+                    obj.put(ProgramVsnConstants.KEY_FILE_PATH, material.filePath());
                 }
             }
 
@@ -958,7 +978,7 @@ public class ProgramApplicationService {
             java.util.List<String> keys = new java.util.ArrayList<>();
             obj.fieldNames().forEachRemaining(keys::add);
             for (String key : keys) {
-                if (key != null && key.startsWith("__")) {
+                if (key != null && key.startsWith(ProgramVsnConstants.INTERNAL_FIELD_PREFIX)) {
                     continue;
                 }
                 fillFileSources(obj.get(key), materialsById);
@@ -974,93 +994,56 @@ public class ProgramApplicationService {
         }
     }
 
-    private void putIfBlank(ObjectNode obj, String field, String value) {
-        if (obj == null || !StringUtils.hasText(field)) {
-            return;
-        }
-        JsonNode current = obj.get(field);
-        if (current == null || current.isNull() || (current.isValueNode() && !StringUtils.hasText(current.asText()))) {
-            obj.put(field, value);
-        }
-    }
-
     private String renderVsnXml(JsonNode root) {
         if (!(root instanceof ObjectNode obj)) {
             throw new BizException(ErrorCode.PROGRAM_VSN_JSON_INVALID, "vsnJson root must be an object");
         }
-        JsonNode programs = obj.get("Programs");
-        if (programs == null) {
+        JsonNode programs = obj.get(ProgramVsnConstants.KEY_PROGRAMS);
+        if (programs == null || programs.isNull()) {
             throw new BizException(ErrorCode.PROGRAM_VSN_JSON_INVALID, "vsnJson must contain Programs");
         }
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n\n");
-        renderXmlTag(sb, "Programs", programs, 0);
-        return sb.toString();
+        ObjectMapper jsonMapper = JsonUtils.getDefaultObjectMapper();
+        Object value = jsonMapper.convertValue(programs, Object.class);
+
+        JacksonXmlModule module = new JacksonXmlModule();
+        module.setDefaultUseWrapper(false);
+        XmlMapper xmlMapper = new XmlMapper(module);
+
+        try {
+            String xmlBody = xmlMapper.writer().withRootName(ProgramVsnConstants.KEY_PROGRAMS).writeValueAsString(value);
+            return ProgramVsnConstants.VSN_XML_DECLARATION + xmlBody;
+        } catch (Exception e) {
+            throw new BizException(ErrorCode.INTERNAL_SERVER_ERROR, "serialize vsn xml failed", e);
+        }
     }
 
-    private void renderXmlTag(StringBuilder sb, String tag, JsonNode node, int indent) {
-        if (tag == null || tag.isBlank()) {
-            return;
-        }
-
-        String pad = " ".repeat(Math.max(0, indent));
-
+    private void removeInternalFields(JsonNode node) {
         if (node == null || node.isNull()) {
-            sb.append(pad).append("<").append(tag).append("/>").append("\n");
-            return;
-        }
-
-        if (node.isArray()) {
-            for (JsonNode child : node) {
-                renderXmlTag(sb, tag, child, indent);
-            }
-            return;
-        }
-
-        if (node.isValueNode()) {
-            sb.append(pad)
-                    .append("<").append(tag).append(">")
-                    .append(escapeXml(node.asText()))
-                    .append("</").append(tag).append(">")
-                    .append("\n");
             return;
         }
 
         if (node.isObject()) {
-            sb.append(pad).append("<").append(tag).append(">").append("\n");
-
             ObjectNode obj = (ObjectNode) node;
             java.util.List<String> keys = new java.util.ArrayList<>();
             obj.fieldNames().forEachRemaining(keys::add);
-            for (String key : keys) {
-                if (key != null && key.startsWith("__")) {
+
+                for (String key : keys) {
+                if (key != null && key.startsWith(ProgramVsnConstants.INTERNAL_FIELD_PREFIX)) {
+                    obj.remove(key);
                     continue;
                 }
-                renderXmlTag(sb, key, obj.get(key), indent + 2);
+                removeInternalFields(obj.get(key));
             }
-
-            sb.append(pad).append("</").append(tag).append(">").append("\n");
+            return;
         }
-    }
 
-    private String escapeXml(String text) {
-        if (text == null) {
-            return "";
-        }
-        StringBuilder out = new StringBuilder(text.length());
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            switch (c) {
-                case '&' -> out.append("&amp;");
-                case '<' -> out.append("&lt;");
-                case '>' -> out.append("&gt;");
-                case '"' -> out.append("&quot;");
-                case '\'' -> out.append("&apos;");
-                default -> out.append(c);
+        if (node.isArray()) {
+            ArrayNode arr = (ArrayNode) node;
+            for (JsonNode child : arr) {
+                removeInternalFields(child);
             }
         }
-        return out.toString();
     }
 
     private String md5Hex(byte[] bytes) {
@@ -1069,7 +1052,7 @@ public class ProgramApplicationService {
             byte[] digest = md.digest(bytes != null ? bytes : new byte[0]);
             StringBuilder sb = new StringBuilder(digest.length * 2);
             for (byte b : digest) {
-                sb.append(String.format("%02x", b));
+                    sb.append(String.format("%02X", b));
             }
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {
@@ -1079,7 +1062,7 @@ public class ProgramApplicationService {
 
     private String sanitizeDeviceTitleSnapshot(String raw) {
         if (!StringUtils.hasText(raw)) {
-            return "Program";
+            return ProgramVsnConstants.DEFAULT_DEVICE_TITLE;
         }
 
         String s = raw.trim();
@@ -1088,58 +1071,12 @@ public class ProgramApplicationService {
         s = s.replaceAll("[<>:\"|?*]", "-");
         s = s.replaceAll("-{2,}", "-").trim();
         if (s.isBlank()) {
-            s = "Program";
+            s = ProgramVsnConstants.DEFAULT_DEVICE_TITLE;
         }
         if (s.length() > 160) {
             s = s.substring(0, 160);
         }
         return s;
-    }
-
-    private String guessMediaExtension(FileEntity file) {
-        String mimeType = file != null && StringUtils.hasText(file.getMimeType()) ? file.getMimeType().toLowerCase(Locale.ROOT) : "";
-        if (mimeType.contains("png")) {
-            return "png";
-        }
-        if (mimeType.contains("jpeg") || mimeType.contains("jpg")) {
-            return "jpg";
-        }
-        if (mimeType.contains("gif")) {
-            return "gif";
-        }
-        if (mimeType.contains("webp")) {
-            return "webp";
-        }
-        if (mimeType.contains("bmp")) {
-            return "bmp";
-        }
-        if (mimeType.contains("mp4")) {
-            return "mp4";
-        }
-        if (mimeType.contains("quicktime")) {
-            return "mov";
-        }
-        if (mimeType.contains("mpeg")) {
-            return "mpg";
-        }
-        if (mimeType.contains("audio/mpeg")) {
-            return "mp3";
-        }
-        if (mimeType.contains("audio/wav") || mimeType.contains("audio/x-wav")) {
-            return "wav";
-        }
-
-        String key = file != null ? file.getS3Key() : null;
-        if (StringUtils.hasText(key)) {
-            int dot = key.lastIndexOf('.');
-            if (dot > 0 && dot < key.length() - 1) {
-                String ext = key.substring(dot + 1).toLowerCase(Locale.ROOT);
-                if (ext.length() <= 8 && ext.matches("[a-z0-9]+")) {
-                    return ext;
-                }
-            }
-        }
-        return "bin";
     }
 
     private ProgramEntity findOwnedProgram(UUID userId, UUID programId) {
@@ -1264,9 +1201,15 @@ public class ProgramApplicationService {
             throw new BizException(ErrorCode.INTERNAL_SERVER_ERROR, "S3 bucket not configured");
         }
 
-        String normalizedContentType = normalizeContentType(contentType);
-        String ext = guessExtension(normalizedContentType);
-        String objectKey = "program/" + programId + "/draft/" + draftId + "/cover." + ext;
+        String normalizedContentType = ContentTypeUtils.normalize(contentType, "application/octet-stream");
+        String ext = ContentTypeUtils.guessExtensionOrDefault(normalizedContentType, "bin");
+        StoragePathProperties.Program program = storagePathProperties.getProgram();
+        String objectKey = ObjectKeyUtils.join(
+                program.getRootPrefix(),
+                programId.toString(),
+                program.getDraftDir(),
+                draftId.toString(),
+                "cover." + ext);
 
         var request = PutObjectRequest.builder()
                 .bucket(s3Bucket)
@@ -1275,36 +1218,6 @@ public class ProgramApplicationService {
                 .build();
         s3Client.putObject(request, RequestBody.fromBytes(bytes));
         return objectKey;
-    }
-
-    private String normalizeContentType(String contentType) {
-        if (!StringUtils.hasText(contentType)) {
-            return "application/octet-stream";
-        }
-        return contentType.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private String guessExtension(String contentType) {
-        if (!StringUtils.hasText(contentType)) {
-            return "bin";
-        }
-        String ct = contentType.toLowerCase(Locale.ROOT);
-        if (ct.contains("png")) {
-            return "png";
-        }
-        if (ct.contains("webp")) {
-            return "webp";
-        }
-        if (ct.contains("gif")) {
-            return "gif";
-        }
-        if (ct.contains("bmp")) {
-            return "bmp";
-        }
-        if (ct.contains("jpeg") || ct.contains("jpg")) {
-            return "jpeg";
-        }
-        return "bin";
     }
 
     private void writeAudit(UUID userId, UUID programId, ProgramAuditAction action, String detailsJson) {

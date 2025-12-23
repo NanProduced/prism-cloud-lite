@@ -2,6 +2,9 @@ package nan.produced.prism.core.media.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.core.common.config.StoragePathProperties;
+import nan.produced.prism.core.common.util.FileNameUtils;
+import nan.produced.prism.core.common.util.ObjectKeyUtils;
 import nan.produced.prism.core.media.application.dto.*;
 import nan.produced.prism.core.media.application.exception.UploadValidationException;
 import nan.produced.prism.core.media.application.port.outbound.ObjectStoragePort;
@@ -10,6 +13,7 @@ import nan.produced.prism.core.media.infrastructure.config.S3Properties;
 import nan.produced.prism.core.media.infrastructure.config.UploadRouteProperties;
 import nan.produced.prism.core.media.infrastructure.config.UploadRouteProperties.RouteConfig;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.util.*;
@@ -31,6 +35,7 @@ public class BetterUploadService {
     private final ObjectStoragePort objectStorage;
     private final S3Properties s3Properties;
     private final UploadRouteProperties uploadRouteProperties;
+    private final StoragePathProperties storagePathProperties;
     private final MediaFolderRepository mediaFolderRepository;
 
     /**
@@ -78,7 +83,7 @@ public class BetterUploadService {
         var fileInfos = new ArrayList<BetterUploadResponse.FileUploadInfo>();
 
         for (var file : request.getFiles()) {
-            var fileInfo = buildSimpleUploadFileInfo(file, routeConfig, userId, metadataExtractor, expiration);
+            var fileInfo = buildSimpleUploadFileInfo(file, routeConfig, metadataExtractor, expiration);
             fileInfos.add(fileInfo);
         }
 
@@ -96,11 +101,10 @@ public class BetterUploadService {
     private BetterUploadResponse.FileUploadInfo buildSimpleUploadFileInfo(
             BetterUploadRequest.FileInfo file,
             RouteConfig routeConfig,
-            String userId,
             UploadMetadataExtractor metadataExtractor,
             Duration expiration) {
 
-        var key = generateObjectKey(routeConfig, userId, file, metadataExtractor);
+        var key = generateObjectKey(routeConfig, file, metadataExtractor);
         var metadata = metadataExtractor.buildObjectMetadata(file.getName());
 
         var signedUrl = objectStorage.generatePresignedPutUrl(key, file.getType(), metadata, expiration);
@@ -152,7 +156,7 @@ public class BetterUploadService {
             Duration expiration,
             long partSize) {
 
-        var key = generateObjectKey(routeConfig, userId, file, metadataExtractor);
+        var key = generateObjectKey(routeConfig, file, metadataExtractor);
         var metadata = metadataExtractor.buildObjectMetadata(file.getName());
 
         var uploadId = objectStorage.createMultipartUpload(key, file.getType(), metadata);
@@ -298,56 +302,48 @@ public class BetterUploadService {
     /**
      * 生成 S3 Object Key
      * <p>
-     * 格式: {prefix}/{userId}/{groupId}/{role}-{slug}.{ext}
+     * 优先使用内容寻址（md5+size）生成稳定 key，便于全局去重与设备侧文件名校验：
+     * <p>
+     * {prefix}/files/F_{md5}_{size}.{ext}
+     * <p>
+     * 若 md5 缺失，则降级为临时上传路径：
+     * <p>
+     * {prefix}/uploads/{groupId}/{role}-{slug}.{ext}
      */
     private String generateObjectKey(
             RouteConfig routeConfig,
-            String userId,
             BetterUploadRequest.FileInfo file,
             UploadMetadataExtractor metadataExtractor) {
 
         var fileName = file.getName();
         var prefix = routeConfig.getPathPrefix();
-        var groupId = metadataExtractor.extractGroupId(fileName);
-        var role = metadataExtractor.extractRole(fileName);
-        var ext = extractFileExtension(fileName);
-        var slug = generateSlug(fileName);
 
-        return String.format(OBJECT_KEY_FORMAT, prefix, userId, groupId, role, slug, ext);
-    }
+        String ext = FileNameUtils.resolveExtensionOrEmpty(fileName, file.getType());
 
-    /**
-     * 提取文件扩展名
-     */
-    private String extractFileExtension(String fileName) {
-        var lastDot = fileName.lastIndexOf('.');
-        return (lastDot > 0) ? fileName.substring(lastDot + 1).toLowerCase() : "";
-    }
-
-    /**
-     * 生成 URL 友好的 slug
-     */
-    private String generateSlug(String fileName) {
-        var name = removeFileExtension(fileName);
-
-        name = name.toLowerCase()
-                .replaceAll(SLUG_ALLOWED_CHARS_PATTERN, "-")
-                .replaceAll(SLUG_CONSECUTIVE_HYPHENS_PATTERN, "-")
-                .replaceAll(SLUG_LEADING_TRAILING_HYPHENS_PATTERN, "");
-
-        if (name.length() > SLUG_MAX_LENGTH) {
-            name = name.substring(0, SLUG_MAX_LENGTH);
+        String md5 = normalizeMd5(metadataExtractor.extractMd5(fileName));
+        long sizeBytes = file.getSize();
+        if (StringUtils.hasText(md5) && sizeBytes > 0) {
+            String deviceFilename = "F_" + md5 + "_" + sizeBytes + (ext.isEmpty() ? "" : "." + ext);
+            return ObjectKeyUtils.join(prefix, storagePathProperties.getMediaLibrary().getFilesDir(), deviceFilename);
         }
 
-        return name.isEmpty() ? String.valueOf(System.currentTimeMillis()) : name;
+        var groupId = metadataExtractor.extractGroupId(fileName);
+        var role = metadataExtractor.extractRole(fileName);
+        String slug = FileNameUtils.slugifyFileName(fileName, SLUG_MAX_LENGTH);
+        String fallbackFilename = role + "-" + slug + (ext.isEmpty() ? "" : "." + ext);
+        return ObjectKeyUtils.join(prefix, storagePathProperties.getMediaLibrary().getUploadsDir(), groupId, fallbackFilename);
     }
 
-    /**
-     * 移除文件扩展名
-     */
-    private String removeFileExtension(String fileName) {
-        var lastDot = fileName.lastIndexOf('.');
-        return (lastDot > 0) ? fileName.substring(0, lastDot) : fileName;
+    private String normalizeMd5(String md5) {
+        if (md5 == null) {
+            return null;
+        }
+        String trimmed = md5.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        // 设备侧文件名示例使用大写 MD5；这里统一用大写生成稳定 key 与文件名
+        return trimmed.toUpperCase(Locale.ROOT);
     }
 
     /**

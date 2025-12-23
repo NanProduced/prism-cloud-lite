@@ -1,5 +1,6 @@
 package nan.produced.prism.core.media.infrastructure.config;
 
+import nan.produced.prism.core.common.config.StoragePathProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,7 +23,8 @@ import java.net.URI;
 @EnableConfigurationProperties({
         S3Properties.class,
         UploadRouteProperties.class,
-        MediaDeliveryProperties.class})
+        MediaDeliveryProperties.class,
+        StoragePathProperties.class})
 public class S3Configuration {
 
     @Bean

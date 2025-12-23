@@ -115,21 +115,6 @@ public final class BetterUploadConstant {
      */
     public static final int SLUG_MAX_LENGTH = 50;
 
-    /**
-     * Slug 允许的字符正则（字母、数字、中文）
-     */
-    public static final String SLUG_ALLOWED_CHARS_PATTERN = "[^a-z0-9\\u4e00-\\u9fa5]";
-
-    /**
-     * 连续连字符正则
-     */
-    public static final String SLUG_CONSECUTIVE_HYPHENS_PATTERN = "-+";
-
-    /**
-     * 首尾连字符正则
-     */
-    public static final String SLUG_LEADING_TRAILING_HYPHENS_PATTERN = "^-|-$";
-
     // ==================== 通配符 ====================
 
     /**
@@ -137,11 +122,4 @@ public final class BetterUploadConstant {
      */
     public static final String MIME_WILDCARD_SUFFIX = "/*";
 
-    // ==================== Object Key 格式 ====================
-
-    /**
-     * Object Key 格式模板
-     * {prefix}/{userId}/{groupId}/{role}-{slug}.{ext}
-     */
-    public static final String OBJECT_KEY_FORMAT = "%s/%s/%s/%s-%s.%s";
 }

@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
+import nan.produced.prism.core.common.util.FileNameUtils;
+import nan.produced.prism.core.common.util.StorageFileTypeResolver;
 import nan.produced.prism.core.media.application.domain.MediaAssetEntity;
 import nan.produced.prism.core.media.application.domain.MediaFolderEntity;
 import nan.produced.prism.core.media.application.dto.MediaLibraryNodesResponse;
@@ -306,7 +308,7 @@ public class MediaLibraryService {
             fileEntityRepository.save(fileEntity);
 
             if (currentRef > 0 && nextRef == 0) {
-                var fileType = determineFileType(fileEntity.getMimeType());
+                var fileType = StorageFileTypeResolver.fromMimeType(fileEntity.getMimeType());
                 long bytes = fileEntity.getSize() != null ? fileEntity.getSize() : 0L;
                 userStorageUsageFacade.incrementUsage(
                         userId,
@@ -425,7 +427,7 @@ public class MediaLibraryService {
                 .assetKind(determineAssetKind(mimeType))
                 .mimeType(mimeType)
                 .sizeBytes(sizeBytes)
-                .extension(extractExtension(originalKey))
+                .extension(FileNameUtils.tryGetExtension(originalKey))
                 .coverUrl(mediaObjectUrlPort.toPublicUrl(coverKey))
                 .assetUrl(mediaObjectUrlPort.toPublicUrl(originalKey))
                 .width(original != null ? original.getWidth() : null)
@@ -451,25 +453,6 @@ public class MediaLibraryService {
             return "document";
         }
         return "other";
-    }
-
-    private StorageFileType determineFileType(String mimeType) {
-        if (!StringUtils.hasText(mimeType)) {
-            return StorageFileType.OTHER;
-        }
-        var lowerMime = mimeType.toLowerCase(Locale.ROOT);
-        if (lowerMime.startsWith("image/")) {
-            return StorageFileType.IMAGE;
-        } else if (lowerMime.startsWith("video/")) {
-            return StorageFileType.VIDEO;
-        } else if (lowerMime.startsWith("audio/")) {
-            return StorageFileType.AUDIO;
-        } else if (lowerMime.startsWith("application/pdf")
-                || lowerMime.startsWith("application/msword")
-                || lowerMime.startsWith("application/vnd.")) {
-            return StorageFileType.DOCUMENT;
-        }
-        return StorageFileType.OTHER;
     }
 
     private String toAssetKind(StorageFileType fileType) {
@@ -648,19 +631,4 @@ public class MediaLibraryService {
         return normalizedPrefix + "/" + folderId;
     }
 
-    private String extractExtension(String objectKey) {
-        if (!StringUtils.hasText(objectKey)) {
-            return null;
-        }
-        var normalized = objectKey;
-        var lastSlash = normalized.lastIndexOf('/');
-        if (lastSlash >= 0) {
-            normalized = normalized.substring(lastSlash + 1);
-        }
-        var lastDot = normalized.lastIndexOf('.');
-        if (lastDot < 0 || lastDot == normalized.length() - 1) {
-            return null;
-        }
-        return normalized.substring(lastDot + 1).toLowerCase(Locale.ROOT);
-    }
 }

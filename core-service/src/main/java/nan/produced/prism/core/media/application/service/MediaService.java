@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
+import nan.produced.prism.core.common.util.StorageFileTypeResolver;
 import nan.produced.prism.core.media.application.domain.FileEntity;
 import nan.produced.prism.core.media.application.domain.MediaAssetEntity;
 import nan.produced.prism.core.media.application.dto.*;
@@ -61,6 +62,7 @@ public class MediaService {
         // 提取所有非空的 MD5 值
         var md5List = request.getFiles().stream()
                 .map(DuplicateCheckRequest.FileCheckInfo::getMd5)
+                .map(this::normalizeMd5)
                 .filter(StringUtils::hasText)
                 .toList();
 
@@ -123,8 +125,9 @@ public class MediaService {
         var builder = DuplicateCheckResponse.FileCheckResult.builder()
                 .clientId(file.getClientId());
 
-        if (StringUtils.hasText(file.getMd5())) {
-            var existing = existingFiles.get(file.getMd5());
+        String md5 = normalizeMd5(file.getMd5());
+        if (StringUtils.hasText(md5)) {
+            var existing = existingFiles.get(md5);
             if (existing != null) {
                 return builder
                         .duplicate(true)
@@ -187,7 +190,7 @@ public class MediaService {
                 hasInstantUpload = true;
             } else {
                 // 新上传的文件需要统计存储
-                var fileType = determineFileType(fileItem.getType());
+                var fileType = StorageFileTypeResolver.fromMimeType(fileItem.getType());
                 storageIncrements.merge(fileType,
                         new StorageIncrement(1, fileItem.getSize()),
                         StorageIncrement::add);
@@ -239,28 +242,6 @@ public class MediaService {
     }
 
     /**
-     * 根据 MIME 类型判断文件类型
-     */
-    private StorageFileType determineFileType(String mimeType) {
-        if (mimeType == null) {
-            return StorageFileType.OTHER;
-        }
-        var lowerMime = mimeType.toLowerCase();
-        if (lowerMime.startsWith("image/")) {
-            return StorageFileType.IMAGE;
-        } else if (lowerMime.startsWith("video/")) {
-            return StorageFileType.VIDEO;
-        } else if (lowerMime.startsWith("audio/")) {
-            return StorageFileType.AUDIO;
-        } else if (lowerMime.startsWith("application/pdf") ||
-                lowerMime.startsWith("application/msword") ||
-                lowerMime.startsWith("application/vnd.")) {
-            return StorageFileType.DOCUMENT;
-        }
-        return StorageFileType.OTHER;
-    }
-
-    /**
      * 更新用户存储使用统计
      *
      * @param userId            用户ID
@@ -307,7 +288,7 @@ public class MediaService {
         var now = Instant.now();
         var fileEntity = new FileEntity();
         fileEntity.setFileId(UUID.randomUUID().toString());
-        fileEntity.setMd5(fileItem.getMd5());
+        fileEntity.setMd5(normalizeMd5(fileItem.getMd5()));
         fileEntity.setS3Key(fileItem.getS3Key());
         fileEntity.setSize(fileItem.getSize());
         fileEntity.setMimeType(fileItem.getType());
@@ -321,6 +302,17 @@ public class MediaService {
         log.debug("New upload: created fileEntity fileId={}, s3Key={}", fileEntity.getFileId(), fileItem.getS3Key());
 
         return fileEntity;
+    }
+
+    private String normalizeMd5(String md5) {
+        if (!StringUtils.hasText(md5)) {
+            return null;
+        }
+        String trimmed = md5.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return trimmed.toLowerCase(Locale.ROOT);
     }
 
     /**
