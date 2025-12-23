@@ -10,6 +10,7 @@ import nan.produced.prism.core.common.messaging.FrontendEventMessage;
 import nan.produced.prism.core.common.messaging.MessagingConstants;
 import nan.produced.prism.core.common.messaging.RabbitMessagePublisher;
 import nan.produced.prism.core.common.api.ProgramDownloadProgressUseCase;
+import nan.produced.prism.core.common.util.IdGenerator;
 import nan.produced.prism.core.common.util.JsonUtils;
 import nan.produced.prism.core.device.application.converter.DeviceLogConverter;
 import nan.produced.prism.core.device.application.port.inbound.DeviceEventUseCase;
@@ -24,11 +25,13 @@ import nan.produced.prism.core.device.domain.report.program.ProgramPlayTimesRepo
 import nan.produced.prism.core.device.domain.report.sensor.SensorReportBase;
 import nan.produced.prism.core.device.domain.report.sensor.SensorReportType;
 import nan.produced.prism.core.device.domain.report.sensor.SensorType;
+import nan.produced.prism.core.device.infrastructure.persistence.DeviceLogRepositoryJpa;
 import nan.produced.prism.core.telemetry.api.DeviceOnlineTimeFacade;
 import nan.produced.prism.core.telemetry.api.PlaybackTelemetryFacade;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -59,6 +62,8 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
     private final PlaybackTelemetryFacade playbackTelemetryFacade;
 
     private final DeviceLogConverter deviceLogConverter;
+
+    private final DeviceLogRepositoryJpa deviceLogRepositoryJpa;
 
     private final RabbitMessagePublisher rabbitMessagePublisher;
 
@@ -169,7 +174,7 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
                 // 设备日志
                 case MessagingConstants.DeviceEventTypes.REPORT_DEVICE_LOG:
                     handleDeviceLog(message.getDeviceId(),
-                            message.getReportData(), traceId);
+                            message.getReportData(), traceId, message.getOccurredAt());
                     break;
 
                 // 传感器数据
@@ -273,12 +278,87 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
      * @param logs 日志 JSON 字符串
      * @param traceId 追踪ID
      */
-    private void handleDeviceLog(Long deviceId, String logs, String traceId) {
-        log.debug("处理设备日志上报: deviceId={}, traceId={}", deviceId, traceId);
-        List<DeviceLog> deviceLogs = JsonUtils.fromJson(logs, new TypeReference<List<DeviceLog>>() {});
-        List<DeviceLogEntity> deviceLogEntities = deviceLogConverter.convert(deviceLogs, deviceId);
+    private void handleDeviceLog(Long deviceId, String logs, String traceId, Instant occurredAt) {
+        if (deviceId == null || logs == null || logs.isBlank()) {
+            return;
+        }
 
-        // TODO: 存储到数据库
+        log.debug("处理设备日志上报: deviceId={}, traceId={}", deviceId, traceId);
+
+        UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);
+        if (userId == null) {
+            log.warn("DeviceLog - 未找到设备所属用户，跳过落库: deviceId={}, traceId={}", deviceId, traceId);
+            return;
+        }
+
+        List<DeviceLog> deviceLogs = JsonUtils.fromJson(logs, new TypeReference<List<DeviceLog>>() {});
+        if (deviceLogs == null || deviceLogs.isEmpty()) {
+            return;
+        }
+
+        OffsetDateTime createTime = occurredAt != null
+                ? occurredAt.atOffset(ZoneOffset.UTC)
+                : OffsetDateTime.now(ZoneOffset.UTC);
+
+        List<DeviceLogEntity> deviceLogEntities = new java.util.ArrayList<>(deviceLogs.size());
+        for (DeviceLog deviceLog : deviceLogs) {
+            if (deviceLog == null) {
+                continue;
+            }
+
+            DeviceLogEntity entity = deviceLogConverter.convert(deviceLog, deviceId);
+            if (entity == null) {
+                continue;
+            }
+
+            entity.setId(IdGenerator.nextId());
+            entity.setUserId(userId);
+            entity.setCreateTime(createTime);
+            entity.setReportTime(parseDeviceReportTime(deviceLog.getDeviceTime()));
+
+            deviceLogEntities.add(entity);
+        }
+
+        if (deviceLogEntities.isEmpty()) {
+            return;
+        }
+
+        deviceLogRepositoryJpa.saveAll(deviceLogEntities);
+    }
+
+    private OffsetDateTime parseDeviceReportTime(String deviceTimeRaw) {
+        if (deviceTimeRaw == null || deviceTimeRaw.isBlank()) {
+            return null;
+        }
+
+        String raw = deviceTimeRaw.trim();
+
+        // Epoch millis/seconds
+        try {
+            long epoch = Long.parseLong(raw);
+            if (raw.length() <= 10) {
+                return OffsetDateTime.ofInstant(Instant.ofEpochSecond(epoch), ZoneOffset.UTC);
+            }
+            return OffsetDateTime.ofInstant(Instant.ofEpochMilli(epoch), ZoneOffset.UTC);
+        } catch (Exception ignore) {
+        }
+
+        // ISO-8601 (with timezone)
+        try {
+            return OffsetDateTime.parse(raw);
+        } catch (Exception ignore) {
+        }
+
+        // Fallback common patterns without timezone
+        for (String pattern : new String[]{"yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss"}) {
+            try {
+                LocalDateTime local = LocalDateTime.parse(raw, DateTimeFormatter.ofPattern(pattern));
+                return local.atOffset(ZoneOffset.UTC);
+            } catch (Exception ignore) {
+            }
+        }
+
+        return null;
     }
 
     /**

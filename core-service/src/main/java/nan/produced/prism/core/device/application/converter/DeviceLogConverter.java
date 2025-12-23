@@ -11,15 +11,30 @@ import java.util.List;
 public interface DeviceLogConverter {
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "userId", ignore = true)
     @Mapping(target = "deviceId", source = "deviceId")
-    @Mapping(target = "operation", ignore = true)
+    @Mapping(target = "operationId", ignore = true)
+    @Mapping(target = "deviceTimeRaw", source = "deviceTime")
+    @Mapping(target = "handleTimeRaw", source = "handleTime")
+    @Mapping(target = "reportTime", ignore = true)
+    @Mapping(target = "createTime", ignore = true)
     DeviceLogEntity convert(DeviceLog log, Long deviceId);
 
     default List<DeviceLogEntity> convert(List<DeviceLog> logs, Long deviceId) {
+        if (logs == null || logs.isEmpty()) {
+            return List.of();
+        }
+
         // 手动循环调用上面的单个转换方法
         List<DeviceLogEntity> list = new java.util.ArrayList<>(logs.size());
         for (DeviceLog log : logs) {
-            list.add(convert(log, deviceId));
+            if (log == null) {
+                continue;
+            }
+            DeviceLogEntity entity = convert(log, deviceId);
+            if (entity != null) {
+                list.add(entity);
+            }
         }
         return list;
     }
@@ -31,6 +46,6 @@ public interface DeviceLogConverter {
      */
     @AfterMapping
     default void fillDeviceLogOperation(DeviceLog deviceLog, @MappingTarget DeviceLogEntity entity, Long deviceId) {
-        entity.setOperation(DeviceLogType.getTypeId(deviceLog));
+        entity.setOperationId(DeviceLogType.getTypeId(deviceLog));
     }
 }

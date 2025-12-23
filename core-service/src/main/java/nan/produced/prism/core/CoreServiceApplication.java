@@ -8,12 +8,14 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import nan.produced.prism.core.integration.signature.ServiceSignatureProperties;
 import nan.produced.prism.core.security.InternalApiSecurityProps;
 import org.springframework.modulith.Modulithic;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "nan.produced.prism.core.integration")
 @EnableConfigurationProperties({ServiceSignatureProperties.class, InternalApiSecurityProps.class})
 @Modulithic(sharedModules = "common", systemName = "Prism Core Service")
+@EnableScheduling
 public class CoreServiceApplication {
 
     public static void main(String[] args) {
