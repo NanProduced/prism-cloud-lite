@@ -19,12 +19,15 @@ import nan.produced.prism.core.device.application.port.outbound.DeviceRepository
 import nan.produced.prism.core.device.domain.DeviceProperties;
 import nan.produced.prism.core.device.domain.report.log.DeviceLog;
 import nan.produced.prism.core.device.domain.report.log.DeviceLogEntity;
+import nan.produced.prism.core.device.domain.report.media.MediaPlayTimesReport;
+import nan.produced.prism.core.device.domain.report.program.ProgramPlayTimesReport;
+import nan.produced.prism.core.device.domain.report.sensor.SensorReportBase;
+import nan.produced.prism.core.device.domain.report.sensor.SensorReportType;
+import nan.produced.prism.core.device.domain.report.sensor.SensorType;
 import nan.produced.prism.core.telemetry.api.DeviceOnlineTimeFacade;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -169,7 +172,7 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
                 // 传感器数据
                 case MessagingConstants.DeviceEventTypes.REPORT_SENSOR_DATA:
                     handleSensorReport(message.getDeviceId(),
-                            message.getReportData(), traceId);
+                            message.getReportData(), traceId, message.getOccurredAt());
                     break;
 
                 // 下载进度
@@ -223,6 +226,7 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
      */
     private void handleMediaPlayRecord(Long deviceId, String reportData, String traceId) {
         log.debug("处理素材播放记录: deviceId={}, traceId={}", deviceId, traceId);
+        List<MediaPlayTimesReport> mediaPlayTimesReports = JsonUtils.fromJson(reportData, new TypeReference<List<MediaPlayTimesReport>>() {});
 
         // TODO: 实现素材播放记录处理逻辑
         // 1. 解析播放记录数据
@@ -239,7 +243,7 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
      */
     private void handleProgramPlayRecord(Long deviceId, String reportData, String traceId) {
         log.debug("处理节目播放记录: deviceId={}, traceId={}", deviceId, traceId);
-
+        List<ProgramPlayTimesReport> programPlayTimesReports = JsonUtils.fromJson(reportData, new TypeReference<List<ProgramPlayTimesReport>>() {});
         // TODO: 实现节目播放记录处理逻辑
         // 1. 解析播放记录数据
         // 2. 存储播放记录
@@ -267,10 +271,20 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
      * @param deviceId 设备ID
      * @param sensorData 传感器数据 JSON 字符串
      * @param traceId 追踪ID
+     * @param occurredAt 上报时间
      */
-    private void handleSensorReport(Long deviceId, String sensorData, String traceId) {
+    private void handleSensorReport(Long deviceId, String sensorData, String traceId, Instant occurredAt) {
         log.debug("处理传感器数据: deviceId={}, traceId={}", deviceId, traceId);
+        List<SensorReportBase> sensorReports = JsonUtils.fromJson(sensorData, new TypeReference<List<SensorReportBase>>() {});
+        for (SensorReportBase report : sensorReports) {
+            report.setDeviceId(deviceId);
+            report.setServerTime(occurredAt != null ? occurredAt.atOffset(ZoneOffset.UTC) : OffsetDateTime.now(ZoneOffset.UTC));
+            SensorType sensorSourceType = SensorReportType.fromSensorType(report.getSensorType()).getSensorSourceType();
+            switch (sensorSourceType) {
+                case  DEVICE_SENSOR:
 
+            }
+        }
         // TODO: 实现传感器数据处理逻辑
         // 1. 解析传感器数据（温度、湿度、等等）
         // 2. 存储时间序列数据

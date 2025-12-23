@@ -84,19 +84,19 @@ public class DeviceLog {
      * 日志参数-1
      */
     @JsonProperty("log_arg1")
-    private String arg1;
+    private String logArg1;
 
     /**
      * 日志参数-2
      */
     @JsonProperty("log_arg2")
-    private String arg2;
+    private String logArg2;
 
     /**
      * 日志参数-3
      */
     @JsonProperty("log_arg3")
-    private String arg3;
+    private String logArg3;
 
     /**
      * 日志参数-4
@@ -104,19 +104,19 @@ public class DeviceLog {
      *
      */
     @JsonProperty("log_arg4")
-    private String arg4;
+    private String logArg4;
 
     /**
      * 日志参数-5
      */
     @JsonProperty("log_arg5")
-    private String arg5;
+    private String logArg5;
 
     /**
      * 日志参数-6
      */
     @JsonProperty("log_arg6")
-    private String arg6;
+    private String logArg6;
 
     /**
      * 其他信息
