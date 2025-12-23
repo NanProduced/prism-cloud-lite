@@ -25,6 +25,7 @@ import nan.produced.prism.core.device.domain.report.sensor.SensorReportBase;
 import nan.produced.prism.core.device.domain.report.sensor.SensorReportType;
 import nan.produced.prism.core.device.domain.report.sensor.SensorType;
 import nan.produced.prism.core.telemetry.api.DeviceOnlineTimeFacade;
+import nan.produced.prism.core.telemetry.api.PlaybackTelemetryFacade;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
@@ -54,6 +55,8 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
     private final ProgramDownloadProgressUseCase programDownloadProgressApplicationService;
 
     private final DeviceOnlineTimeFacade deviceOnlineTimeFacade;
+
+    private final PlaybackTelemetryFacade playbackTelemetryFacade;
 
     private final DeviceLogConverter deviceLogConverter;
 
@@ -225,13 +228,19 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
      * @param traceId 追踪ID
      */
     private void handleMediaPlayRecord(Long deviceId, String reportData, String traceId) {
+        if (deviceId == null || reportData == null || reportData.isBlank()) {
+            return;
+        }
         log.debug("处理素材播放记录: deviceId={}, traceId={}", deviceId, traceId);
         List<MediaPlayTimesReport> mediaPlayTimesReports = JsonUtils.fromJson(reportData, new TypeReference<List<MediaPlayTimesReport>>() {});
 
-        // TODO: 实现素材播放记录处理逻辑
-        // 1. 解析播放记录数据
-        // 2. 存储播放记录
-        // 3. 更新素材统计信息（播放次数、播放时长等）
+        UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);
+        if (userId == null) {
+            log.warn("MediaPlayRecord - 未找到设备所属用户，跳过落库: deviceId={}, traceId={}", deviceId, traceId);
+            return;
+        }
+
+        playbackTelemetryFacade.recordMediaPlayRecords(userId, deviceId, mediaPlayTimesReports, traceId);
     }
 
     /**
@@ -242,12 +251,19 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
      * @param traceId 追踪ID
      */
     private void handleProgramPlayRecord(Long deviceId, String reportData, String traceId) {
+        if (deviceId == null || reportData == null || reportData.isBlank()) {
+            return;
+        }
         log.debug("处理节目播放记录: deviceId={}, traceId={}", deviceId, traceId);
         List<ProgramPlayTimesReport> programPlayTimesReports = JsonUtils.fromJson(reportData, new TypeReference<List<ProgramPlayTimesReport>>() {});
-        // TODO: 实现节目播放记录处理逻辑
-        // 1. 解析播放记录数据
-        // 2. 存储播放记录
-        // 3. 更新节目统计信息
+
+        UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);
+        if (userId == null) {
+            log.warn("ProgramPlayRecord - 未找到设备所属用户，跳过落库: deviceId={}, traceId={}", deviceId, traceId);
+            return;
+        }
+
+        playbackTelemetryFacade.recordProgramPlayRecords(userId, deviceId, programPlayTimesReports, traceId);
     }
 
     /**
