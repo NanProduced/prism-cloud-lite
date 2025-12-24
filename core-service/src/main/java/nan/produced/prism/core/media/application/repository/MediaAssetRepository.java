@@ -55,6 +55,11 @@ public interface MediaAssetRepository {
     Optional<MediaAssetEntity> findById(String id);
 
     /**
+     * 批量根据 ID 查找素材
+     */
+    List<MediaAssetEntity> findAllById(Iterable<String> ids);
+
+    /**
      * 根据 ID 查找素材（联表加载 original/cover 文件信息）
      */
     Optional<MediaAssetEntity> findWithFilesById(String id);

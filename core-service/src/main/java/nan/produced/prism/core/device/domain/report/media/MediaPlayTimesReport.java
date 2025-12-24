@@ -2,11 +2,8 @@ package nan.produced.prism.core.device.domain.report.media;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import nan.produced.prism.core.program.api.dto.ProgramPublishReq;
-import nan.produced.prism.core.program.domain.ProgramEntity;
 
 import java.time.OffsetDateTime;
-import java.util.UUID;
 
 /**
  * 素材播放时长/次数数据上报

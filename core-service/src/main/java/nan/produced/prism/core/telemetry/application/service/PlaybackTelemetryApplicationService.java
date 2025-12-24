@@ -17,11 +17,8 @@ import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.device.domain.report.media.MediaPlayTimesReport;
 import nan.produced.prism.core.device.domain.report.program.ProgramPlayTimesReport;
 import nan.produced.prism.core.media.application.domain.MediaAssetEntity;
-import nan.produced.prism.core.media.infrastructure.persistence.MediaAssetRepositoryJpa;
-import nan.produced.prism.core.program.domain.ProgramEntity;
-import nan.produced.prism.core.program.domain.ProgramReleaseEntity;
-import nan.produced.prism.core.program.infrastructure.persistence.ProgramReleaseRepositoryJpa;
-import nan.produced.prism.core.program.infrastructure.persistence.ProgramRepositoryJpa;
+import nan.produced.prism.core.media.application.repository.MediaAssetRepository;
+import nan.produced.prism.core.program.application.port.inbound.ProgramTelemetryQueryFacade;
 import nan.produced.prism.core.telemetry.api.PlaybackTelemetryFacade;
 import nan.produced.prism.core.telemetry.api.dto.TimeBucketUnit;
 import nan.produced.prism.core.telemetry.api.dto.playback.DevicePlaySummaryItem;
@@ -51,9 +48,8 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
     private final DeviceProgramPlaySessionRepository deviceProgramPlaySessionRepository;
     private final DeviceMediaPlaySessionRepository deviceMediaPlaySessionRepository;
 
-    private final ProgramReleaseRepositoryJpa programReleaseRepositoryJpa;
-    private final ProgramRepositoryJpa programRepositoryJpa;
-    private final MediaAssetRepositoryJpa mediaAssetRepositoryJpa;
+    private final ProgramTelemetryQueryFacade programTelemetryQueryFacade;
+    private final MediaAssetRepository mediaAssetRepository;
 
     @Override
     @Transactional
@@ -62,7 +58,7 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
             return;
         }
 
-        Map<String, ProgramReleaseEntity> releaseCache = new HashMap<>();
+        Map<String, ProgramTelemetryQueryFacade.ReleaseInfo> releaseCache = new HashMap<>();
         Set<String> releaseMiss = new HashSet<>();
         List<DeviceProgramPlaySessionRepository.InsertRow> rows = new ArrayList<>();
 
@@ -88,14 +84,14 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
                             deviceId, programVsn, traceId);
                     continue;
                 }
-                ProgramReleaseEntity release = resolveRelease(userId, meta, releaseCache, releaseMiss);
+                ProgramTelemetryQueryFacade.ReleaseInfo release = resolveRelease(userId, meta, releaseCache, releaseMiss);
                 if (release == null) {
                     log.warn("PlaybackTelemetry - ProgramPlayRecord 未找到对应 Release，跳过: deviceId={}, vsnMd5={}, vsnSizeBytes={}, traceId={}",
                             deviceId, vsnMd5, vsnSizeBytes, traceId);
                     continue;
                 }
-                programId = release.getProgramId();
-                releaseVersion = release.getVersion();
+                programId = release.programId();
+                releaseVersion = release.version();
             }
 
             List<OffsetDateTime> starts = report.getStartUtcTime() != null ? report.getStartUtcTime() : List.of();
@@ -143,7 +139,7 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
             return;
         }
 
-        Map<String, ProgramReleaseEntity> releaseCache = new HashMap<>();
+        Map<String, ProgramTelemetryQueryFacade.ReleaseInfo> releaseCache = new HashMap<>();
         Set<String> releaseMiss = new HashSet<>();
         List<DeviceMediaPlaySessionRepository.InsertRow> rows = new ArrayList<>();
 
@@ -173,11 +169,11 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
             Long vsnSizeBytes = meta != null ? meta.sizeBytes() : null;
 
             if (meta != null) {
-                ProgramReleaseEntity release = resolveRelease(userId, meta, releaseCache, releaseMiss);
+                ProgramTelemetryQueryFacade.ReleaseInfo release = resolveRelease(userId, meta, releaseCache, releaseMiss);
                 if (release != null) {
                     isLan = false;
-                    programId = release.getProgramId();
-                    releaseVersion = release.getVersion();
+                    programId = release.programId();
+                    releaseVersion = release.version();
                 }
             }
 
@@ -565,16 +561,7 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
         }
 
         Map<UUID, String> namesById = new HashMap<>();
-        if (!programIds.isEmpty()) {
-            for (ProgramEntity program : programRepositoryJpa.findAllById(programIds)) {
-                if (program == null) {
-                    continue;
-                }
-                if (userId.equals(program.getUserId())) {
-                    namesById.put(program.getId(), program.getName());
-                }
-            }
-        }
+        namesById.putAll(programTelemetryQueryFacade.findProgramNamesByIds(userId, programIds));
 
         return rows.stream()
                 .map(r -> {
@@ -613,7 +600,7 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
 
         Map<String, String> titlesById = new HashMap<>();
         if (!mediaIds.isEmpty()) {
-            for (MediaAssetEntity asset : mediaAssetRepositoryJpa.findAllById(mediaIds)) {
+            for (MediaAssetEntity asset : mediaAssetRepository.findAllById(mediaIds)) {
                 if (asset == null) {
                     continue;
                 }
@@ -719,10 +706,10 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
         return new VsnMeta(md5.toUpperCase(), sizeBytes);
     }
 
-    private ProgramReleaseEntity resolveRelease(
+    private ProgramTelemetryQueryFacade.ReleaseInfo resolveRelease(
             UUID userId,
             VsnMeta meta,
-            Map<String, ProgramReleaseEntity> cache,
+            Map<String, ProgramTelemetryQueryFacade.ReleaseInfo> cache,
             Set<String> miss) {
 
         String key = meta.md5() + ":" + meta.sizeBytes();
@@ -733,8 +720,8 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
             return null;
         }
 
-        ProgramReleaseEntity release = programReleaseRepositoryJpa
-                .findByUserIdAndVsnMd5AndVsnSizeBytes(userId, meta.md5(), meta.sizeBytes())
+        ProgramTelemetryQueryFacade.ReleaseInfo release = programTelemetryQueryFacade
+                .findReleaseByVsnMeta(userId, meta.md5(), meta.sizeBytes())
                 .orElse(null);
 
         if (release == null) {

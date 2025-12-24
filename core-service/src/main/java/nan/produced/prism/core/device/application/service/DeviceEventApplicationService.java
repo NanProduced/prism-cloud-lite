@@ -12,6 +12,10 @@ import nan.produced.prism.core.common.messaging.RabbitMessagePublisher;
 import nan.produced.prism.core.common.api.ProgramDownloadProgressUseCase;
 import nan.produced.prism.core.common.util.IdGenerator;
 import nan.produced.prism.core.common.util.JsonUtils;
+import nan.produced.prism.core.device.api.event.DeviceMediaPlayRecordsReportedEvent;
+import nan.produced.prism.core.device.api.event.DeviceOnlineSessionReportedEvent;
+import nan.produced.prism.core.device.api.event.DeviceProgramPlayRecordsReportedEvent;
+import nan.produced.prism.core.device.api.event.DeviceSensorDataReportedEvent;
 import nan.produced.prism.core.device.application.converter.DeviceLogConverter;
 import nan.produced.prism.core.device.application.port.inbound.DeviceEventUseCase;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCommandFeedBackPort;
@@ -23,9 +27,7 @@ import nan.produced.prism.core.device.domain.report.log.DeviceLogEntity;
 import nan.produced.prism.core.device.domain.report.media.MediaPlayTimesReport;
 import nan.produced.prism.core.device.domain.report.program.ProgramPlayTimesReport;
 import nan.produced.prism.core.device.infrastructure.persistence.DeviceLogRepositoryJpa;
-import nan.produced.prism.core.telemetry.api.DeviceOnlineTimeFacade;
-import nan.produced.prism.core.telemetry.api.PlaybackTelemetryFacade;
-import nan.produced.prism.core.telemetry.api.SensorTelemetryFacade;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
@@ -55,17 +57,13 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
 
     private final ProgramDownloadProgressUseCase programDownloadProgressApplicationService;
 
-    private final DeviceOnlineTimeFacade deviceOnlineTimeFacade;
-
-    private final PlaybackTelemetryFacade playbackTelemetryFacade;
-
-    private final SensorTelemetryFacade sensorTelemetryFacade;
-
     private final DeviceLogConverter deviceLogConverter;
 
     private final DeviceLogRepositoryJpa deviceLogRepositoryJpa;
 
     private final RabbitMessagePublisher rabbitMessagePublisher;
+
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     /**
      * 处理设备上线状态
@@ -238,6 +236,9 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
         }
         log.debug("处理素材播放记录: deviceId={}, traceId={}", deviceId, traceId);
         List<MediaPlayTimesReport> mediaPlayTimesReports = JsonUtils.fromJson(reportData, new TypeReference<List<MediaPlayTimesReport>>() {});
+        if (mediaPlayTimesReports == null || mediaPlayTimesReports.isEmpty()) {
+            return;
+        }
 
         UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);
         if (userId == null) {
@@ -245,7 +246,7 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
             return;
         }
 
-        playbackTelemetryFacade.recordMediaPlayRecords(userId, deviceId, mediaPlayTimesReports, traceId);
+        applicationEventPublisher.publishEvent(new DeviceMediaPlayRecordsReportedEvent(userId, deviceId, mediaPlayTimesReports, traceId));
     }
 
     /**
@@ -261,6 +262,9 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
         }
         log.debug("处理节目播放记录: deviceId={}, traceId={}", deviceId, traceId);
         List<ProgramPlayTimesReport> programPlayTimesReports = JsonUtils.fromJson(reportData, new TypeReference<List<ProgramPlayTimesReport>>() {});
+        if (programPlayTimesReports == null || programPlayTimesReports.isEmpty()) {
+            return;
+        }
 
         UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);
         if (userId == null) {
@@ -268,7 +272,7 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
             return;
         }
 
-        playbackTelemetryFacade.recordProgramPlayRecords(userId, deviceId, programPlayTimesReports, traceId);
+        applicationEventPublisher.publishEvent(new DeviceProgramPlayRecordsReportedEvent(userId, deviceId, programPlayTimesReports, traceId));
     }
 
     /**
@@ -382,7 +386,7 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
             return;
         }
 
-        sensorTelemetryFacade.recordSensorReports(userId, deviceId, sensorData, occurredAt, traceId);
+        applicationEventPublisher.publishEvent(new DeviceSensorDataReportedEvent(userId, deviceId, sensorData, occurredAt, traceId));
     }
 
     /**
@@ -439,7 +443,7 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
 
         Instant onlineAt = Instant.ofEpochMilli(onlineTime);
         Instant offlineAt = Instant.ofEpochMilli(offlineTime);
-        deviceOnlineTimeFacade.recordOnlineSession(userId, deviceId, onlineAt, offlineAt, traceId);
+        applicationEventPublisher.publishEvent(new DeviceOnlineSessionReportedEvent(userId, deviceId, onlineAt, offlineAt, traceId));
     }
 
     private String getString(Map<String, Object> payload, String key) {

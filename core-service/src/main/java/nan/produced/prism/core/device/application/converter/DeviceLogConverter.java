@@ -14,8 +14,8 @@ public interface DeviceLogConverter {
     @Mapping(target = "userId", ignore = true)
     @Mapping(target = "deviceId", source = "deviceId")
     @Mapping(target = "operationId", ignore = true)
-    @Mapping(target = "deviceTimeRaw", source = "deviceTime")
-    @Mapping(target = "handleTimeRaw", source = "handleTime")
+    @Mapping(target = "deviceTimeRaw", source = "log.deviceTime")
+    @Mapping(target = "handleTimeRaw", source = "log.handleTime")
     @Mapping(target = "reportTime", ignore = true)
     @Mapping(target = "createTime", ignore = true)
     DeviceLogEntity convert(DeviceLog log, Long deviceId);

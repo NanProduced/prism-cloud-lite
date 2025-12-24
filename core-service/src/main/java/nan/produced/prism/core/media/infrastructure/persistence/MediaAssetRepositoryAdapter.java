@@ -9,6 +9,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -83,6 +84,25 @@ public class MediaAssetRepositoryAdapter implements MediaAssetRepository {
             return Optional.empty();
         }
         return mediaAssetRepositoryJpa.findById(id);
+    }
+
+    @Override
+    public List<MediaAssetEntity> findAllById(Iterable<String> ids) {
+        if (ids == null) {
+            return Collections.emptyList();
+        }
+
+        var validIds = new LinkedList<String>();
+        for (String id : ids) {
+            if (StringUtils.hasText(id)) {
+                validIds.add(id.trim());
+            }
+        }
+        if (validIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return mediaAssetRepositoryJpa.findAllById(validIds);
     }
 
     @Override

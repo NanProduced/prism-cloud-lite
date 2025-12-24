@@ -1,7 +1,6 @@
-package nan.produced.prism.core.common.util;
+package nan.produced.prism.core.user.api;
 
 import java.util.Locale;
-import nan.produced.prism.core.user.api.StorageFileType;
 import org.springframework.util.StringUtils;
 
 /**
@@ -34,4 +33,3 @@ public final class StorageFileTypeResolver {
         return StorageFileType.OTHER;
     }
 }
-

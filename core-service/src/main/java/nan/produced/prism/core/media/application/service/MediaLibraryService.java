@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.util.FileNameUtils;
-import nan.produced.prism.core.common.util.StorageFileTypeResolver;
+import nan.produced.prism.core.user.api.StorageFileTypeResolver;
 import nan.produced.prism.core.media.application.domain.MediaAssetEntity;
 import nan.produced.prism.core.media.application.domain.MediaFolderEntity;
 import nan.produced.prism.core.media.application.dto.MediaLibraryNodesResponse;

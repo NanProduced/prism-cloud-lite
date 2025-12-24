@@ -16,31 +16,9 @@ public class RabbitMessagePublisher {
 
     private final RabbitTemplate rabbitTemplate;
 
-    public void publishDeviceEvent(String routingKey, DeviceEventMessage message) {
-        DeviceEventMessage payload = prepareDeviceEvent(message);
-        send(MessagingConstants.Exchanges.DEVICE_EVENTS, routingKey, payload);
-    }
-
     public void publishCoreNotification(String routingKey, FrontendEventMessage message) {
         FrontendEventMessage payload = prepareFrontendEventMessage(message);
         send(MessagingConstants.Exchanges.CORE_NOTIFICATIONS, routingKey, payload);
-    }
-
-    private DeviceEventMessage prepareDeviceEvent(DeviceEventMessage message) {
-        DeviceEventMessage payload = message != null ? message : DeviceEventMessage.builder().build();
-        if (payload.getOccurredAt() == null) {
-            payload.setOccurredAt(Instant.now());
-        }
-        if (payload.getTraceId() == null) {
-            payload.setTraceId(TraceUtils.getTraceId());
-        }
-        if (payload.getVersion() == null) {
-            payload.setVersion(MessagingConstants.MESSAGE_VERSION);
-        }
-        if (payload.getPayload() == null) {
-            payload.setPayload(new HashMap<>());
-        }
-        return payload;
     }
 
     private FrontendEventMessage prepareFrontendEventMessage(FrontendEventMessage message) {
