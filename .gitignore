@@ -47,4 +47,5 @@ build/
 .tools
 **/application-dev.yml
 **/application-prod.yml
+docker-compose.yml
 

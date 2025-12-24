@@ -40,7 +40,6 @@ services:
       - "5432:5432"
     volumes:
       - C:/Users/nanpr/docker/postgres/data:/var/lib/postgresql/data
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d
     networks:
       - prism-net
 
