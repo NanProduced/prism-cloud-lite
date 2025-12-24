@@ -18,17 +18,17 @@ public class SensorTelemetryRetentionJob {
     private static final int RETENTION_DAYS = 30;
 
     private static final String SQL_DELETE_SENSOR_METRIC = """
-            DELETE FROM pc_device_sensor_metric
+            DELETE FROM pcc_device_sensor_metric
             WHERE server_time < :cutoff
             """;
 
     private static final String SQL_DELETE_RECEIVE_CARD = """
-            DELETE FROM pc_device_receive_card_sample
+            DELETE FROM pcc_device_receive_card_sample
             WHERE server_time < :cutoff
             """;
 
     private static final String SQL_DELETE_GPS_POINT = """
-            DELETE FROM pc_device_gps_point
+            DELETE FROM pcc_device_gps_point
             WHERE server_time < :cutoff
             """;
 
@@ -54,4 +54,3 @@ public class SensorTelemetryRetentionJob {
         }
     }
 }
-

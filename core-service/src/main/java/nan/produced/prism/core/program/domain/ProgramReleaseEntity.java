@@ -26,17 +26,17 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pc_program_release")
+@Table(name = "pcc_program_release")
 public class ProgramReleaseEntity {
 
     /**
      * 设备侧节目 ID（Colorlight ProgramId，Integer），每个 Release 唯一。
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "pc_program_device_program_id_seq")
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "pcc_program_device_program_id_seq")
     @SequenceGenerator(
-            name = "pc_program_device_program_id_seq",
-            sequenceName = "pc_program_device_program_id_seq",
+            name = "pcc_program_device_program_id_seq",
+            sequenceName = "pcc_program_device_program_id_seq",
             allocationSize = 1)
     @Column(name = "device_program_id", nullable = false)
     private Integer deviceProgramId;

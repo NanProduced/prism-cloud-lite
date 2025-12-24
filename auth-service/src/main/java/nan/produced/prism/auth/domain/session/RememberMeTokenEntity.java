@@ -23,7 +23,7 @@ import nan.produced.prism.auth.domain.user.UserType;
 @Getter
 @Setter
 @Entity
-@Table(name = "auth_remember_me_tokens", indexes = {
+@Table(name = "pca_remember_me_tokens", indexes = {
         @Index(name = "idx_remember_me_user", columnList = "user_id"),
         @Index(name = "idx_remember_me_series", columnList = "series", unique = true)
 })

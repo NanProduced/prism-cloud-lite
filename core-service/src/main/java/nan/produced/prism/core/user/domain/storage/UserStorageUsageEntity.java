@@ -22,7 +22,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @Builder
 @Entity
-@Table(name = "pc_user_storage_usage")
+@Table(name = "pcc_user_storage_usage")
 public class UserStorageUsageEntity {
 
     @Id

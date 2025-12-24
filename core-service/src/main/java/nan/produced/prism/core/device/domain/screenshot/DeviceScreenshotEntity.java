@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "device_screenshot")
+@Table(name = "pcc_device_screenshot")
 public class DeviceScreenshotEntity {
 
     @Id
@@ -38,4 +38,3 @@ public class DeviceScreenshotEntity {
     @Column(name = "uploaded_at", nullable = false, updatable = false)
     private Instant uploadedAt;
 }
-

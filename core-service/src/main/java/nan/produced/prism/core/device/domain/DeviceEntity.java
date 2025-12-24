@@ -19,7 +19,7 @@ import org.hibernate.type.SqlTypes;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@Table(name = "device")
+@Table(name = "pcc_device")
 public class DeviceEntity {
 
     /* ====== 业务字段 ====== */

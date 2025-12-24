@@ -18,7 +18,7 @@ import org.hibernate.type.SqlTypes;
  */
 @Data
 @Entity
-@Table(name = "device_custom_field_value")
+@Table(name = "pcc_device_custom_field_value")
 public class DeviceCustomFieldValueEntity {
 
     /**

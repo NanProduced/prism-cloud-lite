@@ -18,7 +18,7 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pc_schedule_contents_rule")
+@Table(name = "pcc_schedule_contents_rule")
 public class ScheduleContentsRuleEntity {
 
     @Id
@@ -67,4 +67,3 @@ public class ScheduleContentsRuleEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 }
-

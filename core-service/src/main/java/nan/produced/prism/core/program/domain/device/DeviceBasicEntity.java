@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "device")
+@Table(name = "pcc_device")
 public class DeviceBasicEntity {
 
     @Id
@@ -34,4 +34,3 @@ public class DeviceBasicEntity {
     @Column(name = "online_status")
     private Integer onlineStatus;
 }
-

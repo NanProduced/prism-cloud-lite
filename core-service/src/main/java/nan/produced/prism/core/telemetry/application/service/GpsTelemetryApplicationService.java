@@ -37,7 +37,7 @@ public class GpsTelemetryApplicationService implements GpsTelemetryFacade {
 
     private static final String SQL_VALIDATE_DEVICE_OWNERSHIP = """
             SELECT 1
-            FROM device
+            FROM pcc_device
             WHERE device_id = :deviceId
               AND user_id = :userId
             """;

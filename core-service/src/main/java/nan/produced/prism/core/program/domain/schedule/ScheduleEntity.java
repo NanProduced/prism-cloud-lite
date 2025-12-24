@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pc_schedule")
+@Table(name = "pcc_schedule")
 public class ScheduleEntity {
 
     @Id
@@ -41,4 +41,3 @@ public class ScheduleEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 }
-

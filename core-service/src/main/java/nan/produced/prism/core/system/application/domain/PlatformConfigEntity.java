@@ -18,7 +18,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "platform_config", uniqueConstraints = {
+@Table(name = "pcc_platform_config", uniqueConstraints = {
         @UniqueConstraint(name = "uk_config_type_key", columnNames = {"config_type", "config_key"})
 })
 public class PlatformConfigEntity {

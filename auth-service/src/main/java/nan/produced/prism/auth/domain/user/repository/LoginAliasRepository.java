@@ -9,10 +9,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface LoginAliasRepository extends JpaRepository<LoginAliasEntity, Long> {
 
-    @Query("select a from LoginAliasEntity a where upper(a.aliasValue) = upper(:value)")
+    @Query("select a from LoginAliasEntity a where a.aliasValue = :value")
     Optional<LoginAliasEntity> findAnyByValue(@Param("value") String aliasValue);
 
-    @Query("select a from LoginAliasEntity a where upper(a.aliasValue) = upper(:value) and a.aliasType = :type")
+    @Query("select a from LoginAliasEntity a where a.aliasValue = :value and a.aliasType = :type")
     Optional<LoginAliasEntity> findByValueAndType(@Param("value") String aliasValue,
                                                   @Param("type") LoginAliasType type);
 }

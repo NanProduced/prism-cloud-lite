@@ -24,7 +24,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pc_program_deployment")
+@Table(name = "pcc_program_deployment")
 @IdClass(ProgramDeploymentId.class)
 public class ProgramDeploymentEntity {
 

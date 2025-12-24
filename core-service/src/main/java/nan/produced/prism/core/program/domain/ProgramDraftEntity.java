@@ -21,7 +21,7 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pc_program_draft")
+@Table(name = "pcc_program_draft")
 public class ProgramDraftEntity {
 
     /**

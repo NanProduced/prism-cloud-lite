@@ -18,7 +18,7 @@ import lombok.Data;
  */
 @Data
 @Entity
-@Table(name = "auth_login_alias")
+@Table(name = "pca_login_alias")
 public class LoginAliasEntity {
 
     /** Surrogate key for alias row. */

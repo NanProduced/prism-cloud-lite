@@ -23,7 +23,7 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pc_program_audit_log")
+@Table(name = "pcc_program_audit_log")
 public class ProgramAuditLogEntity {
 
     @Id

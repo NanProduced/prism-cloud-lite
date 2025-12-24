@@ -17,7 +17,7 @@ public class DeviceOnlineSessionRepositoryAdapter implements DeviceOnlineSession
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     private static final String SQL_INSERT_IGNORE = """
-            INSERT INTO pc_device_online_session (user_id, device_id, online_at, offline_at)
+            INSERT INTO pcc_device_online_session (user_id, device_id, online_at, offline_at)
             VALUES (:userId, :deviceId, :onlineAt, :offlineAt)
             ON CONFLICT (device_id, online_at, offline_at) DO NOTHING
             """;
@@ -25,7 +25,7 @@ public class DeviceOnlineSessionRepositoryAdapter implements DeviceOnlineSession
     private static final String SQL_SUM_BY_DEVICE = """
             SELECT device_id,
                    COALESCE(CAST(SUM(EXTRACT(EPOCH FROM (LEAST(offline_at, :to) - GREATEST(online_at, :from)))) AS BIGINT), 0) AS online_seconds
-            FROM pc_device_online_session
+            FROM pcc_device_online_session
             WHERE user_id = :userId
               AND period && tstzrange(:from, :to, '[)')
             GROUP BY device_id
@@ -50,7 +50,7 @@ public class DeviceOnlineSessionRepositoryAdapter implements DeviceOnlineSession
     private static final String SQL_BUCKET_FOR_DEVICE = SQL_BUCKET_BASE + """
             , sessions AS (
               SELECT online_at, offline_at
-              FROM pc_device_online_session
+              FROM pcc_device_online_session
               WHERE user_id = :userId
                 AND device_id = :deviceId
                 AND period && tstzrange(:from, :to, '[)')
@@ -71,7 +71,7 @@ public class DeviceOnlineSessionRepositoryAdapter implements DeviceOnlineSession
     private static final String SQL_ACTIVE_DEVICES_BY_BUCKET = SQL_BUCKET_BASE + """
             , sessions AS (
               SELECT device_id, online_at, offline_at
-              FROM pc_device_online_session
+              FROM pcc_device_online_session
               WHERE user_id = :userId
                 AND period && tstzrange(:from, :to, '[)')
             )
@@ -91,7 +91,7 @@ public class DeviceOnlineSessionRepositoryAdapter implements DeviceOnlineSession
     private static final String SQL_CONCURRENCY_BY_BUCKET = SQL_BUCKET_BASE + """
             , sessions AS (
               SELECT online_at, offline_at
-              FROM pc_device_online_session
+              FROM pcc_device_online_session
               WHERE user_id = :userId
                 AND period && tstzrange(:from, :to, '[)')
             )
@@ -155,7 +155,7 @@ public class DeviceOnlineSessionRepositoryAdapter implements DeviceOnlineSession
               SELECT
                 GREATEST(online_at, :from) AS effective_online_at,
                 LEAST(offline_at, :to) AS effective_offline_at
-              FROM pc_device_online_session
+              FROM pcc_device_online_session
               WHERE user_id = :userId
                 AND device_id = :deviceId
                 AND period && tstzrange(:from, :to, '[)')
@@ -180,7 +180,7 @@ public class DeviceOnlineSessionRepositoryAdapter implements DeviceOnlineSession
               SELECT
                 GREATEST(online_at, :from) AS effective_online_at,
                 LEAST(offline_at, :to) AS effective_offline_at
-              FROM pc_device_online_session
+              FROM pcc_device_online_session
               WHERE user_id = :userId
                 AND device_id = :deviceId
                 AND period && tstzrange(:from, :to, '[)')
@@ -216,7 +216,7 @@ public class DeviceOnlineSessionRepositoryAdapter implements DeviceOnlineSession
               GREATEST(online_at, :from) AS effective_online_at,
               LEAST(offline_at, :to) AS effective_offline_at,
               COALESCE(CAST(EXTRACT(EPOCH FROM (LEAST(offline_at, :to) - GREATEST(online_at, :from))) AS BIGINT), 0) AS online_seconds_in_range
-            FROM pc_device_online_session
+            FROM pcc_device_online_session
             WHERE user_id = :userId
               AND device_id = :deviceId
               AND period && tstzrange(:from, :to, '[)')
@@ -381,4 +381,3 @@ public class DeviceOnlineSessionRepositoryAdapter implements DeviceOnlineSession
                 .addValue("stepInterval", stepInterval);
     }
 }
-

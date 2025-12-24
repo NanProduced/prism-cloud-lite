@@ -23,7 +23,7 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pc_schedule_audit_log")
+@Table(name = "pcc_schedule_audit_log")
 public class ScheduleAuditLogEntity {
 
     @Id
@@ -47,4 +47,3 @@ public class ScheduleAuditLogEntity {
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 }
-

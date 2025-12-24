@@ -21,7 +21,7 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pc_program_template")
+@Table(name = "pcc_program_template")
 public class ProgramTemplateEntity {
 
     @Id

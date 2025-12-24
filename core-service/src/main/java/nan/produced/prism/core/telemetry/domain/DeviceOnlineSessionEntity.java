@@ -32,7 +32,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Entity
 @Table(
-        name = "pc_device_online_session",
+        name = "pcc_device_online_session",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_device_online_session_unique",
@@ -62,4 +62,3 @@ public class DeviceOnlineSessionEntity {
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime createdAt;
 }
-

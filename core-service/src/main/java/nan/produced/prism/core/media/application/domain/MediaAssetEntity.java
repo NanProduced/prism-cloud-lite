@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @Data
 @Entity
-@Table(name = "media_asset", indexes = {
+@Table(name = "pcc_media_asset", indexes = {
         @Index(name = "idx_media_asset_user_folder", columnList = "userId, folderId"),
         @Index(name = "idx_media_asset_group", columnList = "groupId")
 })

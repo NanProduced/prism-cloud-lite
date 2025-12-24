@@ -26,7 +26,7 @@ import org.hibernate.type.SqlTypes;
 @Getter
 @Setter
 @Entity
-@Table(name = "auth_security_events", indexes = {
+@Table(name = "pca_security_events", indexes = {
     @Index(name = "idx_security_events_user_created", columnList = "user_id, created_at"),
     @Index(name = "idx_security_events_type_created", columnList = "event_type, created_at")
 })
@@ -72,4 +72,3 @@ public class SecurityEventEntity {
         }
     }
 }
-

@@ -14,7 +14,7 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "device_tag_map")
+@Table(name = "pcc_device_tag_map")
 @IdClass(DeviceTagMapId.class)
 public class DeviceTagMapEntity {
 

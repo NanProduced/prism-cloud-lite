@@ -11,7 +11,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "auth_admin_users")
+@Table(name = "pca_admin_users")
 public class AdminUserEntity extends AbstractAuthUserEntity {
 
     @Override

@@ -18,7 +18,7 @@ public class DeviceProgramPlaySessionRepositoryAdapter implements DeviceProgramP
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     private static final String SQL_INSERT_IGNORE = """
-            INSERT INTO pc_device_program_play_session (
+            INSERT INTO pcc_device_program_play_session (
               user_id,
               device_id,
               is_lan,
@@ -54,7 +54,7 @@ public class DeviceProgramPlaySessionRepositoryAdapter implements DeviceProgramP
               COUNT(*) FILTER (WHERE start_at >= :from AND start_at < :to) AS play_count,
               COALESCE(CAST(SUM(EXTRACT(EPOCH FROM (LEAST(end_at, :to) - GREATEST(start_at, :from)))) AS BIGINT), 0) AS play_seconds,
               COUNT(DISTINCT device_id) AS device_count
-            FROM pc_device_program_play_session
+            FROM pcc_device_program_play_session
             WHERE user_id = :userId
               AND period && tstzrange(:from, :to, '[)')
             """;
@@ -71,7 +71,7 @@ public class DeviceProgramPlaySessionRepositoryAdapter implements DeviceProgramP
               COALESCE(CAST(SUM(EXTRACT(EPOCH FROM (LEAST(end_at, :to) - GREATEST(start_at, :from)))) AS BIGINT), 0) AS play_seconds,
               COUNT(DISTINCT device_id) AS device_count,
               MAX(start_at) AS last_played_at
-            FROM pc_device_program_play_session
+            FROM pcc_device_program_play_session
             WHERE user_id = :userId
               AND period && tstzrange(:from, :to, '[)')
             GROUP BY is_lan, program_id, release_version, lan_program_id
@@ -83,7 +83,7 @@ public class DeviceProgramPlaySessionRepositoryAdapter implements DeviceProgramP
               COUNT(*) FILTER (WHERE start_at >= :from AND start_at < :to) AS play_count,
               COALESCE(CAST(SUM(EXTRACT(EPOCH FROM (LEAST(end_at, :to) - GREATEST(start_at, :from)))) AS BIGINT), 0) AS play_seconds,
               MAX(start_at) AS last_played_at
-            FROM pc_device_program_play_session
+            FROM pcc_device_program_play_session
             WHERE user_id = :userId
               AND is_lan = FALSE
               AND program_id = :programId
@@ -98,7 +98,7 @@ public class DeviceProgramPlaySessionRepositoryAdapter implements DeviceProgramP
               COUNT(*) FILTER (WHERE start_at >= :from AND start_at < :to) AS play_count,
               COALESCE(CAST(SUM(EXTRACT(EPOCH FROM (LEAST(end_at, :to) - GREATEST(start_at, :from)))) AS BIGINT), 0) AS play_seconds,
               MAX(start_at) AS last_played_at
-            FROM pc_device_program_play_session
+            FROM pcc_device_program_play_session
             WHERE user_id = :userId
               AND is_lan = TRUE
               AND lan_program_id = :lanProgramId
@@ -124,7 +124,7 @@ public class DeviceProgramPlaySessionRepositoryAdapter implements DeviceProgramP
     private static final String SQL_BUCKET_PLATFORM = SQL_BUCKET_BASE + """
             , sessions AS (
               SELECT device_id, start_at, end_at
-              FROM pc_device_program_play_session
+              FROM pcc_device_program_play_session
               WHERE user_id = :userId
                 AND is_lan = FALSE
                 AND program_id = :programId
@@ -148,7 +148,7 @@ public class DeviceProgramPlaySessionRepositoryAdapter implements DeviceProgramP
     private static final String SQL_BUCKET_LAN = SQL_BUCKET_BASE + """
             , sessions AS (
               SELECT device_id, start_at, end_at
-              FROM pc_device_program_play_session
+              FROM pcc_device_program_play_session
               WHERE user_id = :userId
                 AND is_lan = TRUE
                 AND lan_program_id = :lanProgramId
@@ -354,4 +354,3 @@ public class DeviceProgramPlaySessionRepositoryAdapter implements DeviceProgramP
                 .addValue("stepInterval", stepInterval);
     }
 }
-

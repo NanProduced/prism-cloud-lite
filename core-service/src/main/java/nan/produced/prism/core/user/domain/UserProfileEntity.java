@@ -24,7 +24,7 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pc_user_profile")
+@Table(name = "pcc_user_profile")
 public class UserProfileEntity {
 
     /**

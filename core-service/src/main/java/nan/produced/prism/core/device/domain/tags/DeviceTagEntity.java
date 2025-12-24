@@ -19,7 +19,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "device_tag", uniqueConstraints = {
+@Table(name = "pcc_device_tag", uniqueConstraints = {
         @UniqueConstraint(name = "uk_device_tag_user_slug", columnNames = {"user_id", "slug"})
 })
 public class DeviceTagEntity {

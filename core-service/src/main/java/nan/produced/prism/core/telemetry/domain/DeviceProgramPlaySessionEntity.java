@@ -29,7 +29,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Entity
 @Table(
-        name = "pc_device_program_play_session",
+        name = "pcc_device_program_play_session",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_device_program_play_session_platform",

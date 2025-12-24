@@ -16,7 +16,7 @@ import java.util.UUID;
  */
 @Data
 @Entity
-@Table(name = "pc_device_log")
+@Table(name = "pcc_device_log")
 public class DeviceLogEntity {
 
     @Id

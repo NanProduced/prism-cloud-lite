@@ -20,7 +20,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Entity
 @Table(
-    name = "device_location_override",
+    name = "pcc_device_location_override",
     uniqueConstraints = {
         @UniqueConstraint(name = "uk_device_location_override", columnNames = {"user_id", "device_id"})
     }
@@ -50,4 +50,3 @@ public class DeviceLocationOverrideEntity {
     @Column(name = "updated_at", nullable = false, insertable = false)
     private OffsetDateTime updatedAt;
 }
-

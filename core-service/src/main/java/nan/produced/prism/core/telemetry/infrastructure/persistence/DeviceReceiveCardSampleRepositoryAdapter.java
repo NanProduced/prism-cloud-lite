@@ -18,7 +18,7 @@ public class DeviceReceiveCardSampleRepositoryAdapter implements DeviceReceiveCa
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     private static final String SQL_INSERT = """
-            INSERT INTO pc_device_receive_card_sample (
+            INSERT INTO pcc_device_receive_card_sample (
               user_id,
               device_id,
               net_port_num,
@@ -61,7 +61,7 @@ public class DeviceReceiveCardSampleRepositoryAdapter implements DeviceReceiveCa
               humidity,
               smoke,
               server_time
-            FROM pc_device_receive_card_sample
+            FROM pcc_device_receive_card_sample
             WHERE user_id = :userId
               AND device_id = :deviceId
               AND server_time >= :from

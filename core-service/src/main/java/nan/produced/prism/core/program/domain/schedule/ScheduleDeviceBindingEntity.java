@@ -16,7 +16,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pc_device_schedule_binding")
+@Table(name = "pcc_device_schedule_binding")
 public class ScheduleDeviceBindingEntity {
 
     @Id
@@ -38,4 +38,3 @@ public class ScheduleDeviceBindingEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 }
-

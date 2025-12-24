@@ -11,7 +11,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "auth_users")
+@Table(name = "pca_users")
 public class EndUserEntity extends AbstractAuthUserEntity {
 
     @Override

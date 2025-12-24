@@ -20,7 +20,7 @@ public interface DeviceScreenshotRepositoryJpa extends JpaRepository<DeviceScree
 
     @Query(value = """
             SELECT DISTINCT ON (device_id) *
-            FROM device_screenshot
+            FROM pcc_device_screenshot
             WHERE device_id IN (:deviceIds)
             ORDER BY device_id, uploaded_at DESC
             """, nativeQuery = true)

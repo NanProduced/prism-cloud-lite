@@ -20,7 +20,7 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pc_message")
+@Table(name = "pcc_message")
 public class MessageEntity {
 
     @Id
@@ -72,4 +72,3 @@ public class MessageEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 }
-

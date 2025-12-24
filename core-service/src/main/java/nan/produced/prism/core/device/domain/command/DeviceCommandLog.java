@@ -20,7 +20,7 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pc_device_command_log")
+@Table(name = "pcc_device_command_log")
 public class DeviceCommandLog {
 
     @Id

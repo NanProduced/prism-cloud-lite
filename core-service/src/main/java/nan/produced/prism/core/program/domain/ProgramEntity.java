@@ -19,7 +19,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "pc_program")
+@Table(name = "pcc_program")
 public class ProgramEntity {
 
     @Id
@@ -50,4 +50,3 @@ public class ProgramEntity {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 }
-

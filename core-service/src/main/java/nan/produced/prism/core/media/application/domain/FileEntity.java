@@ -7,7 +7,7 @@ import java.time.Instant;
 
 @Data
 @Entity
-@Table(name = "file_entity", indexes = {
+@Table(name = "pcc_file_entity", indexes = {
         @Index(name = "idx_file_entity_md5", columnList = "md5", unique = true)
 })
 public class FileEntity {

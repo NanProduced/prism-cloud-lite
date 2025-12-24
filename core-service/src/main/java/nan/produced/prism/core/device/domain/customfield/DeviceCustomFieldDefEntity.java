@@ -17,7 +17,7 @@ import lombok.Data;
 
 @Data
 @Entity
-@Table(name = "device_custom_field_def")
+@Table(name = "pcc_device_custom_field_def")
 public class DeviceCustomFieldDefEntity {
 
     /**

@@ -23,7 +23,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Entity
-@Table(name = "auth_api_keys", indexes = {
+@Table(name = "pca_api_keys", indexes = {
     @Index(name = "idx_api_keys_user_created", columnList = "user_id, created_at"),
     @Index(name = "idx_api_keys_client_id", columnList = "client_id", unique = true)
 })
@@ -58,4 +58,3 @@ public class ApiKeyEntity {
         }
     }
 }
-

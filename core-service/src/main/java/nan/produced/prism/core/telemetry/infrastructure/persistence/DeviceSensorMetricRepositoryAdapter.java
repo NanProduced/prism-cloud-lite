@@ -19,7 +19,7 @@ public class DeviceSensorMetricRepositoryAdapter implements DeviceSensorMetricRe
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     private static final String SQL_INSERT = """
-            INSERT INTO pc_device_sensor_metric (
+            INSERT INTO pcc_device_sensor_metric (
               user_id,
               device_id,
               source_type,
@@ -86,7 +86,7 @@ public class DeviceSensorMetricRepositoryAdapter implements DeviceSensorMetricRe
 
         StringBuilder sql = new StringBuilder("""
                 SELECT source_type, report_type, metric_key, server_time, value_num
-                FROM pc_device_sensor_metric
+                FROM pcc_device_sensor_metric
                 WHERE user_id = :userId
                   AND device_id = :deviceId
                   AND server_time >= :from

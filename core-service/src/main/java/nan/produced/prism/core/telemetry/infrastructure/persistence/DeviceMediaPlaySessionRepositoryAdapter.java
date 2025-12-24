@@ -18,7 +18,7 @@ public class DeviceMediaPlaySessionRepositoryAdapter implements DeviceMediaPlayS
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     private static final String SQL_INSERT_IGNORE = """
-            INSERT INTO pc_device_media_play_session (
+            INSERT INTO pcc_device_media_play_session (
               user_id,
               device_id,
               media_id,
@@ -70,7 +70,7 @@ public class DeviceMediaPlaySessionRepositoryAdapter implements DeviceMediaPlayS
               COUNT(*) FILTER (WHERE start_at >= :from AND start_at < :to) AS play_count,
               COALESCE(CAST(SUM(EXTRACT(EPOCH FROM (LEAST(end_at, :to) - GREATEST(start_at, :from)))) AS BIGINT), 0) AS play_seconds,
               COUNT(DISTINCT device_id) AS device_count
-            FROM pc_device_media_play_session
+            FROM pcc_device_media_play_session
             WHERE user_id = :userId
               AND period && tstzrange(:from, :to, '[)')
             """;
@@ -83,7 +83,7 @@ public class DeviceMediaPlaySessionRepositoryAdapter implements DeviceMediaPlayS
               COALESCE(CAST(SUM(EXTRACT(EPOCH FROM (LEAST(end_at, :to) - GREATEST(start_at, :from)))) AS BIGINT), 0) AS play_seconds,
               COUNT(DISTINCT device_id) AS device_count,
               MAX(start_at) AS last_played_at
-            FROM pc_device_media_play_session
+            FROM pcc_device_media_play_session
             WHERE user_id = :userId
               AND period && tstzrange(:from, :to, '[)')
             GROUP BY media_id
@@ -95,7 +95,7 @@ public class DeviceMediaPlaySessionRepositoryAdapter implements DeviceMediaPlayS
               COUNT(*) FILTER (WHERE start_at >= :from AND start_at < :to) AS play_count,
               COALESCE(CAST(SUM(EXTRACT(EPOCH FROM (LEAST(end_at, :to) - GREATEST(start_at, :from)))) AS BIGINT), 0) AS play_seconds,
               MAX(start_at) AS last_played_at
-            FROM pc_device_media_play_session
+            FROM pcc_device_media_play_session
             WHERE user_id = :userId
               AND media_id = :mediaId
               AND period && tstzrange(:from, :to, '[)')
@@ -120,7 +120,7 @@ public class DeviceMediaPlaySessionRepositoryAdapter implements DeviceMediaPlayS
     private static final String SQL_BUCKET = SQL_BUCKET_BASE + """
             , sessions AS (
               SELECT device_id, start_at, end_at
-              FROM pc_device_media_play_session
+              FROM pcc_device_media_play_session
               WHERE user_id = :userId
                 AND media_id = :mediaId
                 AND period && tstzrange(:from, :to, '[)')
@@ -274,4 +274,3 @@ public class DeviceMediaPlaySessionRepositoryAdapter implements DeviceMediaPlayS
                 .addValue("stepInterval", stepInterval);
     }
 }
-

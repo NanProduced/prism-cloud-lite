@@ -18,7 +18,7 @@ public class DeviceGpsPointRepositoryAdapter implements DeviceGpsPointRepository
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
     private static final String SQL_INSERT = """
-            INSERT INTO pc_device_gps_point (
+            INSERT INTO pcc_device_gps_point (
               user_id,
               device_id,
               longitude,
@@ -59,7 +59,7 @@ public class DeviceGpsPointRepositoryAdapter implements DeviceGpsPointRepository
               direct,
               satellites,
               server_time
-            FROM pc_device_gps_point
+            FROM pcc_device_gps_point
             WHERE user_id = :userId
             ORDER BY device_id, server_time DESC
             """;
@@ -75,7 +75,7 @@ public class DeviceGpsPointRepositoryAdapter implements DeviceGpsPointRepository
               direct,
               satellites,
               server_time
-            FROM pc_device_gps_point
+            FROM pcc_device_gps_point
             WHERE user_id = :userId
               AND device_id = :deviceId
               AND server_time >= :from
@@ -88,7 +88,7 @@ public class DeviceGpsPointRepositoryAdapter implements DeviceGpsPointRepository
               FLOOR(longitude * :factor) / :factor AS lon_bucket,
               FLOOR(latitude * :factor) / :factor AS lat_bucket,
               COUNT(*) AS point_count
-            FROM pc_device_gps_point
+            FROM pcc_device_gps_point
             WHERE user_id = :userId
               AND server_time >= :from
               AND server_time < :to

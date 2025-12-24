@@ -15,7 +15,7 @@ import lombok.Data;
  */
 @Data
 @Entity
-@Table(name = "device_custom_field_option")
+@Table(name = "pcc_device_custom_field_option")
 public class DeviceCustomFieldOptionEntity {
 
     @Id
