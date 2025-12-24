@@ -22,12 +22,10 @@ import nan.produced.prism.core.device.domain.report.log.DeviceLog;
 import nan.produced.prism.core.device.domain.report.log.DeviceLogEntity;
 import nan.produced.prism.core.device.domain.report.media.MediaPlayTimesReport;
 import nan.produced.prism.core.device.domain.report.program.ProgramPlayTimesReport;
-import nan.produced.prism.core.device.domain.report.sensor.SensorReportBase;
-import nan.produced.prism.core.device.domain.report.sensor.SensorReportType;
-import nan.produced.prism.core.device.domain.report.sensor.SensorType;
 import nan.produced.prism.core.device.infrastructure.persistence.DeviceLogRepositoryJpa;
 import nan.produced.prism.core.telemetry.api.DeviceOnlineTimeFacade;
 import nan.produced.prism.core.telemetry.api.PlaybackTelemetryFacade;
+import nan.produced.prism.core.telemetry.api.SensorTelemetryFacade;
 import org.springframework.stereotype.Service;
 
 import java.time.*;
@@ -60,6 +58,8 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
     private final DeviceOnlineTimeFacade deviceOnlineTimeFacade;
 
     private final PlaybackTelemetryFacade playbackTelemetryFacade;
+
+    private final SensorTelemetryFacade sensorTelemetryFacade;
 
     private final DeviceLogConverter deviceLogConverter;
 
@@ -370,22 +370,19 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
      * @param occurredAt 上报时间
      */
     private void handleSensorReport(Long deviceId, String sensorData, String traceId, Instant occurredAt) {
-        log.debug("处理传感器数据: deviceId={}, traceId={}", deviceId, traceId);
-        List<SensorReportBase> sensorReports = JsonUtils.fromJson(sensorData, new TypeReference<List<SensorReportBase>>() {});
-        for (SensorReportBase report : sensorReports) {
-            report.setDeviceId(deviceId);
-            report.setServerTime(occurredAt != null ? occurredAt.atOffset(ZoneOffset.UTC) : OffsetDateTime.now(ZoneOffset.UTC));
-            SensorType sensorSourceType = SensorReportType.fromSensorType(report.getSensorType()).getSensorSourceType();
-            switch (sensorSourceType) {
-                case  DEVICE_SENSOR:
-
-            }
+        if (deviceId == null || sensorData == null || sensorData.isBlank()) {
+            return;
         }
-        // TODO: 实现传感器数据处理逻辑
-        // 1. 解析传感器数据（温度、湿度、等等）
-        // 2. 存储时间序列数据
-        // 3. 检查异常值并告警
-        // 4. 更新设备状态
+
+        log.debug("处理传感器数据: deviceId={}, traceId={}", deviceId, traceId);
+
+        UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);
+        if (userId == null) {
+            log.warn("SensorReport - 未找到设备所属用户，跳过落库: deviceId={}, traceId={}", deviceId, traceId);
+            return;
+        }
+
+        sensorTelemetryFacade.recordSensorReports(userId, deviceId, sensorData, occurredAt, traceId);
     }
 
     /**

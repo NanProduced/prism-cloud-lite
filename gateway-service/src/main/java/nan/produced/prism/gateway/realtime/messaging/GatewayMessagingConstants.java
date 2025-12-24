@@ -23,16 +23,22 @@ public final class GatewayMessagingConstants {
          */
         public static final String COMMON_NOTIFY = "core-notify-q";
 
+        /**
+         * core-service 推送给 SPA 的高频实时数据队列（gateway 消费并通过页面级 SSE 下发）
+         */
+        public static final String REALTIME_NOTIFY = "core-realtime-q";
+
         private Queues() {
         }
     }
 
     public static final class RoutingKeys {
 
-        public static final String NOTIFY_ALL = "notify.*";
+        public static final String NOTIFY_ALL = "notify.#";
+
+        public static final String REALTIME_ALL = "realtime.#";
 
         private RoutingKeys() {
         }
     }
 }
-

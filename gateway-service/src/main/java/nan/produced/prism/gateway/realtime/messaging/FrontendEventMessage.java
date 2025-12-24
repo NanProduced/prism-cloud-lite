@@ -11,7 +11,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 从 core.notifications（notify.*）消费的前端事件消息
+ * 从 core.notifications（notify.#）消费的前端事件消息
  * <p>
  * gateway-service 负责按 userId 路由并推送 SSE。
  *
@@ -71,4 +71,3 @@ public class FrontendEventMessage {
         private boolean retryable;
     }
 }
-

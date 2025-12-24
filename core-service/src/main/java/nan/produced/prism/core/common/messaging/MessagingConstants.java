@@ -39,6 +39,8 @@ public final class MessagingConstants {
         public static final String TASK_WORKER = "core-task-worker-q";
         // 前端spa通知队列
         public static final String COMMON_NOTIFY = "core-notify-q";
+        // 面向前端的高频实时数据队列（传感器/GPS 等，仅用于 SSE，不落库到消息中心）
+        public static final String REALTIME_NOTIFY = "core-realtime-q";
 
         private Queues() {
         }
@@ -59,7 +61,7 @@ public final class MessagingConstants {
         // 业务异步任务执行结果路由键
         public static final String TASK_RESULT = "task.result";
         // 前端spa通知路由键
-        public static final String NOTIFY_ALL = "notify.*";
+        public static final String NOTIFY_ALL = "notify.#";
 
         /**
          * 设备在线状态变化通知（面向前端）
@@ -71,6 +73,15 @@ public final class MessagingConstants {
          * <p>示例：指令确认/完成等：type=operation.updated</p>
          */
         public static final String NOTIFY_OPERATION_UPDATED = "notify.operation.updated";
+
+        /**
+         * 面向前端的高频实时数据（传感器/GPS 等）
+         */
+        public static final String REALTIME_ALL = "realtime.#";
+
+        public static final String REALTIME_SENSOR_REPORTED = "realtime.sensor.reported";
+
+        public static final String REALTIME_GPS_REPORTED = "realtime.gps.reported";
 
         private RoutingKeys() {
         }

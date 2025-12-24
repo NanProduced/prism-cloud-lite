@@ -95,6 +95,18 @@ public class RabbitMqConfiguration {
     }
 
     /**
+     * 创建高频实时数据队列（仅用于 SSE 推送，不落库到消息中心）
+     */
+    @Bean
+    public Queue coreRealtimeQueue() {
+        return QueueBuilder
+                .durable(MessagingConstants.Queues.REALTIME_NOTIFY)
+                .withArgument("x-message-ttl", 60000)
+                .withArgument("x-max-length", 10000)
+                .build();
+    }
+
+    /**
      * 创建设备事件绑定
      * @param deviceEventsExchange 设备事件交换机
      * @param coreDeviceStatusQueue 设备在线状态队列
@@ -130,7 +142,8 @@ public class RabbitMqConfiguration {
     @Bean
     public Declarables coreNotificationBindings(TopicExchange coreNotificationsExchange,
                                                 Queue coreTaskWorkerQueue,
-                                                Queue coreNotifyQueue) {
+                                                Queue coreNotifyQueue,
+                                                Queue coreRealtimeQueue) {
         return new Declarables(
             BindingBuilder.bind(coreTaskWorkerQueue)
                 .to(coreNotificationsExchange)
@@ -140,7 +153,10 @@ public class RabbitMqConfiguration {
                 .with(MessagingConstants.RoutingKeys.TASK_RESULT),
             BindingBuilder.bind(coreNotifyQueue)
                 .to(coreNotificationsExchange)
-                .with(MessagingConstants.RoutingKeys.NOTIFY_ALL)
+                .with(MessagingConstants.RoutingKeys.NOTIFY_ALL),
+            BindingBuilder.bind(coreRealtimeQueue)
+                .to(coreNotificationsExchange)
+                .with(MessagingConstants.RoutingKeys.REALTIME_ALL)
         );
     }
 
@@ -157,4 +173,3 @@ public class RabbitMqConfiguration {
         return rabbitTemplate;
     }
 }
-

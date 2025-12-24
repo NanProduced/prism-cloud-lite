@@ -162,11 +162,47 @@ public enum SensorReportType {
     }
 
     public static SensorReportType fromSensorType(String sensorType) {
+        return resolve(sensorType, null);
+    }
+
+    /**
+     * 通过设备上报的 sensorType + sensorId 精确解析到业务类型。
+     *
+     * <p>说明：同一 sensorType 下会存在多个传感器来源/含义（如 bright/humidity/temperature 等），
+     * 需结合 sensorId 才能正确区分（DEVICE_SENSOR vs M2_SENSOR vs 板载）。</p>
+     */
+    public static SensorReportType resolve(String sensorType, Integer sensorId) {
+        if (sensorType == null || sensorType.isBlank()) {
+            return null;
+        }
+
+        String normalizedType = sensorType.trim();
+
+        // 1) 优先精确匹配（sensorType + sensorId）
+        if (sensorId != null) {
+            for (SensorReportType type : SensorReportType.values()) {
+                if (normalizedType.equals(type.getSensorType())
+                        && type.getSensorId() != null
+                        && sensorId.equals(type.getSensorId())) {
+                    return type;
+                }
+            }
+        }
+
+        // 2) 兜底：仅匹配 sensorType（用于不区分 sensorId 的类型，例如接收卡 bitErrorRate）
         for (SensorReportType type : SensorReportType.values()) {
-            if (sensorType.equals(type.getSensorType())) {
+            if (normalizedType.equals(type.getSensorType()) && type.getSensorId() == null) {
                 return type;
             }
         }
+
+        // 3) 最后兜底：按 sensorType 返回第一个（尽量不返回 null，便于兼容旧逻辑）
+        for (SensorReportType type : SensorReportType.values()) {
+            if (normalizedType.equals(type.getSensorType())) {
+                return type;
+            }
+        }
+
         return null;
     }
 }

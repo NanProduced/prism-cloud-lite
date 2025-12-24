@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 /**
  * 面向前端（SPA）的通用事件消息
  * <p>
- * 用于 core-service 发布到 core.notifications（notify.*），由 gateway-service 消费并推送 SSE。
+ * 用于 core-service 发布到 core.notifications（notify.#），由 gateway-service 消费并推送 SSE。
  * <p>
  * 设计对齐 BffResponse 的 success/data/error/traceId 结构，并增加 type/scope/occurredAt/version 等事件元信息。
  *
@@ -98,4 +98,3 @@ public class FrontendEventMessage {
         private boolean retryable;
     }
 }
-

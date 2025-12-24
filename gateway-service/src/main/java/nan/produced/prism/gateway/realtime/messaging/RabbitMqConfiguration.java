@@ -31,12 +31,25 @@ public class RabbitMqConfiguration {
     }
 
     @Bean
+    public Queue gatewayRealtimeQueue() {
+        return QueueBuilder
+                .durable(GatewayMessagingConstants.Queues.REALTIME_NOTIFY)
+                .withArgument("x-message-ttl", 60000)
+                .withArgument("x-max-length", 10000)
+                .build();
+    }
+
+    @Bean
     public Declarables gatewayNotifyBindings(TopicExchange coreNotificationsExchange,
-                                            Queue gatewayNotifyQueue) {
+                                            Queue gatewayNotifyQueue,
+                                            Queue gatewayRealtimeQueue) {
         return new Declarables(
                 BindingBuilder.bind(gatewayNotifyQueue)
                         .to(coreNotificationsExchange)
-                        .with(GatewayMessagingConstants.RoutingKeys.NOTIFY_ALL)
+                        .with(GatewayMessagingConstants.RoutingKeys.NOTIFY_ALL),
+                BindingBuilder.bind(gatewayRealtimeQueue)
+                        .to(coreNotificationsExchange)
+                        .with(GatewayMessagingConstants.RoutingKeys.REALTIME_ALL)
         );
     }
 
@@ -45,4 +58,3 @@ public class RabbitMqConfiguration {
         return new Jackson2JsonMessageConverter(objectMapper);
     }
 }
-
