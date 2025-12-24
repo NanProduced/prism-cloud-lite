@@ -8,7 +8,7 @@ import nan.produced.prism.core.media.application.dto.BatchFinalizeResponse;
 import nan.produced.prism.core.media.application.dto.DuplicateCheckRequest;
 import nan.produced.prism.core.media.application.dto.DuplicateCheckResponse;
 import nan.produced.prism.core.media.application.service.MediaService;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;

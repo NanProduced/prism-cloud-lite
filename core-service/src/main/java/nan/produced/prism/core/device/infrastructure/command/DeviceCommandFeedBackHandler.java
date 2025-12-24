@@ -12,7 +12,8 @@ import nan.produced.prism.core.device.domain.command.DeviceActionTrackingLevel;
 import nan.produced.prism.core.device.domain.command.DeviceActionType;
 import nan.produced.prism.core.device.domain.command.DeviceCommandLog;
 import nan.produced.prism.core.device.domain.command.DeviceCommandStatus;
-import org.springframework.data.redis.core.RedisTemplate;
+import nan.produced.prism.core.message.api.MessageCenterFacade;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -27,9 +28,11 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
 
     private final DeviceCommandLogRepository deviceCommandLogRepository;
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate redisTemplate;
 
     private final RabbitMessagePublisher rabbitMessagePublisher;
+
+    private final MessageCenterFacade messageCenterFacade;
 
     private static final String COMMAND_LISTENER_KEY = "command:listener:%d:%s";
 
@@ -51,6 +54,12 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
             long ttl = commandLog.getTtlMinutes() != null ? commandLog.getTtlMinutes() : 60;
             // 缓存指令的Id以便后续更新状态
             redisTemplate.opsForValue().set(listenerKey, commandId, ttl, TimeUnit.MINUTES);
+            return;
+        }
+
+        boolean inBatch = messageCenterFacade.onBatchCommandFinalState(commandId, commandLog.getUserId(), true, false);
+        if (!inBatch) {
+            publishDeviceCommandMessage(commandLog, DeviceCommandStatus.CONFIRMED);
         }
     }
 
@@ -64,7 +73,7 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
     public void chackCommandResult(Long deviceId, DeviceProperties properties) {
         // 查询出这个设备正在等待指令执行结果的指令
         Set<String> keys = redisTemplate.keys("command:listener:" + deviceId + ":*");
-        if (keys.isEmpty()) return;
+        if (keys == null || keys.isEmpty()) return;
         //
         for (String key : keys) {
             int lastIndex = key.lastIndexOf(':');
@@ -131,6 +140,13 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
 
         // 标记指令已过期
         deviceCommandLogRepository.updateStatus(commandLog.getOperationId(), DeviceCommandStatus.EXPIRED);
+        clearCommandListener(commandLog);
+        publishOperationUpdated(commandLog, DeviceCommandStatus.EXPIRED);
+
+        boolean inBatch = messageCenterFacade.onBatchCommandFinalState(commandLog.getOperationId(), commandLog.getUserId(), false, true);
+        if (!inBatch) {
+            publishDeviceCommandMessage(commandLog, DeviceCommandStatus.EXPIRED);
+        }
     }
 
     /**
@@ -153,6 +169,11 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
         deviceCommandLogRepository.updateStatus(commandId, DeviceCommandStatus.COMPLETED);
         // 推送 SSE：operation.updated
         publishOperationUpdated(commandLog, DeviceCommandStatus.COMPLETED);
+
+        boolean inBatch = messageCenterFacade.onBatchCommandFinalState(commandId, commandLog.getUserId(), true, false);
+        if (!inBatch) {
+            publishDeviceCommandMessage(commandLog, DeviceCommandStatus.COMPLETED);
+        }
     }
 
     private void publishOperationUpdated(DeviceCommandLog commandLog, DeviceCommandStatus status) {
@@ -195,6 +216,36 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
                 .build();
 
         rabbitMessagePublisher.publishCoreNotification(MessagingConstants.RoutingKeys.NOTIFY_OPERATION_UPDATED, message);
+    }
+
+    private void publishDeviceCommandMessage(DeviceCommandLog commandLog, DeviceCommandStatus finalStatus) {
+        if (commandLog == null || commandLog.getUserId() == null || commandLog.getDeviceId() == null) {
+            return;
+        }
+
+        String actionType = commandLog.getActionType() != null ? commandLog.getActionType().name() : "UNKNOWN";
+
+        messageCenterFacade.publishDeviceCommandFinished(new MessageCenterFacade.DeviceCommandFinishedMessage(
+            commandLog.getUserId(),
+            commandLog.getDeviceId(),
+            commandLog.getOperationId(),
+            actionType,
+            commandLog.getTrackingLevel() != null ? commandLog.getTrackingLevel().name() : null,
+            finalStatus != null ? finalStatus.name() : null,
+            commandLog.isAccepted(),
+            commandLog.isCovered(),
+            commandLog.getSendMethod(),
+            commandLog.getQueuedId(),
+            commandLog.getErrorMessage()
+        ));
+    }
+
+    private void clearCommandListener(DeviceCommandLog commandLog) {
+        if (commandLog == null || commandLog.getDeviceId() == null || commandLog.getActionType() == null) {
+            return;
+        }
+        String listenerKey = String.format(COMMAND_LISTENER_KEY, commandLog.getDeviceId(), commandLog.getActionType().name());
+        redisTemplate.delete(listenerKey);
     }
 
 }

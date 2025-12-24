@@ -16,7 +16,7 @@ import nan.produced.prism.core.device.api.dto.log.DeviceLogDetailResp;
 import nan.produced.prism.core.device.api.dto.log.DeviceLogPageResp;
 import nan.produced.prism.core.device.api.dto.log.DeviceLogTypeResp;
 import nan.produced.prism.core.device.application.service.DeviceLogApplicationService;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -81,4 +81,3 @@ public class DeviceLogController {
         return ResponseEntity.ok(BffResponse.success(types).withTraceId(TraceUtils.getTraceId()));
     }
 }
-

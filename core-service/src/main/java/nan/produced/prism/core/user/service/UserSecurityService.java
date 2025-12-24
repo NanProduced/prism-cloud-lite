@@ -13,7 +13,7 @@ import nan.produced.prism.core.integration.auth.client.AuthAccountSecurityIntern
 import nan.produced.prism.core.integration.auth.dto.AuthChangePasswordRequest;
 import nan.produced.prism.core.integration.auth.dto.AuthRememberedDeviceView;
 import nan.produced.prism.core.integration.auth.dto.AuthSecurityHistoryPageView;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import nan.produced.prism.core.user.dto.UserActiveSessionView;
 import nan.produced.prism.core.user.dto.UserChangePasswordRequest;
 import nan.produced.prism.core.user.dto.UserSecurityEventView;

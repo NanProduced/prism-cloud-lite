@@ -1,4 +1,4 @@
-package nan.produced.prism.core.security;
+package nan.produced.prism.core.security.api;
 
 import nan.produced.prism.core.common.exception.AuthException;
 import nan.produced.prism.core.common.exception.ErrorCode;

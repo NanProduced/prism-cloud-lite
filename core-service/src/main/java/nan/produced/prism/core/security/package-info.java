@@ -1,4 +1,3 @@
-@org.springframework.modulith.NamedInterface("api")
 @org.springframework.modulith.ApplicationModule(
         displayName = "Security",
         allowedDependencies = {

@@ -25,7 +25,7 @@ import nan.produced.prism.core.program.api.dto.SaveProgramDraftReq;
 import nan.produced.prism.core.program.api.dto.ProgramUnpublishReq;
 import nan.produced.prism.core.program.api.dto.ProgramUnpublishResp;
 import nan.produced.prism.core.program.application.service.ProgramApplicationService;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;

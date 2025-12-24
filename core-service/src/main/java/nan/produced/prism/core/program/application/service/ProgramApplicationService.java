@@ -33,6 +33,7 @@ import nan.produced.prism.core.common.util.IdGenerator;
 import nan.produced.prism.core.common.util.FileNameUtils;
 import nan.produced.prism.core.common.util.JsonUtils;
 import nan.produced.prism.core.common.util.ObjectKeyUtils;
+import nan.produced.prism.core.device.api.DeviceStatusFacade;
 import nan.produced.prism.core.integration.device.client.DeviceInternalClient;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandReq;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandResp;
@@ -73,6 +74,7 @@ import nan.produced.prism.core.program.infrastructure.persistence.ProgramDraftRe
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramReleaseRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramTemplateRepositoryJpa;
+import nan.produced.prism.core.message.api.MessageCenterFacade;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -99,10 +101,12 @@ public class ProgramApplicationService {
     private final ProgramAuditLogRepositoryJpa programAuditLogRepositoryJpa;
 
     private final MediaAssetRepository mediaAssetRepository;
+    private final DeviceStatusFacade deviceStatusFacade;
     private final DeviceInternalClient deviceInternalClient;
     private final MediaObjectUrlPort mediaObjectUrlPort;
     private final StoragePathProperties storagePathProperties;
     private final S3Client s3Client;
+    private final MessageCenterFacade messageCenterFacade;
 
     @Value("${prism.media.s3.bucket}")
     private String s3Bucket;
@@ -389,6 +393,7 @@ public class ProgramApplicationService {
         List<ProgramPublishDeviceResultResp> results = new java.util.ArrayList<>();
 
         int affected = 0;
+        List<Long> affectedDeviceIds = new java.util.ArrayList<>();
 
         for (Long deviceId : targetDeviceIds) {
             if (deviceId == null) {
@@ -410,6 +415,7 @@ public class ProgramApplicationService {
             }
 
             affected++;
+            affectedDeviceIds.add(deviceId);
 
             ProgramAssignmentEntity assignment = existing != null ? existing : ProgramAssignmentEntity.builder()
                     .programId(programId)
@@ -438,6 +444,18 @@ public class ProgramApplicationService {
                     .build();
             results.add(deviceResult);
             resultByCommandId.put(commandId, deviceResult);
+        }
+
+        if (!affectedDeviceIds.isEmpty()) {
+            List<Long> onlineDeviceIds = deviceStatusFacade.findOnlineDeviceIds(userId, affectedDeviceIds);
+            messageCenterFacade.startProgramPublishTracking(
+                userId,
+                programId,
+                program.getName(),
+                targetVersion,
+                targetRelease.getDeviceProgramId(),
+                affectedDeviceIds,
+                onlineDeviceIds);
         }
 
         if (!commands.isEmpty()) {

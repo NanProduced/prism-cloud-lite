@@ -15,7 +15,7 @@ import nan.produced.prism.core.device.api.dto.BatchDeviceActionDispatchResp;
 import nan.produced.prism.core.device.api.dto.DeviceActionDispatchResp;
 import nan.produced.prism.core.device.application.port.inbound.DeviceActionDispatchUseCase;
 import nan.produced.prism.core.device.domain.command.DeviceActionBase;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -65,4 +65,3 @@ public class DeviceActionController {
         return ResponseEntity.ok(BffResponse.success(resp).withTraceId(TraceUtils.getTraceId()));
     }
 }
-

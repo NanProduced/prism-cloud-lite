@@ -23,7 +23,7 @@ import nan.produced.prism.core.program.api.dto.schedule.SchedulePushReq;
 import nan.produced.prism.core.program.api.dto.schedule.SchedulePushResp;
 import nan.produced.prism.core.program.api.dto.schedule.UpdateScheduleReq;
 import nan.produced.prism.core.program.application.service.ScheduleApplicationService;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;

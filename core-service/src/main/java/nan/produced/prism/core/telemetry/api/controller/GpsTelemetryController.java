@@ -13,7 +13,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.core.common.response.BffResponse;
 import nan.produced.prism.core.common.util.TraceUtils;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import nan.produced.prism.core.telemetry.api.GpsTelemetryFacade;
 import nan.produced.prism.core.telemetry.api.dto.gps.GpsDeviceLocationItem;
 import nan.produced.prism.core.telemetry.api.dto.gps.GpsHeatmapCellItem;
@@ -138,4 +138,3 @@ public class GpsTelemetryController {
         return ResponseEntity.ok(BffResponse.success().withTraceId(TraceUtils.getTraceId()));
     }
 }
-

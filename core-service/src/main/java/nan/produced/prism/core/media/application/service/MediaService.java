@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
+import nan.produced.prism.core.media.application.constant.MediaAssetSourceTypeConstant;
 import nan.produced.prism.core.user.api.StorageFileTypeResolver;
 import nan.produced.prism.core.media.application.domain.FileEntity;
 import nan.produced.prism.core.media.application.domain.MediaAssetEntity;
@@ -34,16 +35,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class MediaService {
-
-    /**
-     * 素材来源类型：上传
-     */
-    private static final int SOURCE_TYPE_UPLOAD = 1;
-
-    /**
-     * 素材来源类型：秒传
-     */
-    private static final int SOURCE_TYPE_INSTANT = 2;
 
     private final FileEntityRepository fileEntityRepository;
     private final MediaAssetRepository mediaAssetRepository;
@@ -203,7 +194,7 @@ public class MediaService {
         }
 
         // 4. 确定来源类型：如果有任何秒传文件，标记为秒传来源
-        int sourceType = hasInstantUpload ? SOURCE_TYPE_INSTANT : SOURCE_TYPE_UPLOAD;
+        int sourceType = hasInstantUpload ? MediaAssetSourceTypeConstant.INSTANT : MediaAssetSourceTypeConstant.UPLOAD;
 
         // 5. 创建素材实体
         var now = Instant.now();

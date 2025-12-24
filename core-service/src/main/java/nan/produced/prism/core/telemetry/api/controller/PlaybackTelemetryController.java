@@ -12,7 +12,7 @@ import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.response.BffResponse;
 import nan.produced.prism.core.common.util.TraceUtils;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import nan.produced.prism.core.telemetry.api.PlaybackTelemetryFacade;
 import nan.produced.prism.core.telemetry.api.dto.TimeBucketUnit;
 import nan.produced.prism.core.telemetry.api.dto.playback.DevicePlaySummaryItem;
@@ -325,4 +325,3 @@ public class PlaybackTelemetryController {
         }
     }
 }
-

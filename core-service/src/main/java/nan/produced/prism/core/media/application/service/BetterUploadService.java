@@ -9,6 +9,7 @@ import nan.produced.prism.core.media.application.dto.*;
 import nan.produced.prism.core.media.application.exception.UploadValidationException;
 import nan.produced.prism.core.media.application.port.outbound.ObjectStoragePort;
 import nan.produced.prism.core.media.application.repository.MediaFolderRepository;
+import nan.produced.prism.core.media.application.util.MediaLibraryObjectKeyUtils;
 import nan.produced.prism.core.media.infrastructure.config.S3Properties;
 import nan.produced.prism.core.media.infrastructure.config.UploadRouteProperties;
 import nan.produced.prism.core.media.infrastructure.config.UploadRouteProperties.RouteConfig;
@@ -323,8 +324,13 @@ public class BetterUploadService {
         String md5 = normalizeMd5(metadataExtractor.extractMd5(fileName));
         long sizeBytes = file.getSize();
         if (StringUtils.hasText(md5) && sizeBytes > 0) {
-            String deviceFilename = "F_" + md5 + "_" + sizeBytes + (ext.isEmpty() ? "" : "." + ext);
-            return ObjectKeyUtils.join(prefix, storagePathProperties.getMediaLibrary().getFilesDir(), deviceFilename);
+            return MediaLibraryObjectKeyUtils.buildMediaLibraryFilesObjectKey(
+                    routeConfig,
+                    storagePathProperties.getMediaLibrary().getFilesDir(),
+                    md5,
+                    sizeBytes,
+                    ext
+            );
         }
 
         var groupId = metadataExtractor.extractGroupId(fileName);

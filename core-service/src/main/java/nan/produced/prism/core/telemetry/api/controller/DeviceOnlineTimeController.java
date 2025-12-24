@@ -11,7 +11,7 @@ import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.response.BffResponse;
 import nan.produced.prism.core.common.util.TraceUtils;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import nan.produced.prism.core.telemetry.api.DeviceOnlineTimeFacade;
 import nan.produced.prism.core.telemetry.api.dto.ActiveDeviceCountBucket;
 import nan.produced.prism.core.telemetry.api.dto.DeviceConcurrencyBucket;

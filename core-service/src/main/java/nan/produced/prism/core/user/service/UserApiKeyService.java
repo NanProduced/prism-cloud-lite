@@ -9,7 +9,7 @@ import nan.produced.prism.core.common.response.ApiResponse;
 import nan.produced.prism.core.integration.auth.client.AuthApiKeyInternalClient;
 import nan.produced.prism.core.integration.auth.dto.AuthApiKeyCreateRequest;
 import nan.produced.prism.core.integration.auth.dto.AuthApiKeyView;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import nan.produced.prism.core.user.dto.UserApiKeyCreateRequest;
 import nan.produced.prism.core.user.dto.UserApiKeyView;
 import org.springframework.stereotype.Service;
@@ -98,4 +98,3 @@ public class UserApiKeyService {
         return response.getData();
     }
 }
-

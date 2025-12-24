@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.api.ProgramDownloadProgressUseCase;
 import nan.produced.prism.core.common.util.JsonUtils;
+import nan.produced.prism.core.message.api.MessageCenterFacade;
 import nan.produced.prism.core.program.domain.ProgramDeploymentEntity;
 import nan.produced.prism.core.program.domain.ProgramDeploymentStatus;
 import nan.produced.prism.core.program.domain.ProgramEntity;
@@ -34,6 +35,7 @@ public class ProgramDownloadProgressApplicationService implements ProgramDownloa
     private final ProgramDeploymentRepositoryJpa programDeploymentRepositoryJpa;
     private final ProgramReleaseRepositoryJpa programReleaseRepositoryJpa;
     private final ProgramRepositoryJpa programRepositoryJpa;
+    private final MessageCenterFacade messageCenterFacade;
 
     @Override
     @Transactional
@@ -79,8 +81,14 @@ public class ProgramDownloadProgressApplicationService implements ProgramDownloa
             if (deployment == null) {
                 // 若设备在同一 program 的不同 release 之间切换（releaseProgramId 变化），用底层 programId 复用同一条记录。
                 deployment = upsertDeploymentByReleaseProgramId(deviceId, userId, releaseProgramId, desired, now, traceId);
+                if (deployment != null && desired == ProgramDeploymentStatus.DOWNLOADED) {
+                    messageCenterFacade.onProgramDeviceDownloaded(userId, deviceId, releaseProgramId);
+                }
             } else {
                 updateStatusIfNeeded(deployment, desired, now, deviceId, releaseProgramId, traceId);
+                if (desired == ProgramDeploymentStatus.DOWNLOADED) {
+                    messageCenterFacade.onProgramDeviceDownloaded(userId, deviceId, releaseProgramId);
+                }
             }
         }
     }
@@ -146,7 +154,7 @@ public class ProgramDownloadProgressApplicationService implements ProgramDownloa
         return deployment;
     }
 
-    private void updateStatusIfNeeded(
+    private boolean updateStatusIfNeeded(
             ProgramDeploymentEntity deployment,
             ProgramDeploymentStatus desired,
             OffsetDateTime now,
@@ -154,7 +162,7 @@ public class ProgramDownloadProgressApplicationService implements ProgramDownloa
             Integer releaseProgramId,
             String traceId) {
         if (deployment == null || desired == null) {
-            return;
+            return false;
         }
         if (deployment.getStatus() != desired) {
             deployment.setStatus(desired);
@@ -162,7 +170,9 @@ public class ProgramDownloadProgressApplicationService implements ProgramDownloa
             programDeploymentRepositoryJpa.save(deployment);
             log.debug("ProgramDownloadProgress - status changed: deviceId={}, programId={}, status={}, traceId={}",
                     deviceId, releaseProgramId, desired, traceId);
+            return true;
         }
+        return false;
     }
 
     /**

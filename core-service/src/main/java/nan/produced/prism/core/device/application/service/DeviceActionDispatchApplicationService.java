@@ -27,6 +27,7 @@ import nan.produced.prism.core.device.domain.command.DeviceCommandStatus;
 import nan.produced.prism.core.integration.device.client.DeviceInternalClient;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandReq;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandResp;
+import nan.produced.prism.core.message.api.MessageCenterFacade;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +39,7 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
     private final DeviceCommandLogRepository deviceCommandLogRepository;
     private final DeviceInternalClient deviceInternalClient;
     private final DeviceActionDispatchConverter deviceActionDispatchConverter;
+    private final MessageCenterFacade messageCenterFacade;
 
     /**
      * 单个设备操作下发
@@ -90,6 +92,8 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
 
         List<BatchDeviceActionDispatchItemReq> items = req.getItems();
 
+        String batchOperationId = UUID.randomUUID().toString();
+
         List<PendingDispatch> pending = items.stream().map(item -> {
             if (item == null || item.getDeviceId() == null) {
                 throw new BizException(ErrorCode.INTERNAL_SERVER_ERROR, "deviceId is null");
@@ -101,6 +105,18 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
             String commandId = UUID.randomUUID().toString();
             return new PendingDispatch(item.getDeviceId(), commandId, item.getAction());
         }).toList();
+
+        // 先写入 Redis 聚合索引，避免极端情况下 confirm/expired 回执早于本次 HTTP 请求落库导致批量聚合丢失。
+        messageCenterFacade.startBatchCommandTracking(
+            userId,
+            batchOperationId,
+            pending.stream()
+                .map(p -> new MessageCenterFacade.BatchCommandItem(
+                    p.commandId(),
+                    p.deviceId(),
+                    p.action() != null && p.action().getType() != null ? p.action().getType().name() : null,
+                    true))
+                .toList());
 
         List<DeviceCommandReq> commands = pending.stream()
                 .map(pendingDispatch -> deviceActionDispatchConverter.toDeviceCommandReq(
@@ -141,8 +157,19 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
                         resultByCommandId.get(pendingDispatch.commandId())))
                 .toList();
 
+        // accepted=false 的指令不会产生 confirm/expired 等后续事件，需要在此处直接计入失败并移出 pending。
+        for (DeviceActionDispatchResp result : results) {
+            if (result == null || result.getOperationId() == null) {
+                continue;
+            }
+            if (!result.isAccepted()) {
+                messageCenterFacade.onBatchCommandFinalState(result.getOperationId(), userId, false, false);
+            }
+        }
+
         int accepted = (int) results.stream().filter(DeviceActionDispatchResp::isAccepted).count();
         return BatchDeviceActionDispatchResp.builder()
+                .batchOperationId(batchOperationId)
                 .total(results.size())
                 .accepted(accepted)
                 .results(results)

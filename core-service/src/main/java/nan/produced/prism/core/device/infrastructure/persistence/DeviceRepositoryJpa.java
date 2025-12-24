@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,6 +48,8 @@ public interface DeviceRepositoryJpa extends JpaRepository<DeviceEntity, Long> {
      * @return 设备列表（按创建时间倒序）
      */
     List<DeviceEntity> findByUserIdOrderByCreateTimeDesc(UUID userId);
+
+    List<DeviceEntity> findByUserIdAndDeviceIdIn(UUID userId, Collection<Long> deviceIds);
 
     @Query("SELECT d.userId FROM DeviceEntity d WHERE d.deviceId = :deviceId")
     Optional<UUID> findUserIdByDeviceId(@Param("deviceId") Long deviceId);

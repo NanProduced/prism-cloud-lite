@@ -18,7 +18,7 @@ import nan.produced.prism.core.device.api.dto.LinkTagsReq;
 import nan.produced.prism.core.device.api.dto.OperateTagReq;
 import nan.produced.prism.core.device.application.port.inbound.DeviceTagUseCase;
 import nan.produced.prism.core.device.domain.dto.TagVO;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;

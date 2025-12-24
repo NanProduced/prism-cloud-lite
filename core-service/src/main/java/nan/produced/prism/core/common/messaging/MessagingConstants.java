@@ -75,6 +75,18 @@ public final class MessagingConstants {
         public static final String NOTIFY_OPERATION_UPDATED = "notify.operation.updated";
 
         /**
+         * 消息中心：新消息创建通知（面向前端）
+         * <p>示例：type=message.created</p>
+         */
+        public static final String NOTIFY_MESSAGE_CREATED = "notify.message.created";
+
+        /**
+         * 消息中心：消息状态更新通知（面向前端）
+         * <p>示例：type=message.updated</p>
+         */
+        public static final String NOTIFY_MESSAGE_UPDATED = "notify.message.updated";
+
+        /**
          * 面向前端的高频实时数据（传感器/GPS 等）
          */
         public static final String REALTIME_ALL = "realtime.#";

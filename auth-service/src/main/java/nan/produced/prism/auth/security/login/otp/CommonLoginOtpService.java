@@ -1,5 +1,6 @@
 package nan.produced.prism.auth.security.login.otp;
 
+import com.aliyun.sdk.service.dypnsapi20170525.AsyncClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.auth.common.exception.BizException;
@@ -21,6 +22,7 @@ public class CommonLoginOtpService {
 
     private final EmailOtpService emailOtpService;
     private final EmailService emailService;
+    private final AsyncClient aliyunClient;
     private final OtpProps otpProps;
     private final LoginAliasRepository loginAliasRepository;
 

@@ -19,7 +19,7 @@ import nan.produced.prism.core.device.application.port.inbound.DeviceManageUseCa
 import nan.produced.prism.core.device.application.port.inbound.DeviceSearchUseCase;
 import nan.produced.prism.core.device.domain.dto.CreateDeviceDTO;
 import nan.produced.prism.core.device.domain.dto.DeviceListVO;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;

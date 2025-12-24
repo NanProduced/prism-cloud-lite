@@ -9,6 +9,8 @@ import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.response.ApiResponse;
 import nan.produced.prism.core.common.util.TraceUtils;
+import nan.produced.prism.core.security.api.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthUser;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;

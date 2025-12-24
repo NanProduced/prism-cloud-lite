@@ -7,7 +7,7 @@ import nan.produced.prism.core.media.application.dto.*;
 import nan.produced.prism.core.media.application.exception.UploadValidationException;
 import nan.produced.prism.core.media.application.service.BetterUploadService;
 import nan.produced.prism.core.media.infrastructure.config.UploadRouteProperties;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

@@ -24,7 +24,7 @@ import nan.produced.prism.core.device.api.dto.UpdateCustomFieldReq;
 import nan.produced.prism.core.device.application.port.inbound.DeviceCustomFieldOptionSpec;
 import nan.produced.prism.core.device.application.port.inbound.DeviceCustomFieldUseCase;
 import nan.produced.prism.core.device.domain.dto.DeviceCustomFieldDefVO;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;

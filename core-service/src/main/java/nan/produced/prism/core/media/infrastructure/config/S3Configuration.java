@@ -24,6 +24,7 @@ import java.net.URI;
         S3Properties.class,
         UploadRouteProperties.class,
         MediaDeliveryProperties.class,
+        TranscodeProperties.class,
         StoragePathProperties.class})
 public class S3Configuration {
 

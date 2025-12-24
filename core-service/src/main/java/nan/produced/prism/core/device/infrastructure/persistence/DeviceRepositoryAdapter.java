@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -80,6 +81,14 @@ public class DeviceRepositoryAdapter implements DeviceRepository {
             return Collections.emptyList();
         }
         return deviceRepositoryJpa.findByUserIdOrderByCreateTimeDesc(userId);
+    }
+
+    @Override
+    public List<DeviceEntity> findByUserIdAndDeviceIds(UUID userId, Collection<Long> deviceIds) {
+        if (userId == null || deviceIds == null || deviceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return deviceRepositoryJpa.findByUserIdAndDeviceIdIn(userId, deviceIds);
     }
 
     /**

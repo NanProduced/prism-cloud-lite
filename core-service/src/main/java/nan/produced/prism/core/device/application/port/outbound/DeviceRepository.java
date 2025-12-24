@@ -3,6 +3,7 @@ package nan.produced.prism.core.device.application.port.outbound;
 import nan.produced.prism.core.device.domain.DeviceEntity;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,6 +22,11 @@ public interface DeviceRepository {
      * @return 设备列表
      */
     List<DeviceEntity> findByUserId(UUID userId);
+
+    /**
+     * 批量查询用户的设备（用于发布/批量操作的在线状态判定等）。
+     */
+    List<DeviceEntity> findByUserIdAndDeviceIds(UUID userId, Collection<Long> deviceIds);
 
     /**
      * 根据设备ID查所属用户ID

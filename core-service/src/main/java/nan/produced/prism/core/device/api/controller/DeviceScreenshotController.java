@@ -11,7 +11,7 @@ import nan.produced.prism.core.common.util.TraceUtils;
 import nan.produced.prism.core.device.api.dto.DeviceScreenshotItemResp;
 import nan.produced.prism.core.device.application.service.DeviceScreenshotApplicationService;
 import nan.produced.prism.core.media.application.port.outbound.MediaObjectUrlPort;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;

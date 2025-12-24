@@ -12,7 +12,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.core.common.response.BffResponse;
 import nan.produced.prism.core.common.util.TraceUtils;
-import nan.produced.prism.core.security.CloudAuthContext;
+import nan.produced.prism.core.security.api.CloudAuthContext;
 import nan.produced.prism.core.telemetry.api.SensorTelemetryFacade;
 import nan.produced.prism.core.telemetry.api.dto.sensor.ReceiveCardSampleItem;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -62,4 +62,3 @@ public class ReceiveCardTelemetryController {
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
     }
 }
-

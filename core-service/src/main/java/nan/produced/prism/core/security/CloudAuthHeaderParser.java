@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.ErrorCode;
+import nan.produced.prism.core.security.api.CloudAuthUser;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
