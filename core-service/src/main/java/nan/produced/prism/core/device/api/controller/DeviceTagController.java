@@ -39,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "设备标签", description = "设备标签管理与设备-标签关联（GET/POST）")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping({"/api/v1/devices", "/device"})
+@RequestMapping("/api/v1/devices")
 @Validated
 public class DeviceTagController {
 

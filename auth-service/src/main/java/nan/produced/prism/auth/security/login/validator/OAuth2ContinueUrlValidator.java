@@ -42,7 +42,7 @@ public class OAuth2ContinueUrlValidator {
         String decoded = URLDecoder.decode(rawContinueUrl, StandardCharsets.UTF_8);
         UriComponents components = UriComponentsBuilder.fromUriString(decoded).build();
         String path = components.getPath();
-        if (!StringUtils.hasText(path) || !path.startsWith("/oauth2/authorize")) {
+        if (!StringUtils.hasText(path) || !isAuthorizeEndpointPath(path)) {
             throw new IllegalArgumentException("continueUrl is invalid");
         }
 
@@ -59,6 +59,14 @@ public class OAuth2ContinueUrlValidator {
 
         validateHost(request, components.toUri());
         return decoded;
+    }
+
+    private boolean isAuthorizeEndpointPath(String path) {
+        if (!StringUtils.hasText(path)) {
+            return false;
+        }
+        // Compatible with both direct auth-service (/oauth2/authorize) and gateway prefixed exposure (/auth/oauth2/authorize).
+        return path.startsWith("/oauth2/authorize") || path.startsWith("/auth/oauth2/authorize");
     }
 
     /**

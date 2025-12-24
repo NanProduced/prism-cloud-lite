@@ -27,7 +27,7 @@ import java.util.UUID;
  */
 @Slf4j
 @RestController
-@RequestMapping("/media")
+@RequestMapping("/api/v1/media-library")
 @RequiredArgsConstructor
 public class MediaController {
 

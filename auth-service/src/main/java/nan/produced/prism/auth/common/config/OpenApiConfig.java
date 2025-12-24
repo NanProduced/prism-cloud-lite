@@ -18,7 +18,7 @@ import java.util.List;
  * <p>
  * 为 auth-service 提供前端友好的 API 文档
  * </p>
- * 访问地址：<a href="http://localhost:8081/swagger-ui.html">http://localhost:8081/swagger-ui.html</a>
+ * 访问地址：<a href="http://localhost:8081/auth/swagger-ui.html">http://localhost:8081/auth/swagger-ui.html</a>
  *
  * @author Nan
  */
@@ -48,7 +48,7 @@ public class OpenApiConfig {
                 - **安全策略**：对外仅开放 GET/POST；不暴露 PUT/PATCH/DELETE 等 HTTP Method（详见 `.doc/specification/http-method-policy.md`）。
                 - **注册流程**：遵循“申请 OTP → 验证 OTP → 完成注册”的三步交互，接口返回 `BffResponse`，前端根据 `success` 与 `error.displayMessage` 做提示即可。
                 - **集成建议**：
-                    * 需要刷新 JWKS 时调用 `/auth/.well-known/jwks.json`；
+                    * 需要刷新 JWKS 时调用 `/auth/oauth2/jwks`；
                     * Gateway 与 Core 通过 `/internal/**` 完成 RPC，避免前端绕过；
                     * 本说明聚焦流程与协作要点，字段细节请打开具体接口查看。
 
@@ -70,8 +70,11 @@ public class OpenApiConfig {
     private List<Server> serverList() {
         return List.of(
             new Server()
-                .url("http://localhost:8081")
+                .url("http://localhost:8081/auth")
                 .description("本地开发环境 (auth-service)"),
+            new Server()
+                .url("https://api.nanproduced.cloud/auth")
+                .description("生产环境 (auth-service，经由 api.nanproduced.cloud/auth 暴露)"),
             new Server()
                 .url("http://localhost:8848")
                 .description("Nacos 注册中心")
@@ -88,9 +91,9 @@ public class OpenApiConfig {
                 .description("OAuth2 授权码流程")
                 .flows(new io.swagger.v3.oas.models.security.OAuthFlows()
                     .authorizationCode(new io.swagger.v3.oas.models.security.OAuthFlow()
-                        .authorizationUrl("http://localhost:8081/oauth2/authorize")
-                        .tokenUrl("http://localhost:8081/oauth2/token")
-                        .refreshUrl("http://localhost:8081/oauth2/token")
+                        .authorizationUrl("http://localhost:8081/auth/oauth2/authorize")
+                        .tokenUrl("http://localhost:8081/auth/oauth2/token")
+                        .refreshUrl("http://localhost:8081/auth/oauth2/token")
                     )
                 )
             )

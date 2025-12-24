@@ -9,6 +9,7 @@ import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -41,8 +42,8 @@ public class RabbitMqConfiguration {
 
     @Bean
     public Declarables gatewayNotifyBindings(TopicExchange coreNotificationsExchange,
-                                            Queue gatewayNotifyQueue,
-                                            Queue gatewayRealtimeQueue) {
+                                             @Qualifier("gatewayNotifyQueue") Queue gatewayNotifyQueue,
+                                             @Qualifier("gatewayRealtimeQueue") Queue gatewayRealtimeQueue) {
         return new Declarables(
                 BindingBuilder.bind(gatewayNotifyQueue)
                         .to(coreNotificationsExchange)

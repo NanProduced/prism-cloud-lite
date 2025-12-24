@@ -46,3 +46,5 @@ build/
 .mvn
 .tools
 **/application-dev.yml
+**/application-prod.yml
+

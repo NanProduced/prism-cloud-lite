@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Validated
 @RequiredArgsConstructor
-@RequestMapping({"/api/v1/devices", "/device"})
+@RequestMapping("/api/v1/devices")
 public class DeviceScheduleController {
 
     private final ScheduleApplicationService scheduleApplicationService;

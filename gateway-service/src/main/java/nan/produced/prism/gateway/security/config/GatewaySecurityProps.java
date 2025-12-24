@@ -19,6 +19,8 @@ public class GatewaySecurityProps {
 
     private WhiteList whiteList = new WhiteList();
 
+    private Cors cors = new Cors();
+
     private List<ApiPolicy> apiPolicies = new ArrayList<>(List.of(
             ApiPolicy.of("/api/sse/**", ApiPolicy.Realm.END_USER, List.of("ROLE_END_USER"), ApiPolicy.TierRequirement.FREE_OR_ABOVE),
             ApiPolicy.of("/api/v1/admin/**", ApiPolicy.Realm.ADMIN, List.of("ROLE_ADMIN"), ApiPolicy.TierRequirement.FREE_OR_ABOVE),
@@ -64,15 +66,15 @@ public class GatewaySecurityProps {
         @Data
         public static class AuthorizationServer {
 
-            private String issuerUri = "http://localhost:8081";
+            private String issuerUri = "http://localhost:8081/auth";
 
-            private String authorizationEndpoint = "http://localhost:8081/oauth2/authorize";
+            private String authorizationEndpoint = "http://localhost:8081/auth/oauth2/authorize";
 
-            private String tokenEndpoint = "http://localhost:8081/oauth2/token";
+            private String tokenEndpoint = "http://localhost:8081/auth/oauth2/token";
 
-            private String jwkSetEndpoint = "http://localhost:8081/oauth2/jwks";
+            private String jwkSetEndpoint = "http://localhost:8081/auth/oauth2/jwks";
 
-            private String logoutEndpoint = "http://localhost:8081/logout";
+            private String logoutEndpoint = "http://localhost:8081/auth/logout";
         }
     }
 
@@ -80,12 +82,28 @@ public class GatewaySecurityProps {
     public static class WhiteList {
 
         private List<String> urls = List.of(
+                "/auth/**",
                 "/logout",
                 "/logout_status",
+                "/logout-status",
                 "/swagger-ui.html",
                 "/swagger-ui/**",
                 "/v3/api-docs/**",
                 "/core-service/v3/api-docs"
+        );
+    }
+
+    @Data
+    public static class Cors {
+
+        /**
+         * Allowed browser origins for cross-site requests to the gateway API.
+         * <p>
+         * Must be an explicit list when {@code allowCredentials=true}.
+         * </p>
+         */
+        private List<String> allowedOrigins = List.of(
+                "http://localhost:5173"
         );
     }
 

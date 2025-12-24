@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Validated
 @RequiredArgsConstructor
-@RequestMapping({"/api/v1/programs", "/program"})
+@RequestMapping("/api/v1/programs")
 public class ProgramController {
 
     private final ProgramApplicationService programApplicationService;

@@ -30,7 +30,7 @@ import java.util.UUID;
 @Tag(name = "设备", description = "设备创建与列表查询（面向 SPA，经由 Gateway 访问）")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping({"/api/v1/devices", "/device"})
+@RequestMapping("/api/v1/devices")
 @Validated
 public class DeviceCommonController {
 

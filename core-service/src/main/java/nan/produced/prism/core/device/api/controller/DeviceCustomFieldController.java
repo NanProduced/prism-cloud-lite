@@ -38,7 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Validated
 @RequiredArgsConstructor
-@RequestMapping({"/api/v1/devices", "/devices"})
+@RequestMapping("/api/v1/devices")
 public class DeviceCustomFieldController {
 
     private final DeviceCustomFieldUseCase deviceCustomFieldUseCase;

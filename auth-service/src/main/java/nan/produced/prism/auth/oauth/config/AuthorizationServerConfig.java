@@ -12,6 +12,7 @@ import nan.produced.prism.auth.oauth.oidc.PrismOidcTokenCustomer;
 import nan.produced.prism.auth.oauth.oidc.PrismOidcUserInfoMapper;
 import nan.produced.prism.auth.oauth.slo.BackChannelLogoutHandler;
 import nan.produced.prism.auth.security.SecurityProps;
+import nan.produced.prism.auth.security.login.handler.SpaRedirectAuthenticationEntryPoint;
 import nan.produced.prism.auth.utils.JwkUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -65,7 +66,9 @@ public class AuthorizationServerConfig {
      */
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
-    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http, BackChannelLogoutHandler backChannelLogoutHandler) throws Exception {
+    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http,
+                                                                     BackChannelLogoutHandler backChannelLogoutHandler,
+                                                                     SpaRedirectAuthenticationEntryPoint spaRedirectAuthenticationEntryPoint) throws Exception {
 
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
 
@@ -89,9 +92,10 @@ public class AuthorizationServerConfig {
                         .jwt(Customizer.withDefaults()))
                 // 配置授权服务器权限
                 .authorizeHttpRequests(request -> request
+                        .requestMatchers("/.well-known/**", "/oauth2/jwks").permitAll()
                         .anyRequest().authenticated())
-                .formLogin(form -> form
-                        .loginPage("/login"))
+                // 未登录访问 /oauth2/authorize 时，跳转到 SPA 登录页并携带 continue 参数
+                .exceptionHandling(ex -> ex.authenticationEntryPoint(spaRedirectAuthenticationEntryPoint))
                 .build();
 
     }

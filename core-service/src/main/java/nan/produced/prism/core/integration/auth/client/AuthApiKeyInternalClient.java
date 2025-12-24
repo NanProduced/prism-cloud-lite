@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "auth-service", configuration = ServiceSignatureFeignConfig.class, path = "/internal/account/api-keys")
+@FeignClient(name = "auth-service", configuration = ServiceSignatureFeignConfig.class, path = "/auth/internal/account/api-keys")
 public interface AuthApiKeyInternalClient {
 
     @GetMapping
@@ -31,4 +31,3 @@ public interface AuthApiKeyInternalClient {
     ApiResponse<Object> revokeApiKey(@RequestParam("userId") UUID userId,
                                      @PathVariable("id") String apiKeyId);
 }
-

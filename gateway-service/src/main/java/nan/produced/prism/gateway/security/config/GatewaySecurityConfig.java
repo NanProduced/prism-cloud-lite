@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import nan.produced.prism.gateway.security.authentication.RefreshTokenErrorMapClientManager;
 import nan.produced.prism.gateway.security.filter.RemoveJwtFilter;
 import nan.produced.prism.gateway.security.handler.SaveRequestOAuth2AuthorizationRequestResolver;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -25,6 +26,9 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableConfigurationProperties(GatewaySecurityProps.class)
@@ -40,13 +44,15 @@ public class GatewaySecurityConfig {
     public SecurityFilterChain oauth2FilterChain(HttpSecurity http,
                                                  GatewaySecurityProps gatewaySecurityProps,
                                                  OidcClientInitiatedLogoutSuccessHandler oidcClientInitiatedLogoutSuccessHandler,
-                                                 OAuth2AuthorizationRequestResolver saveRequestOAuth2AuthorizationRequestResolver) throws Exception {
+                                                 OAuth2AuthorizationRequestResolver saveRequestOAuth2AuthorizationRequestResolver,
+                                                 @Qualifier("corsConfigurationSource") CorsConfigurationSource corsConfigurationSource) throws Exception {
         return http
                 .securityMatcher(
                         "/oauth2/authorization/**",
                         "/login/oauth2/code/**",
                         "/logout"
                 )
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exception -> exception
                         .accessDeniedHandler(accessDeniedHandler)
@@ -71,8 +77,10 @@ public class GatewaySecurityConfig {
     public SecurityFilterChain backendServiceFilterChain(HttpSecurity http,
                                                          GatewaySecurityProps gatewaySecurityProps,
                                                          AuthorizationManager<RequestAuthorizationContext> authorizationManager,
-                                                         RemoveJwtFilter removeJwtFilter) throws Exception {
+                                                         RemoveJwtFilter removeJwtFilter,
+                                                         @Qualifier("corsConfigurationSource") CorsConfigurationSource corsConfigurationSource) throws Exception {
         return http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)
                 .exceptionHandling(exception -> exception
                         .accessDeniedHandler(accessDeniedHandler)
@@ -86,6 +94,19 @@ public class GatewaySecurityConfig {
                         .jwt(Customizer.withDefaults()))
                 .addFilterAfter(removeJwtFilter, BearerTokenAuthenticationFilter.class)
                 .build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(GatewaySecurityProps gatewaySecurityProps) {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowCredentials(true);
+        config.setAllowedOrigins(gatewaySecurityProps.getCors().getAllowedOrigins());
+        config.addAllowedHeader(CorsConfiguration.ALL);
+        config.addAllowedMethod(CorsConfiguration.ALL);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 
     @Bean
