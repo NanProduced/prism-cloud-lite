@@ -27,7 +27,7 @@ public class FileEntity {
     /**
      * s3对象路径
      */
-    @Column(nullable = false)
+    @Column(name = "s3_key", nullable = false)
     private String s3Key;
 
     /**

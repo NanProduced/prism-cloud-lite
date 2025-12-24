@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 /**
  * device-service → core-service 内部调用：查询设备排程（/wp-json/wp/v3/schedules 的数据源）。
  */
-@FeignClient(name = "core-service", path = "/internal/devices")
+@FeignClient(name = "core-service", contextId = "core-schedule", path = "/internal/devices")
 public interface CoreScheduleDistributionClient {
 
     @GetMapping("/{deviceId}/schedules")

@@ -1,6 +1,7 @@
 package nan.produced.prism.core.media.application.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
 
@@ -14,11 +15,13 @@ import lombok.Data;
 @Data
 @Builder
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@Schema(name = "BetterUploadErrorResponse", description = "Better Upload 协议错误响应体（前端 @better-upload/client 可解析）")
 public class BetterUploadErrorResponse {
 
     /**
      * 错误信息
      */
+    @Schema(description = "错误信息（Better Upload 协议规定字段）")
     private ErrorInfo error;
 
     /**
@@ -27,6 +30,7 @@ public class BetterUploadErrorResponse {
     @Data
     @Builder
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(name = "BetterUploadErrorInfo", description = "Better Upload 错误详情")
     public static class ErrorInfo {
 
         /**
@@ -38,11 +42,15 @@ public class BetterUploadErrorResponse {
          * - invalid_file_type: 不支持的文件类型
          * - rejected: 鉴权失败或业务拒绝
          */
+        @Schema(
+            description = "错误类型（Better Upload 协议固定枚举）",
+            allowableValues = { "invalid_request", "too_many_files", "file_too_large", "invalid_file_type", "rejected" })
         private String type;
 
         /**
          * 错误描述信息
          */
+        @Schema(description = "错误描述信息")
         private String message;
     }
 

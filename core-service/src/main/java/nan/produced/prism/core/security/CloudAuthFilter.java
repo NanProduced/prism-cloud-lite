@@ -48,6 +48,18 @@ public class CloudAuthFilter implements Filter {
 
         String requestUri = httpRequest.getRequestURI();
 
+        // Swagger/OpenAPI 文档不依赖 CLOUD_AUTH：
+        // - Gateway 的 Swagger UI 允许匿名访问（用于本地联调/查看文档）
+        // - 若强制要求 CLOUD_AUTH，会导致 /v3/api-docs 被 401 拦截，Swagger UI 无法加载
+        if (shouldBypassCloudAuth(requestUri)) {
+            try {
+                chain.doFilter(request, response);
+            } finally {
+                CloudAuthContext.clear();
+            }
+            return;
+        }
+
         // 内部接口不走 CLOUD_AUTH（由服务签名校验过滤器鉴权），避免 internal 调用被 401 拦截。
         // 注意：internal 接口禁止承载面向用户的业务能力，仅用于微服务间只读/受控能力。
         if (requestUri != null && requestUri.startsWith("/internal/")) {
@@ -105,5 +117,13 @@ public class CloudAuthFilter implements Filter {
             // 清理 ThreadLocal（防止内存泄漏）
             CloudAuthContext.clear();
         }
+    }
+
+    private boolean shouldBypassCloudAuth(String requestUri) {
+        if (requestUri == null || requestUri.isBlank()) {
+            return false;
+        }
+        return requestUri.startsWith("/swagger-ui")
+                || requestUri.startsWith("/v3/api-docs");
     }
 }

@@ -7,7 +7,7 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
-@FeignClient(name = "auth-service", configuration = ServiceSignatureFeignConfig.class, path = "/auth/internal/users")
+@FeignClient(name = "auth-service", contextId = "auth-info", configuration = ServiceSignatureFeignConfig.class, path = "/auth/internal/users")
 public interface AuthInternalClient {
 
     @GetMapping("/{publicId}")

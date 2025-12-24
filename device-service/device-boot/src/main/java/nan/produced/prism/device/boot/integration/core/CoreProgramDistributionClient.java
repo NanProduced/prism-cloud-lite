@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
  *   <li>这里返回的数据由 core-service 决定，device-service 只做协议适配</li>
  * </ul>
  */
-@FeignClient(name = "core-service", path = "/internal/devices")
+@FeignClient(name = "core-service", contextId = "core-program", path = "/internal/devices")
 public interface CoreProgramDistributionClient {
 
     @GetMapping("/{deviceId}/programs")

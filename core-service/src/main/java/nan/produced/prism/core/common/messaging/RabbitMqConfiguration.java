@@ -11,6 +11,7 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -115,10 +116,10 @@ public class RabbitMqConfiguration {
      * @return 设备事件绑定
      */
     @Bean
-    public Declarables deviceEventsBindings(TopicExchange deviceEventsExchange,
-                                           Queue coreDeviceStatusQueue,
-                                           Queue coreDeviceCommandQueue,
-                                           Queue coreDeviceReportQueue) {
+    public Declarables deviceEventsBindings(@Qualifier("deviceEventsExchange") TopicExchange deviceEventsExchange,
+                                           @Qualifier("coreDeviceStatusQueue") Queue coreDeviceStatusQueue,
+                                           @Qualifier("coreDeviceCommandQueue") Queue coreDeviceCommandQueue,
+                                           @Qualifier("coreDeviceReportQueue") Queue coreDeviceReportQueue) {
         return new Declarables(
             BindingBuilder.bind(coreDeviceStatusQueue)
                 .to(deviceEventsExchange)
@@ -140,10 +141,10 @@ public class RabbitMqConfiguration {
      * @return 业务通知绑定
      */
     @Bean
-    public Declarables coreNotificationBindings(TopicExchange coreNotificationsExchange,
-                                                Queue coreTaskWorkerQueue,
-                                                Queue coreNotifyQueue,
-                                                Queue coreRealtimeQueue) {
+    public Declarables coreNotificationBindings(@Qualifier("coreNotificationsExchange") TopicExchange coreNotificationsExchange,
+                                                @Qualifier("coreTaskWorkerQueue") Queue coreTaskWorkerQueue,
+                                                @Qualifier("coreNotifyQueue") Queue coreNotifyQueue,
+                                                @Qualifier("coreRealtimeQueue") Queue coreRealtimeQueue) {
         return new Declarables(
             BindingBuilder.bind(coreTaskWorkerQueue)
                 .to(coreNotificationsExchange)

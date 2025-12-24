@@ -1,5 +1,6 @@
 package nan.produced.prism.device.boot.integration;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.device.application.domain.command.DeviceCommand;
 import nan.produced.prism.device.application.domain.device.DeviceAccount;
@@ -30,6 +31,11 @@ public class DeviceIntegrationController {
      * @param password 密码
      * @return 设备ID
      */
+    @Operation(
+            summary = "创建设备账号",
+            description = "创建设备账号，返回设备ID",
+            tags = {"内部"}
+    )
     @PostMapping("/create")
     public ResponseEntity<ApiResponse<Long>> createDevice(@RequestParam("username") String username,
                                                           @RequestParam("password") String password) {
@@ -50,6 +56,11 @@ public class DeviceIntegrationController {
      *   <li>多设备下发多条指令</li>
      * </ul>
      */
+    @Operation(
+            summary = "下发指令",
+            description = "下发指令（统一入口）",
+            tags = {"内部"}
+    )
     @PostMapping("/command")
     public ResponseEntity<ApiResponse<DeviceCommandResp>> sendCommand(
             @RequestBody @Validated List<DeviceCommandReq> request) {

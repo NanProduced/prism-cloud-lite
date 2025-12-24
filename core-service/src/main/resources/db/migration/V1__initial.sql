@@ -1,6 +1,17 @@
 -- V1__initial.sql
 -- prism-core database initial schema (Flyway)
 
+-- Spring Modulith event publication table
+CREATE TABLE IF NOT EXISTS event_publication (
+     id UUID NOT NULL,
+     listener_id VARCHAR(512) NOT NULL,
+     event_type VARCHAR(512) NOT NULL,
+     serialized_event VARCHAR NOT NULL,
+     publication_date TIMESTAMP(6) WITH TIME ZONE NOT NULL,
+     completion_date TIMESTAMP(6) WITH TIME ZONE,
+     PRIMARY KEY (id)
+);
+
 -- ---------------------------------------------------------------------------
 -- USERS
 -- ---------------------------------------------------------------------------

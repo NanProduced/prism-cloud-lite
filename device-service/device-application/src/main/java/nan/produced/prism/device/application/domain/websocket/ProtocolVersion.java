@@ -30,13 +30,13 @@ public enum ProtocolVersion {
      * 原先的协议版本
      */
     V1_0("1.0", "基础协议版本", "/ColorWebSocket/websocket/chat", true,
-            "com.colorlight.terminal.infrastructure.websocket.processor.v10.V10ProtocolMessageProcessor"),
+            "nan.produced.prism.device.infrastructure.websocket.processor.v10.V10ProtocolMessageProcessor"),
 
     /**
      * 新定义的协议版本
      */
     V1_1("1.1", "新Websocket协议", "/ColorWebSocket/terminal", false,
-            "com.colorlight.terminal.infrastructure.websocket.processor.v11.V11ProtocolMessageProcessor");
+            "nan.produced.prism.device.infrastructure.websocket.processor.v11.V11ProtocolMessageProcessor");
 
     /**
      * 版本号

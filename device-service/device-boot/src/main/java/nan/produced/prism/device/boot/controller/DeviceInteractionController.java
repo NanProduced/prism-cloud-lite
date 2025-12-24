@@ -114,6 +114,11 @@ public class DeviceInteractionController implements DeviceInteractionApi {
         }
     }
 
+    @Operation(
+            summary = "终端获取节目",
+            description = "终端通过HTTP方式获取节目",
+            tags = {"终端节目"}
+    )
     @Override
     public List<DeviceApiProgram> getPrograms(String clt_type) {
         DevicePrincipal devicePrincipal = (DevicePrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -165,6 +170,11 @@ public class DeviceInteractionController implements DeviceInteractionApi {
         return list;
     }
 
+    @Operation(
+            summary = "终端获取素材",
+            description = "终端通过HTTP方式获取素材",
+            tags = {"终端节目"}
+    )
     @Override
     public List<DeviceApiMedia> getMedia(Integer parent) {
         if (parent == null) {
@@ -209,6 +219,11 @@ public class DeviceInteractionController implements DeviceInteractionApi {
         return (int) sizeBytes;
     }
 
+    @Operation(
+            summary = "终端上报素材播放记录",
+            description = "终端上报素材播放记录",
+            tags = {"终端节目"}
+    )
     @Override
     public ResponseEntity<Void> reportMediaPlayRecords(String report) {
         if (StringUtils.isBlank(report)) return ResponseEntity.status(HttpStatus.CREATED).build();
@@ -217,6 +232,11 @@ public class DeviceInteractionController implements DeviceInteractionApi {
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
+    @Operation(
+            summary = "终端上报节目播放记录",
+            description = "终端上报节目播放记录",
+            tags = {"终端节目"}
+    )
     @Override
     public ResponseEntity<Void> reportProgramPlayRecords(String report) {
         if (StringUtils.isBlank(report)) return ResponseEntity.status(HttpStatus.CREATED).build();
@@ -225,6 +245,11 @@ public class DeviceInteractionController implements DeviceInteractionApi {
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
+    @Operation(
+            summary = "终端获取排程",
+            description = "终端获取节目排程",
+            tags = {"终端节目"}
+    )
     @Override
     public String getSchedule() {
         DevicePrincipal devicePrincipal = (DevicePrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -232,6 +257,11 @@ public class DeviceInteractionController implements DeviceInteractionApi {
         return coreScheduleDistributionService.getDeviceScheduleJson(deviceId);
     }
 
+    @Operation(
+            summary = "终端上报传感器数据",
+            description = "终端上报传感器数据",
+            tags = {"终端监控"}
+    )
     @Override
     public ResponseEntity<Void> reportSensorData(String report) {
         if (StringUtils.isBlank(report)) return ResponseEntity.status(HttpStatus.CREATED).build();
@@ -240,6 +270,11 @@ public class DeviceInteractionController implements DeviceInteractionApi {
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
+    @Operation(
+            summary = "终端上报终端日志",
+            description = "终端上报终端日志",
+            tags = {"终端监控"}
+    )
     @Override
     public ResponseEntity<Void> reportTerminalLog(String logs) {
         DevicePrincipal devicePrincipal= (DevicePrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -247,6 +282,11 @@ public class DeviceInteractionController implements DeviceInteractionApi {
         return ResponseEntity.status(HttpStatus.OK).build();
     }
 
+    @Operation(
+            summary = "终端上报终端截图",
+            description = "终端上报终端截图",
+            tags = {"终端监控"}
+    )
     @Override
     public ResponseEntity<Void> reportScreenshot(HttpServletRequest request) {
         DevicePrincipal devicePrincipal = (DevicePrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -270,6 +310,11 @@ public class DeviceInteractionController implements DeviceInteractionApi {
         }
     }
 
+    @Operation(
+            summary = "终端上报下载进度",
+            description = "终端上报下载进度",
+            tags = {"终端节目"}
+    )
     @Override
     public ResponseEntity<Void> reportDownloading(String report) {
         if (StringUtils.isBlank(report)) return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "auth-service", configuration = ServiceSignatureFeignConfig.class, path = "/auth/internal/account/api-keys")
+@FeignClient(name = "auth-service", contextId = "auth-api-key", configuration = ServiceSignatureFeignConfig.class, path = "/auth/internal/account/api-keys")
 public interface AuthApiKeyInternalClient {
 
     @GetMapping

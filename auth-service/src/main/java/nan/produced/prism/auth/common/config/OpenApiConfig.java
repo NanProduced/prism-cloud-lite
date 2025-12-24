@@ -6,7 +6,6 @@ import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.info.License;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.oas.models.security.SecurityScheme;
-import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.Components;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,8 +29,7 @@ public class OpenApiConfig {
         return new OpenAPI()
             .info(apiInfo())
             .servers(serverList())
-            .components(securityComponents())
-            .addSecurityItem(new SecurityRequirement().addList("OAuth2"));
+            .components(securityComponents());
     }
 
     /**
@@ -41,16 +39,13 @@ public class OpenApiConfig {
         return new Info()
             .title("Prism Auth Service API")
             .description("""
-                # Auth-Service 对接重点
+                # Auth Service（账号与认证）对接重点
 
-                - **责任边界**：负责注册、账号激活、OAuth2/OIDC 授权以及 JWKS 公钥；登录凭证和业务 API 由 Gateway/Core 处理。
-                - **访问路径**：浏览器只访问 `/auth/**` 下的注册与公钥接口，其它 OAuth2 流程统一由 Gateway 暴露 `/oauth2/authorization/prism-gateway`；8081 端口只在本地/测试环境允许直接访问。
-                - **安全策略**：对外仅开放 GET/POST；不暴露 PUT/PATCH/DELETE 等 HTTP Method（详见 `.doc/specification/http-method-policy.md`）。
-                - **注册流程**：遵循“申请 OTP → 验证 OTP → 完成注册”的三步交互，接口返回 `BffResponse`，前端根据 `success` 与 `error.displayMessage` 做提示即可。
-                - **集成建议**：
-                    * 需要刷新 JWKS 时调用 `/auth/oauth2/jwks`；
-                    * Gateway 与 Core 通过 `/internal/**` 完成 RPC，避免前端绕过；
-                    * 本说明聚焦流程与协作要点，字段细节请打开具体接口查看。
+                - **面向 SPA 的接口（经由 Gateway）**：`/auth/register/**`、`/auth/login/**`、`/auth/oauth2/jwks`。
+                - **OAuth2/OIDC（授权码流程）**：由 Gateway 发起登录（`/oauth2/authorization/prism-gateway`），SPA 不需要直接拼装 `/auth/oauth2/authorize` 请求。
+                - **内部接口（/auth/internal/**）**：仅供服务间调用（例如 core-service），前端不要调用。
+                - **响应体**：面向 SPA 的接口使用 `BffResponse<T>`；内部接口使用 `ApiResponse<T>`（用于服务间 RPC）。
+                - **HTTP Method 策略**：对外仅开放 GET/POST；不暴露 PUT/PATCH/DELETE 等 Method（详见 `.doc/specification/http-method-policy.md`）。
 
                 此处比对接口字段更强调“如何使用”，便于前端和第三方快速定位关键步骤。
                 """)
@@ -70,14 +65,14 @@ public class OpenApiConfig {
     private List<Server> serverList() {
         return List.of(
             new Server()
+                .url("http://localhost:8082/auth")
+                .description("本地开发环境（经由 Gateway 访问，推荐）"),
+            new Server()
                 .url("http://localhost:8081/auth")
-                .description("本地开发环境 (auth-service)"),
+                .description("本地开发环境（直连 auth-service，仅后端调试）"),
             new Server()
                 .url("https://api.nanproduced.cloud/auth")
-                .description("生产环境 (auth-service，经由 api.nanproduced.cloud/auth 暴露)"),
-            new Server()
-                .url("http://localhost:8848")
-                .description("Nacos 注册中心")
+                .description("生产环境（经由 api.nanproduced.cloud/auth 暴露）")
         );
     }
 
@@ -88,12 +83,12 @@ public class OpenApiConfig {
         return new Components()
             .addSecuritySchemes("OAuth2", new SecurityScheme()
                 .type(SecurityScheme.Type.OAUTH2)
-                .description("OAuth2 授权码流程")
+                .description("OAuth2 授权码流程（通常由 Gateway 发起，SPA 不需要手动拼装 authorize/token 请求）")
                 .flows(new io.swagger.v3.oas.models.security.OAuthFlows()
                     .authorizationCode(new io.swagger.v3.oas.models.security.OAuthFlow()
-                        .authorizationUrl("http://localhost:8081/auth/oauth2/authorize")
-                        .tokenUrl("http://localhost:8081/auth/oauth2/token")
-                        .refreshUrl("http://localhost:8081/auth/oauth2/token")
+                        .authorizationUrl("http://localhost:8082/auth/oauth2/authorize")
+                        .tokenUrl("http://localhost:8082/auth/oauth2/token")
+                        .refreshUrl("http://localhost:8082/auth/oauth2/token")
                     )
                 )
             )
