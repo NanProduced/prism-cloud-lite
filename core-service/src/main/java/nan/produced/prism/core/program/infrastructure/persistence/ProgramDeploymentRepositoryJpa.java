@@ -20,5 +20,6 @@ public interface ProgramDeploymentRepositoryJpa extends JpaRepository<ProgramDep
     List<ProgramDeploymentEntity> findByDeviceIdOrderByAssignedAtDesc(Long deviceId);
 
     Optional<ProgramDeploymentEntity> findByDeviceIdAndReleaseProgramId(Long deviceId, Integer releaseProgramId);
-}
 
+    void deleteByDeviceId(Long deviceId);
+}

@@ -6,10 +6,11 @@ import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.util.BeanUtils;
 import nan.produced.prism.core.device.application.port.outbound.DevicePropertiesPort;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
+import nan.produced.prism.core.device.api.event.DeviceInternetProgramVsnsReportedEvent;
 import nan.produced.prism.core.device.domain.DeviceEntity;
 import nan.produced.prism.core.device.domain.DeviceNetworkType;
 import nan.produced.prism.core.device.domain.DeviceProperties;
-import nan.produced.prism.core.program.application.port.inbound.ProgramDeploymentHandleFacade;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static nan.produced.prism.core.common.exception.ErrorCode.DEVICE_NOT_FOUND_IN_CORE;
 
@@ -31,7 +33,7 @@ import static nan.produced.prism.core.common.exception.ErrorCode.DEVICE_NOT_FOUN
 public class DevicePropertiesHandler implements DevicePropertiesPort {
 
     private final DeviceRepository deviceRepository;
-    private final ProgramDeploymentHandleFacade programDeploymentHandleFacade;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     public void handleDeviceProperties(Long deviceId, DeviceProperties deviceProperties, String traceId) {
@@ -41,12 +43,12 @@ public class DevicePropertiesHandler implements DevicePropertiesPort {
         if (existingDevice == null) {
             throw new BizException(DEVICE_NOT_FOUND_IN_CORE, "device not find: deviceId = " + deviceId);
         }
-        DeviceEntity updateDevice = handleRedundantProperties(existingDevice, deviceProperties);
+        DeviceEntity updateDevice = handleRedundantProperties(existingDevice, deviceProperties, traceId);
         updateDevice.setLastReportTime(now);
         deviceRepository.updateDeviceProperties(updateDevice);
     }
 
-    private DeviceEntity handleRedundantProperties(DeviceEntity existingDevice, DeviceProperties properties) {
+    private DeviceEntity handleRedundantProperties(DeviceEntity existingDevice, DeviceProperties properties, String traceId) {
         if (existingDevice == null) {
             return null;
         }
@@ -82,7 +84,7 @@ public class DevicePropertiesHandler implements DevicePropertiesPort {
                             .findFirst())
                     .map(DeviceProperties.Vsns.ContentGroup::getContent)
                     .orElse(Collections.emptyList());
-            checkProgramDeployment(existingDevice.getDeviceId(), contentItems);
+            checkProgramDeployment(existingDevice.getUserId(), existingDevice.getDeviceId(), contentItems, traceId);
         }
 
         // dimension
@@ -130,14 +132,15 @@ public class DevicePropertiesHandler implements DevicePropertiesPort {
      * @param deviceId 设备ID
      * @param items 设备播放列表（仅互联网节目，即云平台下发的节目）
      */
-    private void checkProgramDeployment(Long deviceId, List<DeviceProperties.Vsns.ContentItem> items) {
-        if (items.isEmpty()) {
-            programDeploymentHandleFacade.clearProgramDeployment(deviceId);
+    private void checkProgramDeployment(UUID userId, Long deviceId, List<DeviceProperties.Vsns.ContentItem> items, String traceId) {
+        if (userId == null || deviceId == null) {
+            return;
         }
-        else {
-            List<String> list = items.stream().map(DeviceProperties.Vsns.ContentItem::getName).toList();
-            programDeploymentHandleFacade.handleProgramDeploymentConsistency(deviceId, list);
-        }
+        List<String> list = (items != null ? items : List.<DeviceProperties.Vsns.ContentItem>of()).stream()
+                .map(DeviceProperties.Vsns.ContentItem::getName)
+                .filter(name -> name != null && !name.isBlank())
+                .toList();
+        applicationEventPublisher.publishEvent(new DeviceInternetProgramVsnsReportedEvent(userId, deviceId, list, traceId));
     }
 
     private void populateReportTime(DeviceProperties properties, long serverTimestamp) {
