@@ -75,6 +75,7 @@ import nan.produced.prism.core.program.infrastructure.persistence.ProgramRelease
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramTemplateRepositoryJpa;
 import nan.produced.prism.core.message.api.MessageCenterFacade;
+import nan.produced.prism.core.system.api.SubscriptionQuotaFacade;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -90,8 +91,6 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 @RequiredArgsConstructor
 public class ProgramApplicationService {
 
-    private static final int MAX_RELEASE_VERSIONS_LITE = 10;
-
     private final ProgramRepositoryJpa programRepositoryJpa;
     private final ProgramDraftRepositoryJpa programDraftRepositoryJpa;
     private final ProgramReleaseRepositoryJpa programReleaseRepositoryJpa;
@@ -99,6 +98,7 @@ public class ProgramApplicationService {
     private final ProgramAssignmentRepositoryJpa programAssignmentRepositoryJpa;
     private final ProgramTemplateRepositoryJpa programTemplateRepositoryJpa;
     private final ProgramAuditLogRepositoryJpa programAuditLogRepositoryJpa;
+    private final SubscriptionQuotaFacade subscriptionQuotaFacade;
 
     private final MediaAssetRepository mediaAssetRepository;
     private final DeviceStatusFacade deviceStatusFacade;
@@ -112,13 +112,15 @@ public class ProgramApplicationService {
     private String s3Bucket;
 
     @Transactional
-    public ProgramDetailResp createProgram(UUID userId, CreateProgramReq req) {
+    public ProgramDetailResp createProgram(UUID userId, String tier, CreateProgramReq req) {
         if (userId == null) {
             throw new BizException(ErrorCode.NO_AUTHENTICATED_USER);
         }
         if (req == null || !StringUtils.hasText(req.getName()) || req.getWidth() == null || req.getHeight() == null) {
             throw new BizException(ErrorCode.INVALID_REQUEST, "name/width/height is required");
         }
+
+        ensureProgramLimit(userId, tier);
 
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         ProgramEntity entity = ProgramEntity.builder()
@@ -347,7 +349,7 @@ public class ProgramApplicationService {
     }
 
     @Transactional
-    public ProgramPublishResp publish(UUID userId, UUID programId, ProgramPublishReq req) {
+    public ProgramPublishResp publish(UUID userId, String tier, UUID programId, ProgramPublishReq req) {
         ProgramEntity program = findOwnedProgram(userId, programId);
         if (req == null || req.getVersionMode() == null || req.getScope() == null || req.getMode() == null) {
             throw new BizException(ErrorCode.INVALID_REQUEST, "versionMode/scope/mode is required");
@@ -370,7 +372,7 @@ public class ProgramApplicationService {
                     .orElseThrow(() -> new BizException(ErrorCode.PROGRAM_VERSION_NOT_FOUND));
         } else {
             createdNewVersion = true;
-            targetRelease = createNewRelease(userId, program, req, now);
+            targetRelease = createNewRelease(userId, tier, program, req, now);
         }
 
         int targetVersion = targetRelease.getVersion();
@@ -719,10 +721,22 @@ public class ProgramApplicationService {
         return "200".equals(code) || ErrorCode.SUCCESS.getCode().equals(code);
     }
 
-    private ProgramReleaseEntity createNewRelease(UUID userId, ProgramEntity program, ProgramPublishReq req, OffsetDateTime now) {
+    private void ensureProgramLimit(UUID userId, String tier) {
+        Integer limit = subscriptionQuotaFacade.getQuota(tier).programLimit();
+        if (limit == null || limit < 0) {
+            return;
+        }
+        long current = programRepositoryJpa.countByUserId(userId);
+        if (current >= limit) {
+            throw new BizException(ErrorCode.PROGRAM_LIMIT_EXCEEDED);
+        }
+    }
+
+    private ProgramReleaseEntity createNewRelease(UUID userId, String tier, ProgramEntity program, ProgramPublishReq req, OffsetDateTime now) {
         ProgramReleaseEntity latest = programReleaseRepositoryJpa.findTopByProgramIdOrderByVersionDesc(program.getId()).orElse(null);
         int nextVersion = latest != null && latest.getVersion() != null ? latest.getVersion() + 1 : 1;
-        if (nextVersion > MAX_RELEASE_VERSIONS_LITE) {
+        Integer versionLimit = subscriptionQuotaFacade.getQuota(tier).programVersionLimit();
+        if (versionLimit != null && versionLimit >= 0 && nextVersion > versionLimit) {
             throw new BizException(ErrorCode.PROGRAM_VERSION_LIMIT_EXCEEDED);
         }
 

@@ -205,6 +205,14 @@ public enum ErrorCode {
         false
     ),
 
+    SUBSCRIPTION_REDEEM_CODE_INVALID(
+        "AUTH-1030",
+        "兑换码无效或已使用",
+        "兑换码无效或已使用，请检查后重试",
+        HttpStatus.BAD_REQUEST,
+        true
+    ),
+
     // ============ 系统异常 (SYS-5xxx) ============
     INTERNAL_SERVER_ERROR(
         "SYS-5000",

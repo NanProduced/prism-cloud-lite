@@ -81,6 +81,7 @@ public class RabbitMqConfiguration {
     public Queue coreTaskWorkerQueue() {
         return QueueBuilder
                 .durable(MessagingConstants.Queues.TASK_WORKER)
+                .withArgument("x-max-priority", 10)
                 .build();
     }
 

@@ -30,6 +30,10 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class MediaTranscodeService {
 
+    private static final String TIER_PRO = "PRO";
+    private static final int PRIORITY_FREE = 0;
+    private static final int PRIORITY_PRO = 9;
+
     private final MediaAssetRepository mediaAssetRepository;
     private final MediaFolderRepository mediaFolderRepository;
     private final TranscodeProperties transcodeProperties;
@@ -178,13 +182,25 @@ public class MediaTranscodeService {
     }
 
     private void enqueue(TranscodeTaskPendingMessage message) {
+        int priority = resolveTaskPriority(message == null ? null : message.tier());
         rabbitTemplate.convertAndSend(
             MessagingConstants.Exchanges.CORE_NOTIFICATIONS,
             MessagingConstants.RoutingKeys.TASK_PENDING,
-            message
+            message,
+            msg -> {
+                msg.getMessageProperties().setPriority(priority);
+                return msg;
+            }
         );
         log.debug("Enqueued transcode task: taskId={}, messageId={}, userId={}",
             message.taskId(), message.messageId(), message.userId());
+    }
+
+    private int resolveTaskPriority(String tier) {
+        if (!StringUtils.hasText(tier)) {
+            return PRIORITY_FREE;
+        }
+        return TIER_PRO.equalsIgnoreCase(tier.trim()) ? PRIORITY_PRO : PRIORITY_FREE;
     }
 
     private String normalizeTierOrNull(String tier) {

@@ -12,6 +12,7 @@ public interface ProgramRepositoryJpa extends JpaRepository<ProgramEntity, UUID>
 
     List<ProgramEntity> findByUserIdOrderByUpdatedAtDesc(UUID userId);
 
+    long countByUserId(UUID userId);
+
     Optional<ProgramEntity> findByIdAndUserId(UUID id, UUID userId);
 }
-

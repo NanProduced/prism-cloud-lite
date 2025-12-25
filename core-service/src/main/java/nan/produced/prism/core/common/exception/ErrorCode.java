@@ -59,6 +59,7 @@ public enum ErrorCode {
     OTP_REQUEST_TOO_FREQUENT("CORE-2406", "验证码请求过于频繁", "请求过于频繁，请稍后再试", HttpStatus.TOO_MANY_REQUESTS, true),
     OTP_INVALID("CORE-2407", "验证码错误或已过期", "验证码不正确，请重新获取", HttpStatus.BAD_REQUEST, true),
     OTP_VERIFY_TOO_FREQUENT("CORE-2408", "操作过于频繁", "操作过于频繁，请稍后再试", HttpStatus.TOO_MANY_REQUESTS, true),
+    SUBSCRIPTION_REDEEM_CODE_INVALID("CORE-2409", "兑换码无效或已使用", "兑换码无效或已使用，请检查后重试", HttpStatus.BAD_REQUEST, true),
 
     // ============ 内部代码异常 (CORE-25xx) ============
     INSTANTIATION_IS_PROHIBITED("CORE-2501", "实例化被禁止", "请勿实例化该类", HttpStatus.INTERNAL_SERVER_ERROR, true),
@@ -83,10 +84,11 @@ public enum ErrorCode {
     PROGRAM_NOT_FOUND("CORE-2800", "节目不存在", "节目不存在或无权访问", HttpStatus.NOT_FOUND, false),
     PROGRAM_DRAFT_NOT_FOUND("CORE-2801", "节目草稿不存在", "草稿不存在或无权访问", HttpStatus.NOT_FOUND, false),
     PROGRAM_VERSION_NOT_FOUND("CORE-2802", "节目版本不存在", "版本不存在或无权访问", HttpStatus.NOT_FOUND, false),
-    PROGRAM_VERSION_LIMIT_EXCEEDED("CORE-2803", "节目版本已达上限", "已达到版本上限（Lite=10）", HttpStatus.BAD_REQUEST, false),
+    PROGRAM_VERSION_LIMIT_EXCEEDED("CORE-2803", "节目版本已达上限", "已达到版本上限", HttpStatus.BAD_REQUEST, false),
     PROGRAM_PUBLISH_TARGET_EMPTY("CORE-2804", "发布目标为空", "请选择至少一台设备", HttpStatus.BAD_REQUEST, false),
     PROGRAM_VSN_JSON_INVALID("CORE-2805", "VSN JSON 不合法", "节目内容不合法，请检查后重试", HttpStatus.BAD_REQUEST, false),
     PROGRAM_MATERIAL_INVALID("CORE-2806", "节目引用素材不合法", "节目引用的素材信息不完整，请重新上传或重试", HttpStatus.BAD_REQUEST, false),
+    PROGRAM_LIMIT_EXCEEDED("CORE-2807", "节目数量已达上限", "已达到当前套餐的节目上限，请升级套餐", HttpStatus.BAD_REQUEST, false),
 
     // ============ 排程相关 (CORE-29xx) ============
     SCHEDULE_NOT_FOUND("CORE-2900", "排程不存在", "排程不存在或无权访问", HttpStatus.NOT_FOUND, false),

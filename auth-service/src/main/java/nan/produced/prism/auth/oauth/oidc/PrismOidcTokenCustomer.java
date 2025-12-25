@@ -1,6 +1,7 @@
 package nan.produced.prism.auth.oauth.oidc;
 
 import nan.produced.prism.auth.security.principal.PrismUserPrincipal;
+import nan.produced.prism.auth.subscription.SubscriptionService;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static nan.produced.prism.auth.oauth.oidc.OidcClaimsConstant.*;
 
@@ -27,6 +29,12 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
 
     private static final String CLIENT_SETTING_OWNER_USER_UUID = "prism.ownerUserUuid";
     private static final String CLIENT_SETTING_OWNER_PUBLIC_ID = "prism.ownerPublicId";
+
+    private final SubscriptionService subscriptionService;
+
+    public PrismOidcTokenCustomer(SubscriptionService subscriptionService) {
+        this.subscriptionService = subscriptionService;
+    }
 
     @Override
     public void customize(JwtEncodingContext context) {
@@ -50,6 +58,7 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
 
         // Special handling for API keys (client_credentials): make issued tokens look like end-user tokens
         // so that gateway/core-service can keep using CLOUD_AUTH consistently.
+        String userUuid = null;
         if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
             RegisteredClient client = context.getRegisteredClient();
             String ownerUserUuid = client == null ? null : asString(client.getClientSettings().getSetting(CLIENT_SETTING_OWNER_USER_UUID));
@@ -57,18 +66,20 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
             if (ownerUserUuid != null) {
                 claims.put(CLAIM_USER_ID, ownerUserUuid);
                 claims.put(CLAIM_ROLES, List.of("ROLE_END_USER"));
+                userUuid = ownerUserUuid;
                 if (ownerPublicId != null) {
                     context.getClaims().subject(ownerPublicId);
                 }
             }
         }
         else {
-            String userUuid = resolveUserUuid(context.getPrincipal());
+            userUuid = resolveUserUuid(context.getPrincipal());
             if (userUuid != null) {
                 claims.put(CLAIM_USER_ID, userUuid);
             }
         }
 
+        claims.put(CLAIM_TIER, resolveTierOrDefault(userUuid));
         claims.forEach((key, value) -> context.getClaims().claim(key, value));
     }
 
@@ -78,6 +89,7 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
 
     private void extendIdToken(JwtEncodingContext context) {
         Map<String, Object> claims = buildCommonClaims(context);
+        claims.put(CLAIM_TIER, resolveTierOrDefault(resolveUserUuid(context.getPrincipal())));
         claims.forEach((key, value) -> context.getClaims().claim(key, value));
     }
 
@@ -97,7 +109,6 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
         if (authorization != null) {
             claims.put(CLAIM_SESSION_ID, authorization.getAttribute(CLAIM_SESSION_ID));
         }
-        claims.put(CLAIM_TIER, "FREE");
         claims.put(CLAIM_REALM, "END_USER");
         return claims;
     }
@@ -115,5 +126,16 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
 
     private String asString(Object value) {
         return value == null ? null : value.toString();
+    }
+
+    private String resolveTierOrDefault(String userUuid) {
+        if (subscriptionService == null || userUuid == null || userUuid.isBlank()) {
+            return "FREE";
+        }
+        try {
+            return subscriptionService.resolveTier(UUID.fromString(userUuid)).name();
+        } catch (Exception ignore) {
+            return "FREE";
+        }
     }
 }

@@ -54,7 +54,8 @@ public class ProgramController {
     @PostMapping
     public ResponseEntity<BffResponse<ProgramDetailResp>> createProgram(@RequestBody @Valid CreateProgramReq req) {
         UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
-        ProgramDetailResp created = programApplicationService.createProgram(userId, req);
+        String tier = CloudAuthContext.getCurrentUser().tier();
+        ProgramDetailResp created = programApplicationService.createProgram(userId, tier, req);
         return ResponseEntity.ok(BffResponse.success(created).withTraceId(TraceUtils.getTraceId()));
     }
 
@@ -183,7 +184,8 @@ public class ProgramController {
             @PathVariable("programId") @NotNull UUID programId,
             @RequestBody @Valid ProgramPublishReq req) {
         UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
-        ProgramPublishResp resp = programApplicationService.publish(userId, programId, req);
+        String tier = CloudAuthContext.getCurrentUser().tier();
+        ProgramPublishResp resp = programApplicationService.publish(userId, tier, programId, req);
         return ResponseEntity.ok(BffResponse.success(resp).withTraceId(TraceUtils.getTraceId()));
     }
 

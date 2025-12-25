@@ -12,6 +12,7 @@ import nan.produced.prism.auth.oauth.oidc.PrismOidcTokenCustomer;
 import nan.produced.prism.auth.oauth.oidc.PrismOidcUserInfoMapper;
 import nan.produced.prism.auth.oauth.slo.BackChannelLogoutHandler;
 import nan.produced.prism.auth.security.SecurityProps;
+import nan.produced.prism.auth.subscription.SubscriptionService;
 import nan.produced.prism.auth.security.login.handler.SpaRedirectAuthenticationEntryPoint;
 import nan.produced.prism.auth.utils.JwkUtils;
 import org.springframework.context.annotation.Bean;
@@ -189,8 +190,8 @@ public class AuthorizationServerConfig {
      * @return JWT令牌定制器
      */
     @Bean
-    public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer() {
-        return new PrismOidcTokenCustomer();
+    public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomizer(SubscriptionService subscriptionService) {
+        return new PrismOidcTokenCustomer(subscriptionService);
     }
 
     /**
