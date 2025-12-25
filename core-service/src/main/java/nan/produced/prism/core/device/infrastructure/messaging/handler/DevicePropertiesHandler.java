@@ -4,17 +4,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.util.BeanUtils;
-import nan.produced.prism.core.common.util.JsonUtils;
 import nan.produced.prism.core.device.application.port.outbound.DevicePropertiesPort;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
 import nan.produced.prism.core.device.domain.DeviceEntity;
 import nan.produced.prism.core.device.domain.DeviceNetworkType;
 import nan.produced.prism.core.device.domain.DeviceProperties;
+import nan.produced.prism.core.program.application.port.inbound.ProgramDeploymentHandleFacade;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
+
 import static nan.produced.prism.core.common.exception.ErrorCode.DEVICE_NOT_FOUND_IN_CORE;
 
 /**
@@ -28,6 +31,7 @@ import static nan.produced.prism.core.common.exception.ErrorCode.DEVICE_NOT_FOUN
 public class DevicePropertiesHandler implements DevicePropertiesPort {
 
     private final DeviceRepository deviceRepository;
+    private final ProgramDeploymentHandleFacade programDeploymentHandleFacade;
 
     @Override
     public void handleDeviceProperties(Long deviceId, DeviceProperties deviceProperties, String traceId) {
@@ -69,6 +73,18 @@ public class DevicePropertiesHandler implements DevicePropertiesPort {
             }
         }
 
+        // 同步programDeployment关系
+        DeviceProperties.Vsns vsns = properties.getVsns();
+        if (vsns != null) {
+            List<DeviceProperties.Vsns.ContentItem> contentItems = Optional.ofNullable(vsns.getContents())
+                    .flatMap(list -> list.stream()
+                            .filter(group -> "internet".equals(group.getType()))
+                            .findFirst())
+                    .map(DeviceProperties.Vsns.ContentGroup::getContent)
+                    .orElse(Collections.emptyList());
+            checkProgramDeployment(existingDevice.getDeviceId(), contentItems);
+        }
+
         // dimension
         DeviceProperties.Dimension dimension = properties.getDimension();
         if (dimension != null) {
@@ -106,6 +122,22 @@ public class DevicePropertiesHandler implements DevicePropertiesPort {
 
         return existingDevice;
 
+    }
+
+
+    /**
+     * 同步deployment信息
+     * @param deviceId 设备ID
+     * @param items 设备播放列表（仅互联网节目，即云平台下发的节目）
+     */
+    private void checkProgramDeployment(Long deviceId, List<DeviceProperties.Vsns.ContentItem> items) {
+        if (items.isEmpty()) {
+            programDeploymentHandleFacade.clearProgramDeployment(deviceId);
+        }
+        else {
+            List<String> list = items.stream().map(DeviceProperties.Vsns.ContentItem::getName).toList();
+            programDeploymentHandleFacade.handleProgramDeploymentConsistency(deviceId, list);
+        }
     }
 
     private void populateReportTime(DeviceProperties properties, long serverTimestamp) {

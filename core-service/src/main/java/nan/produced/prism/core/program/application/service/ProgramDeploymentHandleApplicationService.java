@@ -11,7 +11,12 @@ import java.util.List;
 public class ProgramDeploymentHandleApplicationService implements ProgramDeploymentHandleFacade {
 
     @Override
-    public void handlePlayingReport(Long deviceId, List<String> programVsnList) {
+    public void handleProgramDeploymentConsistency(Long deviceId, List<String> programVsnList) {
+
+    }
+
+    @Override
+    public void clearProgramDeployment(Long deviceId) {
 
     }
 }
