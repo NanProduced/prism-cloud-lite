@@ -23,7 +23,7 @@ public class OpenApiConfig {
                                  # 对接提示
 
                                  - 所有面向前端的接口都位于 `/api/v1/**`，必须由 Gateway 代理访问；
-                                 - 安全策略：对外仅开放 GET/POST；所有写操作（创建/更新/删除/动作）统一使用 POST 表达（详见 `.doc/specification/http-method-policy.md`）；
+                                 - 安全策略：对外仅开放 GET/POST；所有写操作（创建/更新/删除/动作）统一使用 POST 表达（详见 `docs/specs/http-method-policy.md`）；
                                  - 开发/测试可在 `http://localhost:8082/swagger-ui.html` 选择 **Core Service API**，查看由 Gateway 聚合的文档；
                                  - 直接访问 `http://localhost:8083/v3/api-docs` 仅用于后端调试，线上环境禁止绕过 Gateway；
                                  - `/internal/**` 为服务间内部接口（例如 device-service 分发），已在 Tag 中明确标注，前端不要调用；

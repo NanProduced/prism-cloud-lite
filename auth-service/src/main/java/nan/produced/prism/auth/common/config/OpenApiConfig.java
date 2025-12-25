@@ -45,7 +45,7 @@ public class OpenApiConfig {
                 - **OAuth2/OIDC（授权码流程）**：由 Gateway 发起登录（`/oauth2/authorization/prism-gateway`），SPA 不需要直接拼装 `/auth/oauth2/authorize` 请求。
                 - **内部接口（/auth/internal/**）**：仅供服务间调用（例如 core-service），前端不要调用。
                 - **响应体**：面向 SPA 的接口使用 `BffResponse<T>`；内部接口使用 `ApiResponse<T>`（用于服务间 RPC）。
-                - **HTTP Method 策略**：对外仅开放 GET/POST；不暴露 PUT/PATCH/DELETE 等 Method（详见 `.doc/specification/http-method-policy.md`）。
+                - **HTTP Method 策略**：对外仅开放 GET/POST；不暴露 PUT/PATCH/DELETE 等 Method（详见 `docs/specs/http-method-policy.md`）。
 
                 此处比对接口字段更强调“如何使用”，便于前端和第三方快速定位关键步骤。
                 """)
