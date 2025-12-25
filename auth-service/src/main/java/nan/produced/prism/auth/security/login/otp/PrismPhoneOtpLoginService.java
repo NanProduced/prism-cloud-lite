@@ -4,6 +4,7 @@ import nan.produced.prism.auth.common.exception.BizException;
 import nan.produced.prism.auth.common.exception.ErrorCode;
 import nan.produced.prism.auth.security.login.LoginAuthTypeConstants;
 import nan.produced.prism.auth.security.login.PrismLoginInterface;
+import nan.produced.prism.auth.security.otp.PnvScene;
 import nan.produced.prism.auth.security.otp.PnvService;
 import nan.produced.prism.auth.security.principal.PrismUserPrincipal;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -45,11 +46,11 @@ public class PrismPhoneOtpLoginService implements PrismLoginInterface {
             throw new BadCredentialsException("PNV Code is blank");
         }
 
-        String phone = userPrincipal.getPhone();
+        String phone = authParams.get(LoginAuthTypeConstants.PHONE);
         if (!StringUtils.hasText(phone)) {
-            throw new BizException(ErrorCode.INVALID_PARAMETER, "用户未绑定手机");
+            throw new BizException(ErrorCode.INVALID_PARAMETER, "phone is required");
         }
 
-        pnvService.verifyPnvCode(phone, pnvCode);
+        pnvService.verifyPnvCode(phone, pnvCode, PnvScene.LOGIN);
     }
 }

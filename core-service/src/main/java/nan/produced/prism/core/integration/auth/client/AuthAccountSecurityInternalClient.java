@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.UUID;
 import nan.produced.prism.core.common.response.ApiResponse;
 import nan.produced.prism.core.integration.auth.dto.AuthChangePasswordRequest;
+import nan.produced.prism.core.integration.auth.dto.AuthConfirmPhoneBindRequest;
 import nan.produced.prism.core.integration.auth.dto.AuthRememberedDeviceView;
+import nan.produced.prism.core.integration.auth.dto.AuthRequestPhoneBindOtpRequest;
 import nan.produced.prism.core.integration.auth.dto.AuthSecurityHistoryPageView;
 import nan.produced.prism.core.integration.signature.ServiceSignatureFeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -31,6 +33,12 @@ public interface AuthAccountSecurityInternalClient {
 
     @PostMapping("/remember-me/tokens/revoke-all")
     ApiResponse<Object> revokeAllRememberMeTokens(@RequestParam("userId") UUID userId);
+
+    @PostMapping("/phone/bind/request")
+    ApiResponse<Object> requestBindPhoneOtp(@RequestParam("userId") UUID userId, @RequestBody AuthRequestPhoneBindOtpRequest request);
+
+    @PostMapping("/phone/bind/confirm")
+    ApiResponse<Object> confirmBindPhone(@RequestParam("userId") UUID userId, @RequestBody AuthConfirmPhoneBindRequest request);
 
     @PostMapping("/password/change")
     ApiResponse<Object> changePassword(@RequestParam("userId") UUID userId, @RequestBody AuthChangePasswordRequest request);

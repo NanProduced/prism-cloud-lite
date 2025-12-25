@@ -55,6 +55,10 @@ public enum ErrorCode {
     INVALID_CLOUD_AUTH_HEADER("CORE-2402", "CLOUD_AUTH头格式错误", "认证信息格式错误，请重新登录", HttpStatus.UNAUTHORIZED, false),
     NO_AUTHENTICATED_USER("CORE-2403", "当前上下文中没有认证用户", "请先完成登录", HttpStatus.UNAUTHORIZED, false),
     INVALID_REQUEST("CORE-2404", "请求参数不合法", "请求参数不合法，请检查输入", HttpStatus.BAD_REQUEST, false),
+    PHONE_ALREADY_BOUND("CORE-2405", "手机号已被绑定", "该手机号已被其他账号绑定", HttpStatus.CONFLICT, false),
+    OTP_REQUEST_TOO_FREQUENT("CORE-2406", "验证码请求过于频繁", "请求过于频繁，请稍后再试", HttpStatus.TOO_MANY_REQUESTS, true),
+    OTP_INVALID("CORE-2407", "验证码错误或已过期", "验证码不正确，请重新获取", HttpStatus.BAD_REQUEST, true),
+    OTP_VERIFY_TOO_FREQUENT("CORE-2408", "操作过于频繁", "操作过于频繁，请稍后再试", HttpStatus.TOO_MANY_REQUESTS, true),
 
     // ============ 内部代码异常 (CORE-25xx) ============
     INSTANTIATION_IS_PROHIBITED("CORE-2501", "实例化被禁止", "请勿实例化该类", HttpStatus.INTERNAL_SERVER_ERROR, true),

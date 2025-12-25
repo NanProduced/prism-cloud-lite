@@ -5,6 +5,7 @@ import nan.produced.prism.auth.common.exception.ErrorCode;
 import nan.produced.prism.auth.security.login.LoginAuthTypeConstants;
 import nan.produced.prism.auth.security.login.PrismLoginInterface;
 import nan.produced.prism.auth.security.otp.EmailOtpService;
+import nan.produced.prism.auth.security.otp.OtpScene;
 import nan.produced.prism.auth.security.principal.PrismUserPrincipal;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
@@ -51,7 +52,7 @@ public class PrismEmailOtpLoginService implements PrismLoginInterface {
             throw new BizException(ErrorCode.INVALID_PARAMETER, "用户未绑定邮箱");
         }
 
-        emailOtpService.verifyOtp(email, otp);
+        emailOtpService.verifyOtp(email, otp, OtpScene.LOGIN);
     }
 
     private String normalizeEmail(String value) {

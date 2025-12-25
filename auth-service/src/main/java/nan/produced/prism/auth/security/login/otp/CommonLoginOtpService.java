@@ -7,8 +7,10 @@ import nan.produced.prism.auth.common.exception.ErrorCode;
 import nan.produced.prism.auth.domain.user.LoginAliasType;
 import nan.produced.prism.auth.domain.user.repository.LoginAliasRepository;
 import nan.produced.prism.auth.security.email.EmailService;
+import nan.produced.prism.auth.security.otp.OtpScene;
 import nan.produced.prism.auth.security.otp.OtpProps;
 import nan.produced.prism.auth.security.otp.EmailOtpService;
+import nan.produced.prism.auth.security.otp.PnvScene;
 import nan.produced.prism.auth.security.otp.PnvService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -36,19 +38,32 @@ public class CommonLoginOtpService {
             throw new BizException(ErrorCode.USER_NOT_FOUND);
         }
 
-        String otp = emailOtpService.generateAndStoreOtp(normalized);
+        String otp = emailOtpService.generateAndStoreOtp(normalized, OtpScene.LOGIN);
         emailService.sendOtpEmail(email, otp, otpProps.getValidityMinutes());;
     }
 
     /**
-     * 请求 PNV
+     * 请求手机号登录验证码（PNV）
+     * @param phone 手机号码
+     */
+    public void requestPhoneOtp(String phone) {
+        String normalized = normalizePhone(phone);
+        if (loginAliasRepository.findByValueAndType(normalized, LoginAliasType.PHONE).isEmpty()) {
+            throw new BizException(ErrorCode.USER_NOT_FOUND);
+        }
+        if (Boolean.FALSE.equals(pnvService.canApplyPnv(normalized, PnvScene.LOGIN))) {
+            throw new BizException(ErrorCode.OTP_REQUEST_TOO_FREQUENT);
+        }
+        pnvService.sendPnvCode(normalized, PnvScene.LOGIN);
+    }
+
+    /**
+     * 兼容旧方法名（手机号验证码登录）。
+     *
      * @param phone 手机号码
      */
     public void requestPnvCode(String phone) {
-        if (Boolean.FALSE.equals(pnvService.canApplyPnv(phone))) {
-            throw new BizException(ErrorCode.OTP_REQUEST_TOO_FREQUENT);
-        }
-        pnvService.sendPnvCode(phone);
+        requestPhoneOtp(phone);
     }
 
     /**
@@ -61,6 +76,17 @@ public class CommonLoginOtpService {
             throw new BizException(ErrorCode.INVALID_EMAIL_FORMAT);
         }
         return email.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizePhone(String phone) {
+        if (!StringUtils.hasText(phone)) {
+            throw new BizException(ErrorCode.INVALID_PARAMETER, "phone is required");
+        }
+        String normalized = phone.trim();
+        if (!normalized.matches("^1[3-9]\\d{9}$")) {
+            throw new BizException(ErrorCode.INVALID_PARAMETER, "phone is invalid");
+        }
+        return normalized;
     }
 
     /**

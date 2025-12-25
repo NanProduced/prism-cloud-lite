@@ -15,6 +15,7 @@ import nan.produced.prism.auth.security.email.EmailService;
 import nan.produced.prism.auth.security.password.PasswordPolicy;
 import nan.produced.prism.auth.security.otp.OtpProps;
 import nan.produced.prism.auth.security.otp.EmailOtpService;
+import nan.produced.prism.auth.security.otp.OtpScene;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,7 +54,7 @@ public class RegistrationService {
         }
 
         // 生成OTP并存储到Redis
-        String otp = emailOtpService.generateAndStoreOtp(email);
+        String otp = emailOtpService.generateAndStoreOtp(email, OtpScene.REGISTRATION);
 
         // 发送OTP邮件（可能抛出InfraException）
         long validityMinutes = otpProps.getValidityMinutes();
@@ -71,7 +72,7 @@ public class RegistrationService {
      */
     public String verifyOtp(String email, String otp) {
         // 验证OTP（可能抛出BizException）
-        emailOtpService.verifyOtp(email, otp);
+        emailOtpService.verifyOtp(email, otp, OtpScene.REGISTRATION);
 
         // 生成临时令牌（用于下一步设置密码）
         String verificationToken = UUID.randomUUID().toString();

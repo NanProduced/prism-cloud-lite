@@ -37,8 +37,19 @@ public class EmailOtpService {
      * @return 是否可以请求验证码
      */
     public Boolean canApplyOtp(String email) {
+        return canApplyOtp(email, OtpScene.LOGIN);
+    }
+
+    /**
+     * 判断是否可以请求验证码（按场景隔离）。
+     *
+     * @param email 邮箱地址
+     * @param scene OTP 场景
+     * @return 是否可以请求验证码
+     */
+    public Boolean canApplyOtp(String email, OtpScene scene) {
         String normalized = normalizeIdentifier(email);
-        String key = RATE_LIMIT_KEY_PREFIX + normalized;
+        String key = rateLimitKey(scene, normalized);
         return redisTemplate.opsForValue().setIfAbsent(key, "1", otpProps.getRateLimit().getWindowMinutes(), TimeUnit.MINUTES);
     }
 
@@ -48,22 +59,35 @@ public class EmailOtpService {
      * @return 生成的OTP
      */
     public String generateAndStoreOtp(String email) {
+        return generateAndStoreOtp(email, OtpScene.LOGIN);
+    }
+
+    /**
+     * 生成并存储OTP（按场景隔离）。
+     *
+     * @param email 邮箱地址
+     * @param scene OTP 场景
+     * @return 生成的OTP
+     */
+    public String generateAndStoreOtp(String email, OtpScene scene) {
         String normalized = normalizeIdentifier(email);
-        if (Boolean.FALSE.equals(canApplyOtp(normalized))) throw new BizException(OTP_REQUEST_TOO_FREQUENT);
+        if (Boolean.FALSE.equals(canApplyOtp(normalized, scene))) {
+            throw new BizException(OTP_REQUEST_TOO_FREQUENT);
+        }
 
         // 生成OTP
         String otp = generateOtp();
 
         // 存储到Redis
-        String key = OTP_KEY_PREFIX + normalized;
+        String key = otpKey(scene, normalized);
         long validityMinutes = otpProps.getValidityMinutes();
         redisTemplate.opsForValue().set(key, otp, validityMinutes, TimeUnit.MINUTES);
 
         // 重置错误尝试计数
-        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + normalized;
+        String attemptKey = attemptKey(scene, normalized);
         redisTemplate.delete(attemptKey);
 
-        log.info("OTP generated and stored for identifier: {}", normalized);
+        log.info("OTP generated and stored for identifier: {}, scene: {}", normalized, scene);
         return otp;
     }
 
@@ -74,21 +98,32 @@ public class EmailOtpService {
      * @throws BizException 验证失败异常
      */
     public void verifyOtp(String email, String otpCode) {
+        verifyOtp(email, otpCode, OtpScene.LOGIN);
+    }
+
+    /**
+     * 验证OTP（按场景隔离）。
+     *
+     * @param email 邮箱地址
+     * @param otpCode 用户输入的OTP
+     * @param scene OTP 场景
+     */
+    public void verifyOtp(String email, String otpCode, OtpScene scene) {
         String normalized = normalizeIdentifier(email);
         // 检查防暴力破解限制
-        checkRateLimit(normalized);
+        checkRateLimit(scene, normalized);
 
         // 从Redis获取OTP
-        String key = OTP_KEY_PREFIX + normalized;
+        String key = otpKey(scene, normalized);
         String storedOtp = redisTemplate.opsForValue().get(key);
 
         if (storedOtp == null) {
-            recordFailedAttempt(normalized);
+            recordFailedAttempt(scene, normalized);
             throw new BizException(ErrorCode.OTP_EXPIRED);
         }
 
         if (!storedOtp.equals(otpCode)) {
-            recordFailedAttempt(normalized);
+            recordFailedAttempt(scene, normalized);
             throw new BizException(ErrorCode.INVALID_OTP);
         }
 
@@ -96,10 +131,10 @@ public class EmailOtpService {
         redisTemplate.delete(key);
 
         // 清除错误尝试记录
-        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + normalized;
+        String attemptKey = attemptKey(scene, normalized);
         redisTemplate.delete(attemptKey);
 
-        log.info("OTP verified successfully for identifier: {}", normalized);
+        log.info("OTP verified successfully for identifier: {}, scene: {}", normalized, scene);
     }
 
     /**
@@ -107,8 +142,8 @@ public class EmailOtpService {
      * @param normalized 邮箱地址
      * @throws BizException 超过尝试次数
      */
-    private void checkRateLimit(String normalized) {
-        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + normalized;
+    private void checkRateLimit(OtpScene scene, String normalized) {
+        String attemptKey = attemptKey(scene, normalized);
         String attemptCountStr = redisTemplate.opsForValue().get(attemptKey);
 
         if (attemptCountStr != null) {
@@ -128,8 +163,8 @@ public class EmailOtpService {
      * 记录验证失败的尝试
      * @param normalized 邮箱地址
      */
-    private void recordFailedAttempt(String normalized) {
-        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + normalized;
+    private void recordFailedAttempt(OtpScene scene, String normalized) {
+        String attemptKey = attemptKey(scene, normalized);
         String attemptCountStr = redisTemplate.opsForValue().get(attemptKey);
 
         int attemptCount = 1;
@@ -145,7 +180,7 @@ public class EmailOtpService {
             TimeUnit.MINUTES
         );
 
-        log.warn("Failed OTP verification for identifier: {}, attempt: {}", normalized, attemptCount);
+        log.warn("Failed OTP verification for identifier: {}, scene: {}, attempt: {}", normalized, scene, attemptCount);
     }
 
     /**
@@ -166,14 +201,20 @@ public class EmailOtpService {
      * @param email 邮箱地址
      */
     public void deleteOtp(String email) {
+        deleteOtp(email, OtpScene.LOGIN);
+    }
+
+    /**
+     * 删除OTP（按场景隔离）。
+     *
+     * @param email 邮箱地址
+     * @param scene OTP 场景
+     */
+    public void deleteOtp(String email, OtpScene scene) {
         String normalized = normalizeIdentifier(email);
-        String key = OTP_KEY_PREFIX + normalized;
-        redisTemplate.delete(key);
-
-        String attemptKey = OTP_ATTEMPT_KEY_PREFIX + normalized;
-        redisTemplate.delete(attemptKey);
-
-        log.info("OTP deleted for identifier: {}", normalized);
+        redisTemplate.delete(otpKey(scene, normalized));
+        redisTemplate.delete(attemptKey(scene, normalized));
+        log.info("OTP deleted for identifier: {}, scene: {}", normalized, scene);
     }
 
     /**
@@ -186,5 +227,21 @@ public class EmailOtpService {
             throw new BizException(ErrorCode.INVALID_PARAMETER, "目标标识不能为空");
         }
         return identifier.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String rateLimitKey(OtpScene scene, String normalized) {
+        return RATE_LIMIT_KEY_PREFIX + normalizeScene(scene) + ":" + normalized;
+    }
+
+    private String otpKey(OtpScene scene, String normalized) {
+        return OTP_KEY_PREFIX + normalizeScene(scene) + ":" + normalized;
+    }
+
+    private String attemptKey(OtpScene scene, String normalized) {
+        return OTP_ATTEMPT_KEY_PREFIX + normalizeScene(scene) + ":" + normalized;
+    }
+
+    private String normalizeScene(OtpScene scene) {
+        return (scene == null ? OtpScene.LOGIN : scene).name().toLowerCase(Locale.ROOT);
     }
 }

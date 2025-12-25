@@ -14,6 +14,8 @@ import nan.produced.prism.core.common.response.BffResponse;
 import nan.produced.prism.core.common.util.TraceUtils;
 import nan.produced.prism.core.user.dto.UserActiveSessionView;
 import nan.produced.prism.core.user.dto.UserChangePasswordRequest;
+import nan.produced.prism.core.user.dto.UserConfirmPhoneBindRequest;
+import nan.produced.prism.core.user.dto.UserRequestPhoneBindOtpRequest;
 import nan.produced.prism.core.user.dto.UserSecurityHistoryView;
 import nan.produced.prism.core.user.service.UserSecurityService;
 import org.springframework.http.ResponseEntity;
@@ -88,6 +90,33 @@ public class UserSecurityController {
                                                               HttpServletRequest httpRequest,
                                                               HttpServletResponse httpResponse) {
         userSecurityService.changeCurrentUserPassword(request, httpRequest, httpResponse);
+        return ResponseEntity.ok(BffResponse.success().withTraceId(TraceUtils.getTraceId()));
+    }
+
+    @Operation(summary = "请求绑定手机号验证码", description = "向目标手机号发送短信验证码（PNV），用于绑定手机号。")
+    @ApiResponse(responseCode = "200", description = "请求成功")
+    @ApiResponse(responseCode = "400", description = "请求参数不合法")
+    @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
+    @ApiResponse(responseCode = "409", description = "手机号已被其他账号绑定")
+    @ApiResponse(responseCode = "429", description = "请求过于频繁")
+    @PostMapping("/phone/bind/request")
+    public ResponseEntity<BffResponse<Object>> requestBindPhoneOtp(@RequestBody UserRequestPhoneBindOtpRequest request) {
+        userSecurityService.requestCurrentUserBindPhoneOtp(request == null ? null : request.phone());
+        return ResponseEntity.ok(BffResponse.success().withTraceId(TraceUtils.getTraceId()));
+    }
+
+    @Operation(summary = "确认绑定手机号", description = "校验短信验证码并完成绑定手机号。")
+    @ApiResponse(responseCode = "200", description = "绑定成功")
+    @ApiResponse(responseCode = "400", description = "请求参数不合法/验证码错误")
+    @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
+    @ApiResponse(responseCode = "409", description = "手机号已被其他账号绑定")
+    @ApiResponse(responseCode = "429", description = "操作过于频繁")
+    @PostMapping("/phone/bind/confirm")
+    public ResponseEntity<BffResponse<Object>> confirmBindPhone(@RequestBody UserConfirmPhoneBindRequest request) {
+        userSecurityService.confirmCurrentUserBindPhone(
+            request == null ? null : request.phone(),
+            request == null ? null : request.code()
+        );
         return ResponseEntity.ok(BffResponse.success().withTraceId(TraceUtils.getTraceId()));
     }
 }

@@ -199,6 +199,28 @@ public class UserProfileService {
         return userProfileRepository.save(profile);
     }
 
+    /**
+     * 更新当前用户绑定手机号（仅同步 core-service profile，用于 Settings 展示）。
+     * <p>
+     * 注意：auth-service 中的手机号绑定/验证码校验由 core-service 通过 internal API 调用完成；
+     * 这里仅负责将结果落库到 core-service 的 {@code pcc_user_profile.phone}。
+     * </p>
+     */
+    @Transactional
+    public UserProfileEntity updateCurrentUserPhone(String phone) {
+        if (!StringUtils.hasText(phone)) {
+            throw new BizException(ErrorCode.INVALID_REQUEST, "phone is required");
+        }
+        String normalized = phone.trim();
+        if (!normalized.matches("^1[3-9]\\d{9}$")) {
+            throw new BizException(ErrorCode.INVALID_REQUEST, "phone is invalid");
+        }
+
+        UserProfileEntity profile = getOrCreateCurrentUserProfile();
+        profile.setPhone(normalized);
+        return userProfileRepository.save(profile);
+    }
+
     private void applyAvatarId(UserProfileEntity profile, String avatarId) {
         Map<String, Object> configs = profile.getConfigs() == null ? new HashMap<>() : new HashMap<>(profile.getConfigs());
 

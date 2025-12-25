@@ -166,11 +166,43 @@ public enum ErrorCode {
     ),
 
     PHONE_NUMBER_VALIDATION_CODE_VERIFY_ERROR(
-            "AUTH-1018",
-            "手机号验证码验证失败",
-            "手机号验证码验证失败，请重新获取",
-            HttpStatus.BAD_REQUEST,
-            true  // 可重试（重新输入）
+        "AUTH-1018",
+        "手机号验证码验证失败",
+        "手机号验证码验证失败，请重新获取",
+        HttpStatus.BAD_REQUEST,
+        true  // 可重试（重新输入）
+    ),
+
+    PHONE_ALREADY_IN_USE(
+        "AUTH-1019",
+        "手机号已被绑定",
+        "该手机号已被其他账号绑定",
+        HttpStatus.CONFLICT,
+        false  // 不可重试（业务冲突）
+    ),
+
+    GOOGLE_LOGIN_NOT_CONFIGURED(
+        "AUTH-1020",
+        "Google 登录未配置",
+        "Google 登录暂不可用",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        false
+    ),
+
+    GOOGLE_ID_TOKEN_INVALID(
+        "AUTH-1021",
+        "Google 凭证无效",
+        "Google 登录失败，请重试",
+        HttpStatus.UNAUTHORIZED,
+        true
+    ),
+
+    GOOGLE_ACCOUNT_ALREADY_BOUND(
+        "AUTH-1022",
+        "Google 账号已绑定其他用户",
+        "该 Google 账号已绑定其他账号",
+        HttpStatus.CONFLICT,
+        false
     ),
 
     // ============ 系统异常 (SYS-5xxx) ============

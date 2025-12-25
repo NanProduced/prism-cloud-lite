@@ -4,6 +4,7 @@ import nan.produced.prism.auth.security.SecurityProps;
 import nan.produced.prism.auth.security.authentication.PrismLoginAuthenticationProvider;
 import nan.produced.prism.auth.security.login.PrismLoginInterface;
 import nan.produced.prism.auth.security.login.config.PrismLoginAuthenticationSecurityConfig;
+import nan.produced.prism.auth.security.oauth.GoogleOAuthProps;
 import nan.produced.prism.auth.security.otp.OtpProps;
 import nan.produced.prism.auth.security.otp.PnvProps;
 import nan.produced.prism.auth.security.rememberme.RememberMeAuthenticationFilter;
@@ -34,7 +35,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
-@EnableConfigurationProperties({SecurityProps.class, OtpProps.class, PnvProps.class})
+@EnableConfigurationProperties({SecurityProps.class, OtpProps.class, PnvProps.class, GoogleOAuthProps.class})
 public class PrismSecurityConfig {
 
     private static final String LOGIN_PROPS_PREFIX = SecurityProps.PROPS_PREFIX + ".login";

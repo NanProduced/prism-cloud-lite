@@ -1,6 +1,7 @@
 package nan.produced.prism.auth.common.handler;
 
 import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.auth.common.exception.BaseServiceException;
 import nan.produced.prism.auth.common.exception.BizException;
 import nan.produced.prism.auth.common.exception.ErrorCode;
 import nan.produced.prism.auth.common.exception.InfraException;
@@ -83,6 +84,16 @@ public class BffExceptionHandler {
     public ResponseEntity<BffResponse<Object>> handleInfraException(InfraException ex) {
         log.error("Infrastructure exception: code={}, message={}",
             ex.getErrorCode().getCode(), ex.getMessage(), ex);
+        return buildErrorResponse(ex.getErrorCode());
+    }
+
+    /**
+     * 处理第三方/系统异常（BaseServiceException）
+     * <p>覆盖 ThirdPartyException 等场景，避免落入 500。</p>
+     */
+    @ExceptionHandler(BaseServiceException.class)
+    public ResponseEntity<BffResponse<Object>> handleBaseServiceException(BaseServiceException ex) {
+        log.warn("Service exception: code={}, message={}", ex.getErrorCode().getCode(), ex.getMessage());
         return buildErrorResponse(ex.getErrorCode());
     }
 

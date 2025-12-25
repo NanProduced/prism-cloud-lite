@@ -39,7 +39,18 @@ public class PnvProps {
 
     private PnvTemplate template = new PnvTemplate();
 
-    private String templateParam = "{\"code\":\"##code##\",\"min\":\"" + validityMinutes + "\"}";
+    /**
+     * 阿里云短信模板参数（JSON 字符串）
+     * <p>如不配置，将根据 {@link #validityMinutes} 自动生成。</p>
+     */
+    private String templateParam;
+
+    public String getTemplateParam() {
+        if (templateParam != null && !templateParam.isBlank()) {
+            return templateParam;
+        }
+        return "{\"code\":\"##code##\",\"min\":\"" + validityMinutes + "\"}";
+    }
 
     @Data
     public static class RateLimit {

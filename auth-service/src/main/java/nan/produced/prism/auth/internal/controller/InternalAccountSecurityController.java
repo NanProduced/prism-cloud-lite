@@ -13,7 +13,9 @@ import lombok.RequiredArgsConstructor;
 import nan.produced.prism.auth.common.exception.BizException;
 import nan.produced.prism.auth.common.response.ApiResponse;
 import nan.produced.prism.auth.domain.audit.SecurityEventEntity;
+import nan.produced.prism.auth.internal.dto.InternalConfirmPhoneBindRequest;
 import nan.produced.prism.auth.internal.dto.InternalChangePasswordRequest;
+import nan.produced.prism.auth.internal.dto.InternalRequestPhoneBindOtpRequest;
 import nan.produced.prism.auth.internal.dto.InternalSecurityEventView;
 import nan.produced.prism.auth.internal.dto.InternalSecurityHistoryPageView;
 import nan.produced.prism.auth.internal.service.InternalAccountSecurityService;
@@ -150,6 +152,67 @@ public class InternalAccountSecurityController {
         rememberMeTokenService.revokeAll(userId);
         securityAuditService.recordSessionsRevoked(userId, request);
         return ResponseEntity.ok(ApiResponse.success().withMeta(TraceUtils.getTraceId(), null));
+    }
+
+    @PostMapping("/phone/bind/request")
+    @Operation(
+        summary = "请求绑定手机号验证码",
+        description = """
+            供 core-service 的“Settings/绑定手机号”功能使用：向目标手机号发送绑定验证码（PNV-BIND）。
+
+            - 参数：`userId` + body.phone；
+            - 鉴权：service-signature + IP 白名单；
+            - 响应体：`ApiResponse<Object>`（成功时 data 为 null）。
+            """)
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "请求成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "参数不合法")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "签名无效或无权限（service-signature）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "手机号已被其他账号绑定")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "请求过于频繁")
+    public ResponseEntity<ApiResponse<Object>> requestBindPhoneOtp(@RequestParam("userId") UUID userId,
+                                                                   @RequestBody InternalRequestPhoneBindOtpRequest body) {
+        try {
+            internalAccountSecurityService.requestBindPhoneOtp(
+                userId,
+                body == null ? null : body.phone()
+            );
+            return ResponseEntity.ok(ApiResponse.success().withMeta(TraceUtils.getTraceId(), null));
+        } catch (BizException ex) {
+            return ResponseEntity.status(ex.getErrorCode().getHttpStatus())
+                .body(ApiResponse.<Object>error(ex.getErrorCode(), ex.getMessage())
+                    .withMeta(TraceUtils.getTraceId(), null));
+        }
+    }
+
+    @PostMapping("/phone/bind/confirm")
+    @Operation(
+        summary = "确认绑定手机号",
+        description = """
+            供 core-service 的“Settings/绑定手机号”功能使用：校验验证码并完成绑定（写入 auth-service 的 phone 与登录别名）。
+
+            - 参数：`userId` + body.phone + body.code；
+            - 鉴权：service-signature + IP 白名单；
+            - 响应体：`ApiResponse<Object>`（成功时 data 为 null）。
+            """)
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "绑定成功")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "参数不合法/验证码错误")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "签名无效或无权限（service-signature）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "手机号已被其他账号绑定")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "429", description = "操作过于频繁")
+    public ResponseEntity<ApiResponse<Object>> confirmBindPhone(@RequestParam("userId") UUID userId,
+                                                                @RequestBody InternalConfirmPhoneBindRequest body) {
+        try {
+            internalAccountSecurityService.confirmBindPhone(
+                userId,
+                body == null ? null : body.phone(),
+                body == null ? null : body.code()
+            );
+            return ResponseEntity.ok(ApiResponse.success().withMeta(TraceUtils.getTraceId(), null));
+        } catch (BizException ex) {
+            return ResponseEntity.status(ex.getErrorCode().getHttpStatus())
+                .body(ApiResponse.<Object>error(ex.getErrorCode(), ex.getMessage())
+                    .withMeta(TraceUtils.getTraceId(), null));
+        }
     }
 
     @PostMapping("/password/change")
