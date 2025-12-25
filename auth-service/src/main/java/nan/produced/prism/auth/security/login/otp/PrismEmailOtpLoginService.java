@@ -15,6 +15,11 @@ import org.springframework.util.StringUtils;
 import java.util.Locale;
 import java.util.Map;
 
+/**
+ * 邮箱验证码登录
+ *
+ * @author Nan
+ */
 public class PrismEmailOtpLoginService implements PrismLoginInterface {
 
     private final UserDetailsService userDetailsService;

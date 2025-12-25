@@ -322,6 +322,8 @@ public class DeviceProperties {
     public static class Playing {
         /**
          * 播放内容名称
+         * <p>注意：是vsn文件名</p>
+         * <p>例如：Playlist4406-v1_343335c016f8a206c93143700db5e05b_9596.vsn</p>
          */
         private String name;
 

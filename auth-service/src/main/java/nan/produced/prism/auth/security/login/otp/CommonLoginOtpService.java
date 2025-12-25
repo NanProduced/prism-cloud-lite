@@ -1,6 +1,5 @@
 package nan.produced.prism.auth.security.login.otp;
 
-import com.aliyun.sdk.service.dypnsapi20170525.AsyncClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.auth.common.exception.BizException;
@@ -10,6 +9,7 @@ import nan.produced.prism.auth.domain.user.repository.LoginAliasRepository;
 import nan.produced.prism.auth.security.email.EmailService;
 import nan.produced.prism.auth.security.otp.OtpProps;
 import nan.produced.prism.auth.security.otp.EmailOtpService;
+import nan.produced.prism.auth.security.otp.PnvService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -22,8 +22,8 @@ public class CommonLoginOtpService {
 
     private final EmailOtpService emailOtpService;
     private final EmailService emailService;
-    private final AsyncClient aliyunClient;
     private final OtpProps otpProps;
+    private final PnvService pnvService;
     private final LoginAliasRepository loginAliasRepository;
 
     /**
@@ -38,6 +38,17 @@ public class CommonLoginOtpService {
 
         String otp = emailOtpService.generateAndStoreOtp(normalized);
         emailService.sendOtpEmail(email, otp, otpProps.getValidityMinutes());;
+    }
+
+    /**
+     * 请求 PNV
+     * @param phone 手机号码
+     */
+    public void requestPnvCode(String phone) {
+        if (Boolean.FALSE.equals(pnvService.canApplyPnv(phone))) {
+            throw new BizException(ErrorCode.OTP_REQUEST_TOO_FREQUENT);
+        }
+        pnvService.sendPnvCode(phone);
     }
 
     /**

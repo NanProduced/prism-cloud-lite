@@ -157,6 +157,22 @@ public enum ErrorCode {
         true  // 可重试（重新输入）
     ),
 
+    PHONE_NUMBER_VALIDATION_CODE_GAIN_ERROR(
+        "AUTH-1017",
+        "手机号验证码获取失败",
+        "手机号验证码获取失败，请稍后再试",
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        true  // 可重试（临时错误）
+    ),
+
+    PHONE_NUMBER_VALIDATION_CODE_VERIFY_ERROR(
+            "AUTH-1018",
+            "手机号验证码验证失败",
+            "手机号验证码验证失败，请重新获取",
+            HttpStatus.BAD_REQUEST,
+            true  // 可重试（重新输入）
+    ),
+
     // ============ 系统异常 (SYS-5xxx) ============
     INTERNAL_SERVER_ERROR(
         "SYS-5000",
