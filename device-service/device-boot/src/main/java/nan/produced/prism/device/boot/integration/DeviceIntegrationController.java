@@ -10,6 +10,7 @@ import nan.produced.prism.device.application.port.inbound.auth.DeviceAccountUseC
 import nan.produced.prism.device.boot.integration.command.DeviceCommandConverter;
 import nan.produced.prism.device.boot.integration.command.DeviceCommandReq;
 import nan.produced.prism.device.boot.integration.command.DeviceCommandResp;
+import nan.produced.prism.device.infrastructure.internal.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;

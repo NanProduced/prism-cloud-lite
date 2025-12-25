@@ -1,9 +1,9 @@
-package nan.produced.prism.device.boot.integration.core;
+package nan.produced.prism.device.infrastructure.internal.core;
 
 import java.util.List;
-import nan.produced.prism.device.boot.integration.ApiResponse;
-import nan.produced.prism.device.boot.integration.core.dto.CoreDeviceProgramMediaDTO;
-import nan.produced.prism.device.boot.integration.core.dto.CoreDeviceProgramDTO;
+import nan.produced.prism.device.infrastructure.internal.ApiResponse;
+import nan.produced.prism.device.infrastructure.internal.core.dto.CoreDeviceProgramMediaDTO;
+import nan.produced.prism.device.infrastructure.internal.core.dto.CoreDeviceProgramDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

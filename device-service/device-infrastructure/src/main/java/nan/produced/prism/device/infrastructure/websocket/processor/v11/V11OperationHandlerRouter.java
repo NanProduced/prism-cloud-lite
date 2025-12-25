@@ -12,10 +12,16 @@ import nan.produced.prism.device.application.port.inbound.status.DeviceReportUse
 import nan.produced.prism.device.common.exception.business.BusinessErrorCode;
 import nan.produced.prism.device.common.exception.business.BusinessException;
 import nan.produced.prism.device.common.utils.JsonUtils;
+import nan.produced.prism.device.infrastructure.internal.core.CoreProgramDistributionService;
+import nan.produced.prism.device.infrastructure.internal.core.CoreScheduleDistributionService;
+import nan.produced.prism.device.infrastructure.internal.core.dto.DeviceProgramDTO;
 import nan.produced.prism.device.infrastructure.websocket.connection.DeviceWsSession;
 import nan.produced.prism.device.infrastructure.websocket.processor.v11.converter.V11WebsocketDtoConverter;
 import nan.produced.prism.device.infrastructure.websocket.processor.v11.dto.V11CommandResp;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -35,18 +41,27 @@ public class V11OperationHandlerRouter {
     private final DeviceCommandUseCase deviceCommandUseCase;
     private final DeviceReportUseCase deviceReportUseCase;
     private final V11WebsocketDtoConverter dtoConverter;
+    private final CoreScheduleDistributionService coreScheduleDistributionService;
+    private final CoreProgramDistributionService coreProgramDistributionService;
 
     private final Executor websocketBusinessExecutor;
 
     public V11OperationHandlerRouter(DeviceCommandUseCase deviceCommandUseCase,
                                      DeviceReportUseCase deviceReportUseCase,
                                      V11WebsocketDtoConverter dtoConverter,
-                                     @Qualifier("websocketBusinessExecutor") Executor websocketBusinessExecutor) {
+                                     @Qualifier("websocketBusinessExecutor") Executor websocketBusinessExecutor,
+                                     CoreScheduleDistributionService coreScheduleDistributionService,
+                                     CoreProgramDistributionService coreProgramDistributionService) {
         this.deviceCommandUseCase = deviceCommandUseCase;
         this.deviceReportUseCase = deviceReportUseCase;
         this.dtoConverter = dtoConverter;
         this.websocketBusinessExecutor = websocketBusinessExecutor;
+        this.coreScheduleDistributionService = coreScheduleDistributionService;
+        this.coreProgramDistributionService = coreProgramDistributionService;
     }
+
+    @Value("${prism.base-url}")
+    private String baseUrl;
 
     /**
      * 空JSON结构体
@@ -207,7 +222,37 @@ public class V11OperationHandlerRouter {
      * @param messageId   消息ID，用于响应时关联请求
      */
     private void handleGetSchedule(WsMessageProcessingContext context, Integer messageId) {
-        // todo: 排程模块待实现
+        Long deviceId = context.getDeviceId();
+        CompletableFuture
+                .supplyAsync(() -> {
+                    try {
+                        String scheduleJson = coreScheduleDistributionService.getDeviceScheduleJson(deviceId);
+                        return StringUtils.isBlank(scheduleJson) ? JsonUtils.fromJson(EMPTY_JSON) : JsonUtils.fromJson(scheduleJson);
+                    } catch (Exception e) {
+                        log.error("V11Router -ws- #GET_SCHEDULE#【获取排程异常】deviceId:{}", deviceId, e);
+                        throw e;
+                    }
+                }, websocketBusinessExecutor)
+                .whenComplete((schedule, throwable) -> {
+                    DeviceWsSession session = (DeviceWsSession) context.getConnection().getSession();
+                    Channel channel = session.getNettyChannel();
+                    channel.eventLoop().execute(() -> {
+                        try {
+                            if (throwable == null) {
+                                context.sendMessage(new V11WebsocketMessage(
+                                        V11WebsocketMessageType.SCHEDULE.getId(), messageId, schedule));
+                                log.debug("V11Router -ws- #GET_SCHEDULE#【获取排程成功】deviceId:{}", deviceId);
+                            }
+                            else {
+                                log.error("V11Router -ws- #GET_SCHEDULE#【获取排程失败】deviceId:{}", deviceId, throwable);
+                                context.sendMessage(V11WebsocketMessage.generateErrorContent(
+                                        V11WebsocketErrorType.SERVER_ERROR, messageId, "获取排程失败"));
+                            }
+                        } catch (Exception e) {
+                            log.error("V11Router -ws- #GET_SCHEDULE#【发送排程响应异常】deviceId:{}", deviceId, e);
+                        }
+                    });
+                });
     }
 
     /**
@@ -218,7 +263,41 @@ public class V11OperationHandlerRouter {
      * @param messageId   消息ID，用于响应时关联请求
      */
     private void handleGetProgram(WsMessageProcessingContext context, Integer messageId) {
-        // todo: 节目模块待实现
+        Long deviceId = context.getDeviceId();
+        CompletableFuture
+                .supplyAsync(() -> {
+                    try {
+                        List<DeviceProgramDTO> deviceProgramDTOS = coreProgramDistributionService.listDevicePrograms(deviceId, baseUrl);
+                        if (CollectionUtils.isEmpty(deviceProgramDTOS)) {
+                            return List.of();
+                        }
+                        return deviceProgramDTOS;
+                    } catch (Exception e) {
+                        log.error("V11Router -ws- #GET_PROGRAMS#【获取节目异常】deviceId:{}", deviceId, e);
+                        throw e;
+                    }
+                }, websocketBusinessExecutor)
+                .whenComplete((programs, throwable) -> {
+                    DeviceWsSession session = (DeviceWsSession) context.getConnection().getSession();
+                    Channel channel = session.getNettyChannel();
+                    channel.eventLoop().execute(() -> {
+                        try {
+                            if (throwable == null) {
+                                context.sendMessage(new V11WebsocketMessage(
+                                        V11WebsocketMessageType.PROGRAMS.getId(), messageId, programs));
+                                log.debug("V11Router -ws- #GET_PROGRAMS#【获取节目成功】deviceId:{}", deviceId);
+                            }
+                            else {
+                                log.error("V11Router -ws- #GET_PROGRAMS#【获取节目失败】deviceId:{}", deviceId, throwable);
+                                context.sendMessage(V11WebsocketMessage.generateErrorContent(
+                                        V11WebsocketErrorType.SERVER_ERROR, messageId, "获取节目失败"));
+                            }
+                        } catch (Exception e) {
+                            log.error("V11Router -ws- #GET_PROGRAMS#【发送节目响应异常】deviceId:{}", deviceId, e);
+                        }
+                    });
+                });
+
     }
 
     /**

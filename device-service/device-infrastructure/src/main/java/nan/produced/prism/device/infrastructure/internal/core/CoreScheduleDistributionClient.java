@@ -1,6 +1,6 @@
-package nan.produced.prism.device.boot.integration.core;
+package nan.produced.prism.device.infrastructure.internal.core;
 
-import nan.produced.prism.device.boot.integration.ApiResponse;
+import nan.produced.prism.device.infrastructure.internal.ApiResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;

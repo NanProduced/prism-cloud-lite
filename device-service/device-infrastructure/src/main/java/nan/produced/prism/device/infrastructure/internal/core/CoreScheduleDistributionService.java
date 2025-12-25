@@ -1,8 +1,8 @@
-package nan.produced.prism.device.boot.integration.core;
+package nan.produced.prism.device.infrastructure.internal.core;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import nan.produced.prism.device.boot.integration.ApiResponse;
+import nan.produced.prism.device.infrastructure.internal.ApiResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 

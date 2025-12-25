@@ -1,4 +1,4 @@
-package nan.produced.prism.device.boot.integration.core.dto;
+package nan.produced.prism.device.infrastructure.internal.core.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

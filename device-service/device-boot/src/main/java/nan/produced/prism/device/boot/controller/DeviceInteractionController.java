@@ -18,12 +18,14 @@ import nan.produced.prism.device.application.domain.command.DeviceCommand;
 import nan.produced.prism.device.application.port.inbound.command.DeviceCommandUseCase;
 import nan.produced.prism.device.application.port.inbound.status.DeviceReportUseCase;
 import nan.produced.prism.device.boot.integration.command.DeviceCommandConverter;
-import nan.produced.prism.device.boot.integration.core.CoreProgramDistributionService;
-import nan.produced.prism.device.boot.integration.core.CoreScheduleDistributionService;
-import nan.produced.prism.device.boot.integration.core.dto.CoreDeviceProgramDTO;
-import nan.produced.prism.device.boot.integration.core.dto.CoreDeviceProgramMediaDTO;
+import nan.produced.prism.device.common.utils.CommonUtils;
+import nan.produced.prism.device.infrastructure.internal.core.CoreProgramDistributionService;
+import nan.produced.prism.device.infrastructure.internal.core.CoreScheduleDistributionService;
+import nan.produced.prism.device.infrastructure.internal.core.dto.CoreDeviceProgramDTO;
+import nan.produced.prism.device.infrastructure.internal.core.dto.CoreDeviceProgramMediaDTO;
 import nan.produced.prism.device.common.exception.DeviceResponseException;
 import nan.produced.prism.device.common.exception.business.BusinessErrorCode;
+import nan.produced.prism.device.infrastructure.internal.core.dto.DeviceProgramDTO;
 import nan.produced.prism.device.infrastructure.storage.s3.DeviceScreenshotS3Uploader;
 import nan.produced.prism.device.infrastructure.security.DevicePrincipal;
 import org.apache.commons.lang3.StringUtils;
@@ -45,6 +47,7 @@ public class DeviceInteractionController implements DeviceInteractionApi {
 
     private final DeviceCommandUseCase deviceCommandUseCase;
     private final DeviceCommandConverter deviceCommandConverter;
+    private final DeviceProgramConverter deviceProgramConverter;
     private final DeviceScreenshotS3Uploader deviceScreenshotS3Uploader;
     private final CoreProgramDistributionService coreProgramDistributionService;
     private final CoreScheduleDistributionService coreScheduleDistributionService;
@@ -125,49 +128,8 @@ public class DeviceInteractionController implements DeviceInteractionApi {
         Long deviceId = devicePrincipal.getDeviceId();
         String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
 
-        // 重要：device-service 不直查 core DB。节目/素材数据由 core-service internal 接口提供。
-        List<CoreDeviceProgramDTO> programs = coreProgramDistributionService.listDevicePrograms(deviceId);
-        if (programs == null || programs.isEmpty()) {
-            return List.of();
-        }
-
-        List<DeviceApiProgram> list = new ArrayList<>();
-        for (CoreDeviceProgramDTO program : programs) {
-            if (program == null || program.getDeviceProgramId() == null) {
-                continue;
-            }
-
-            Integer programId = program.getDeviceProgramId();
-            OffsetDateTime createdAt = program.getCreatedAt();
-            OffsetDateTime assignedAt = program.getAssignedAt();
-
-            String title = program.getTitle() != null ? program.getTitle() : "";
-
-            String createdStr = formatWpTime(createdAt != null ? createdAt : assignedAt);
-            String modifiedStr = formatWpTime(assignedAt != null ? assignedAt : createdAt);
-
-            DeviceApiProgram.Title t = new DeviceApiProgram.Title();
-            t.setRendered(title);
-
-            DeviceApiProgram.AttachmentUrl attachmentUrl = new DeviceApiProgram.AttachmentUrl();
-            attachmentUrl.setHref(baseUrl + "/wp-json/wp/v2/media?parent=" + programId);
-
-            DeviceApiProgram.Links links = new DeviceApiProgram.Links();
-            links.setAttachmentUrls(List.of(attachmentUrl));
-
-            list.add(DeviceApiProgram.builder()
-                    .id(programId)
-                    .date(createdStr)
-                    .dateGmt(createdStr)
-                    .modified(modifiedStr)
-                    .modifiedGmt(modifiedStr)
-                    .type("program")
-                    .title(t)
-                    .links(links)
-                    .build());
-        }
-
-        return list;
+        List<DeviceProgramDTO> programs = coreProgramDistributionService.listDevicePrograms(deviceId, baseUrl);
+        return deviceProgramConverter.toDeviceApiProgram( programs);
     }
 
     @Operation(
@@ -195,28 +157,11 @@ public class DeviceInteractionController implements DeviceInteractionApi {
                 continue;
             }
             list.add(DeviceApiMedia.builder()
-                    .attachmentFileSize(toIntSize(item.getSizeBytes()))
+                    .attachmentFileSize(CommonUtils.toIntSize(item.getSizeBytes()))
                     .sourceUrl(item.getUrl())
                     .build());
         }
         return list;
-    }
-
-    private String formatWpTime(OffsetDateTime time) {
-        if (time == null) {
-            return WP_TIME_FORMAT.format(OffsetDateTime.now(ZoneOffset.UTC));
-        }
-        return WP_TIME_FORMAT.format(time.withOffsetSameInstant(ZoneOffset.UTC));
-    }
-
-    private int toIntSize(long sizeBytes) {
-        if (sizeBytes <= 0) {
-            return 0;
-        }
-        if (sizeBytes > Integer.MAX_VALUE) {
-            return Integer.MAX_VALUE;
-        }
-        return (int) sizeBytes;
     }
 
     @Operation(

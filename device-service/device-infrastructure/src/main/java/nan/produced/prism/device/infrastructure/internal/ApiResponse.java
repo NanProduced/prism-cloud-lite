@@ -1,4 +1,4 @@
-package nan.produced.prism.device.boot.integration;
+package nan.produced.prism.device.infrastructure.internal;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
