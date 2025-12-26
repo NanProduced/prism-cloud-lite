@@ -771,11 +771,62 @@ public class JdbcOidcAuthorizationService implements OidcAuthorizationService{
 
         private String writeMap(Map<String, Object> data) {
             try {
-                return this.objectMapper.writeValueAsString(data);
+                // 递归转换所有不可变集合为可变集合，避免 ImmutableCollections$ListN 序列化问题
+                Map<String, Object> mutableData = convertToMutableCollections(data);
+                return this.objectMapper.writeValueAsString(mutableData);
             }
             catch (Exception ex) {
                 throw new IllegalArgumentException(ex.getMessage(), ex);
             }
+        }
+
+        /**
+         * 递归转换 Map 中所有不可变集合为可变集合
+         * 解决 Java 9+ ImmutableCollections 不在 Spring Security Jackson 白名单的问题
+         */
+        @SuppressWarnings("unchecked")
+        private Map<String, Object> convertToMutableCollections(Map<String, Object> map) {
+            if (map == null) {
+                return null;
+            }
+            Map<String, Object> result = new LinkedHashMap<>();
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                result.put(entry.getKey(), convertValue(entry.getValue()));
+            }
+            return result;
+        }
+
+        @SuppressWarnings("unchecked")
+        private Object convertValue(Object value) {
+            if (value == null) {
+                return null;
+            }
+            if (value instanceof Map) {
+                Map<Object, Object> mapValue = (Map<Object, Object>) value;
+                Map<Object, Object> result = new LinkedHashMap<>();
+                for (Map.Entry<Object, Object> entry : mapValue.entrySet()) {
+                    result.put(entry.getKey(), convertValue(entry.getValue()));
+                }
+                return result;
+            }
+            if (value instanceof List) {
+                List<Object> listValue = (List<Object>) value;
+                List<Object> result = new ArrayList<>(listValue.size());
+                for (Object item : listValue) {
+                    result.add(convertValue(item));
+                }
+                return result;
+            }
+            if (value instanceof Set) {
+                Set<Object> setValue = (Set<Object>) value;
+                Set<Object> result = new LinkedHashSet<>();
+                for (Object item : setValue) {
+                    result.add(convertValue(item));
+                }
+                return result;
+            }
+            // 对于其他类型（包括 OAuth2AuthorizationRequest 等），直接返回
+            return value;
         }
 
     }

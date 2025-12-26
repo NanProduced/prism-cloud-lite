@@ -43,7 +43,7 @@ public class InternalUserController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "签名无效或无权限（service-signature）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "用户不存在")
     public ResponseEntity<ApiResponse<InternalUserResponse>> getUserByPublicId(
-        @Parameter(description = "用户 publicId（对外展示的稳定 ID）") @PathVariable String publicId) {
+        @Parameter(description = "用户 publicId（对外展示的稳定 ID）") @PathVariable("publicId") String publicId) {
         try {
             InternalUserResponse response = internalUserService.findByPublicId(publicId);
             return ResponseEntity.ok(ApiResponse.success(response).withMeta(TraceUtils.getTraceId(), null));

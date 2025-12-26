@@ -1,10 +1,11 @@
 package nan.produced.prism.auth.security.principal;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -95,15 +96,24 @@ public final class PrismUserPrincipal implements UserDetails {
         return status == UserStatus.ACTIVE;
     }
 
+    /**
+     * 将角色字符串集合转换为 GrantedAuthority 集合。
+     * <p>
+     * 注意：使用 {@code Collectors.toList()} 而非 {@code .toList()}，
+     * 因为后者返回 {@code ImmutableCollections$ListN}，该类型不在
+     * Spring Security Jackson 白名单中，会导致 OAuth2 授权信息
+     * 序列化/反序列化失败。
+     * </p>
+     */
     private static Collection<? extends GrantedAuthority> toAuthorities(Collection<String> roles) {
         if (roles == null || roles.isEmpty()) {
-            return Collections.emptyList();
+            return new ArrayList<>();
         }
         return roles.stream()
                 .filter(Objects::nonNull)
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .map(SimpleGrantedAuthority::new)
-                .toList();
+                .collect(Collectors.toList());
     }
 }

@@ -6,6 +6,7 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.auth.oauth.authorization.JdbcOidcAuthorizationService;
 import nan.produced.prism.auth.oauth.authorization.OidcAuthorizationService;
@@ -59,8 +60,6 @@ public class AuthorizationServerConfig {
     private final SecurityProps securityProps;
 
     private final PrismOidcUserInfoMapper oidcUserInfoMapper;
-
-    private final ObjectMapper prismSecurityObjectMapper;
 
     /**
      * 授权服务器安全过滤链
@@ -206,11 +205,14 @@ public class AuthorizationServerConfig {
     public OidcAuthorizationService authorizationService(JdbcTemplate jdbcTemplate, RegisteredClientRepository repository) {
         JdbcOidcAuthorizationService authorizationService = new JdbcOidcAuthorizationService(jdbcTemplate, repository);
 
-        ObjectMapper authorizationObjectMapper = prismSecurityObjectMapper.copy();
+        // 创建专用的 ObjectMapper，不复用 Spring Boot 默认的 ObjectMapper
+        // 避免 ImmutableCollections$ListN 等类型的序列化/反序列化问题
+        ObjectMapper authorizationObjectMapper = new ObjectMapper();
         ClassLoader classLoader = AuthorizationServerConfig.class.getClassLoader();
         authorizationObjectMapper.registerModules(SecurityJackson2Modules.getModules(classLoader));
         authorizationObjectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());
         authorizationObjectMapper.addMixIn(PrismUserPrincipal.class, PrismUserPrincipalAllowlistMixin.class);
+
 
         JdbcOidcAuthorizationService.OAuth2AuthorizationRowMapper rowMapper =
                 new JdbcOidcAuthorizationService.OAuth2AuthorizationRowMapper(repository);
@@ -225,6 +227,16 @@ public class AuthorizationServerConfig {
         return authorizationService;
     }
 
+    /**
+     * Jackson Mixin for {@link PrismUserPrincipal} serialization in OAuth2 authorization data.
+     * <p>
+     * - {@code @JsonTypeInfo}: Ensures class type information is included during serialization,
+     *   allowing correct deserialization back to {@code PrismUserPrincipal}.
+     * - {@code @JsonIgnoreProperties}: Prevents deserialization failures when stored JSON
+     *   contains fields that no longer exist in the class.
+     * </p>
+     */
+    @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
     @JsonIgnoreProperties(ignoreUnknown = true)
     static abstract class PrismUserPrincipalAllowlistMixin {
     }
