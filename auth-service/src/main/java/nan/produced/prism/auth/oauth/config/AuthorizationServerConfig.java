@@ -43,6 +43,9 @@ import java.io.IOException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Configuration
@@ -111,8 +114,13 @@ public class AuthorizationServerConfig {
     @Bean
     public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
         JdbcRegisteredClientRepository jdbcRegisteredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
-        if (null == jdbcRegisteredClientRepository.findByClientId(securityProps.getOauth2().getClient().getPrismGatewayClient().getClientId())) {
-            jdbcRegisteredClientRepository.save(createDefaultGatewayClient(passwordEncoder));
+
+        String gatewayClientId = securityProps.getOauth2().getClient().getPrismGatewayClient().getClientId();
+        RegisteredClient existing = jdbcRegisteredClientRepository.findByClientId(gatewayClientId);
+        RegisteredClient desired = buildGatewayClient(passwordEncoder, existing);
+
+        if (existing == null || needsUpdate(existing, desired)) {
+            jdbcRegisteredClientRepository.save(desired);
         }
         return jdbcRegisteredClientRepository;
     }
@@ -123,16 +131,23 @@ public class AuthorizationServerConfig {
      * @param passwordEncoder 密码编码器
      * @return 注册客户端 - Prism Cloud 平台 gateway 默认客户端
      */
-    private RegisteredClient createDefaultGatewayClient(PasswordEncoder passwordEncoder) {
-        return RegisteredClient.withId(UUID.randomUUID().toString())
+    private RegisteredClient buildGatewayClient(PasswordEncoder passwordEncoder, RegisteredClient existing) {
+        String scopeRaw = securityProps.getOauth2().getClient().getPrismGatewayClient().getScope();
+        Set<String> scopes = parseScopes(scopeRaw);
+
+        String rawSecret = securityProps.getOauth2().getClient().getPrismGatewayClient().getClientSecret();
+        String encodedSecret = existing != null && existing.getClientSecret() != null
+                ? existing.getClientSecret()
+                : passwordEncoder.encode(rawSecret);
+
+        RegisteredClient.Builder builder = RegisteredClient.withId(existing != null ? existing.getId() : UUID.randomUUID().toString())
                 .clientId(securityProps.getOauth2().getClient().getPrismGatewayClient().getClientId())
-                .clientSecret(passwordEncoder.encode(securityProps.getOauth2().getClient().getPrismGatewayClient().getClientSecret()))
+                .clientSecret(encodedSecret)
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri(securityProps.getOauth2().getClient().getPrismGatewayClient().getRedirectUri())
                 .postLogoutRedirectUri(securityProps.getOauth2().getClient().getPrismGatewayClient().getLogoutRedirectUri())
-                .scope(securityProps.getOauth2().getClient().getPrismGatewayClient().getScope())
                 .clientSettings(ClientSettings.builder()
                         .requireAuthorizationConsent(false)
                         .setting("settings.client.backchannel-logout-uri",
@@ -144,7 +159,36 @@ public class AuthorizationServerConfig {
                         .accessTokenTimeToLive(Duration.ofMinutes(securityProps.getOauth2().getClient().getPrismGatewayClient().getAccessTokenValidityMinutes()))
                         .refreshTokenTimeToLive(Duration.ofDays(securityProps.getOauth2().getClient().getPrismGatewayClient().getRefreshTokenValidityMinutes()))
                         .build())
-                .build();
+                ;
+
+        scopes.forEach(builder::scope);
+        return builder.build();
+    }
+
+    private Set<String> parseScopes(String raw) {
+        Set<String> scopes = new LinkedHashSet<>();
+        if (raw != null && !raw.isBlank()) {
+            Arrays.stream(raw.split("[,\\s]+"))
+                    .map(String::trim)
+                    .filter(it -> !it.isBlank())
+                    .forEach(scopes::add);
+        }
+        // OIDC requires `openid`; keep it always enabled for the default gateway client.
+        scopes.add("openid");
+        return scopes;
+    }
+
+    private boolean needsUpdate(RegisteredClient existing, RegisteredClient desired) {
+        if (existing == null || desired == null) {
+            return true;
+        }
+        if (!existing.getRedirectUris().equals(desired.getRedirectUris())) {
+            return true;
+        }
+        if (!existing.getPostLogoutRedirectUris().equals(desired.getPostLogoutRedirectUris())) {
+            return true;
+        }
+        return !existing.getScopes().equals(desired.getScopes());
     }
 
     /**

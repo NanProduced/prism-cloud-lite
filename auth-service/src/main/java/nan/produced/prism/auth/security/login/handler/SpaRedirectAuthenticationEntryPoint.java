@@ -62,7 +62,8 @@ public class SpaRedirectAuthenticationEntryPoint implements AuthenticationEntryP
         String redirectUrl = UriComponentsBuilder
                 .fromUriString(securityProps.getLogin().getSpa().getEntryPage())
                 .queryParam(securityProps.getLogin().getSpa().getContinueParam(), target)
-                .build(true)
+                .build()
+                .encode(StandardCharsets.UTF_8)
                 .toUriString();
 
         log.debug("Redirecting unauthenticated request to SPA login: {}", redirectUrl);

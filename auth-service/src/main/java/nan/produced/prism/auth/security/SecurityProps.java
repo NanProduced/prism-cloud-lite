@@ -137,7 +137,7 @@ public class SecurityProps {
 
                 private String backchannelLogoutUri;
 
-                private String scope = "openid";
+                private String scope = "openid,email,prism.account,prism.session";
 
                 private Long accessTokenValidityMinutes = 30L;
 
