@@ -72,7 +72,7 @@ public class PrismUserDetailService implements UserDetailsService {
         } else if (input.matches(phoneRegex)) {
             return LoginAliasType.PHONE;
         } else {
-            return null;
+            throw new UsernameNotFoundException("identifier is wrong, please input phone or email");
         }
     }
 }
