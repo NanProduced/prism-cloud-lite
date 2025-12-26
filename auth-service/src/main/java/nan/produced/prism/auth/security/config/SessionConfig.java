@@ -20,16 +20,6 @@ public class SessionConfig implements BeanClassLoaderAware {
 
     private ClassLoader loader;
 
-    @Bean
-    public ObjectMapper prismSecurityObjectMapper() {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModules(SecurityJackson2Modules.getModules(this.loader));
-        objectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());
-        objectMapper.addMixIn(PrismUserPrincipal.class, UserPrincipalMixin.class);
-        objectMapper.activateDefaultTyping(polymorphicTypeValidator(), ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
-        return objectMapper;
-    }
-
     /**
      * 替换默认的Redis序列化器
      *
@@ -38,7 +28,12 @@ public class SessionConfig implements BeanClassLoaderAware {
      */
     @Bean("springSessionDefaultRedisSerializer")
     public RedisSerializer<Object> springSessionDefaultRedisSerializer(ObjectMapper prismSecurityObjectMapper) {
-        return new GenericJackson2JsonRedisSerializer(prismSecurityObjectMapper);
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModules(SecurityJackson2Modules.getModules(this.loader));
+        objectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());
+        objectMapper.addMixIn(PrismUserPrincipal.class, UserPrincipalMixin.class);
+        objectMapper.activateDefaultTyping(polymorphicTypeValidator(), ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
+        return new GenericJackson2JsonRedisSerializer(objectMapper);
     }
 
     private PolymorphicTypeValidator polymorphicTypeValidator() {
