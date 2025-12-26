@@ -25,7 +25,7 @@ public interface ProgramReleaseRepositoryJpa extends JpaRepository<ProgramReleas
             FROM ProgramReleaseEntity r, ProgramEntity p
             WHERE p.id = r.programId
               AND p.userId = :userId
-              AND r.vsnMd5 = :vsnMd5
+              AND lower(r.vsnMd5) = lower(:vsnMd5)
               AND r.vsnSizeBytes = :vsnSizeBytes
             """)
     Optional<ProgramReleaseEntity> findByUserIdAndVsnMd5AndVsnSizeBytes(

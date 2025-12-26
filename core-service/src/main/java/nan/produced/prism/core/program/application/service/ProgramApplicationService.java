@@ -1084,7 +1084,7 @@ public class ProgramApplicationService {
             byte[] digest = md.digest(bytes != null ? bytes : new byte[0]);
             StringBuilder sb = new StringBuilder(digest.length * 2);
             for (byte b : digest) {
-                    sb.append(String.format("%02X", b));
+                sb.append(String.format("%02x", b));
             }
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {

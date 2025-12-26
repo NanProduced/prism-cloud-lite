@@ -734,7 +734,8 @@ public class ScheduleApplicationService {
             ScheduleEntity schedule = scheduleRepositoryJpa.findByScheduleIdAndUserId(binding.getScheduleId(), userId).orElse(null);
             if (schedule != null && Boolean.TRUE.equals(schedule.getEnabled())) {
                 boundScheduleId = schedule.getScheduleId();
-                scheduleAssignedAt = schedule.getUpdatedAt() != null ? schedule.getUpdatedAt() : schedule.getCreatedAt();
+                OffsetDateTime scheduleUpdatedAt = schedule.getUpdatedAt() != null ? schedule.getUpdatedAt() : schedule.getCreatedAt();
+                scheduleAssignedAt = max(binding.getBoundAt(), scheduleUpdatedAt);
                 for (ScheduleContentsRuleEntity rule : scheduleContentsRuleRepositoryJpa.findByScheduleIdOrderByPriorityAsc(boundScheduleId)) {
                     if (rule == null || rule.getReleaseProgramId() == null) {
                         continue;

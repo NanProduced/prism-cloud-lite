@@ -80,6 +80,10 @@ public class ProgramDeviceDistributionService {
             ScheduleEntity schedule = scheduleRepositoryJpa.findById(binding.getScheduleId()).orElse(null);
             if (schedule != null && Boolean.TRUE.equals(schedule.getEnabled())) {
                 OffsetDateTime scheduleAssignedAt = schedule.getUpdatedAt() != null ? schedule.getUpdatedAt() : schedule.getCreatedAt();
+                OffsetDateTime boundAt = binding.getBoundAt();
+                if (boundAt != null && (scheduleAssignedAt == null || boundAt.isAfter(scheduleAssignedAt))) {
+                    scheduleAssignedAt = boundAt;
+                }
                 for (ScheduleContentsRuleEntity rule : scheduleContentsRuleRepositoryJpa.findByScheduleIdOrderByPriorityAsc(binding.getScheduleId())) {
                     if (rule == null || rule.getReleaseProgramId() == null) {
                         continue;

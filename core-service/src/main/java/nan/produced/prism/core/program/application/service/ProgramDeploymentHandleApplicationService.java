@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -191,7 +192,7 @@ public class ProgramDeploymentHandleApplicationService implements ProgramDeploym
         if (lastSlash >= 0 && lastSlash + 1 < s.length()) {
             s = s.substring(lastSlash + 1);
         }
-        if (s.toLowerCase().endsWith(".vsn")) {
+        if (s.toLowerCase(Locale.ROOT).endsWith(".vsn")) {
             s = s.substring(0, s.length() - 4);
         }
 
@@ -217,7 +218,7 @@ public class ProgramDeploymentHandleApplicationService implements ProgramDeploym
             return null;
         }
 
-        return new VsnMeta(md5.toUpperCase(), sizeBytes);
+        return new VsnMeta(md5.toLowerCase(Locale.ROOT), sizeBytes);
     }
     
     private Map<UUID, ProgramReleaseEntity> resolveLatestReleaseByProgramId(UUID userId, List<String> programVsnList) {
