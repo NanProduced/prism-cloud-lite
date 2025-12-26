@@ -20,6 +20,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -33,6 +34,7 @@ import org.springframework.security.oauth2.server.authorization.client.JdbcRegis
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.oauth2.server.authorization.jackson2.OAuth2AuthorizationServerJackson2Module;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
@@ -203,6 +205,10 @@ public class AuthorizationServerConfig {
         JdbcOidcAuthorizationService authorizationService = new JdbcOidcAuthorizationService(jdbcTemplate, repository);
 
         ObjectMapper authorizationObjectMapper = prismSecurityObjectMapper.copy();
+        ClassLoader classLoader = AuthorizationServerConfig.class.getClassLoader();
+        authorizationObjectMapper.registerModules(SecurityJackson2Modules.getModules(classLoader));
+        authorizationObjectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());
+
         JdbcOidcAuthorizationService.OAuth2AuthorizationRowMapper rowMapper =
                 new JdbcOidcAuthorizationService.OAuth2AuthorizationRowMapper(repository);
         rowMapper.setObjectMapper(authorizationObjectMapper);

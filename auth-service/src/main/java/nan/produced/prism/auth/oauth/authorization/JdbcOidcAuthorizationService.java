@@ -11,6 +11,7 @@ import org.springframework.jdbc.support.lob.LobCreator;
 import org.springframework.jdbc.support.lob.LobHandler;
 import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.oauth2.core.*;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames;
@@ -451,17 +452,18 @@ public class JdbcOidcAuthorizationService implements OidcAuthorizationService{
             String id = rs.getString("id");
             String principalName = rs.getString("principal_name");
             String authorizationGrantType = rs.getString("authorization_grant_type");
-            Set<String> authorizedScopes = Collections.emptySet();
-            String authorizedScopesString = rs.getString("authorized_scopes");
-            if (authorizedScopesString != null) {
-                authorizedScopes = StringUtils.commaDelimitedListToSet(authorizedScopesString);
-            }
-            Map<String, Object> attributes = parseMap(getLobValue(rs, "attributes"));
+             Set<String> authorizedScopes = Collections.emptySet();
+             String authorizedScopesString = rs.getString("authorized_scopes");
+             if (authorizedScopesString != null) {
+                 authorizedScopes = StringUtils.commaDelimitedListToSet(authorizedScopesString);
+             }
+             Map<String, Object> attributes = parseMap(getLobValue(rs, "attributes"));
+             coerceAuthorizationRequestAttribute(attributes);
 
-            builder.id(id)
-                    .principalName(principalName)
-                    .authorizationGrantType(new AuthorizationGrantType(authorizationGrantType))
-                    .authorizedScopes(authorizedScopes)
+             builder.id(id)
+                     .principalName(principalName)
+                     .authorizationGrantType(new AuthorizationGrantType(authorizationGrantType))
+                     .authorizedScopes(authorizedScopes)
                     .attributes((attrs) -> attrs.putAll(attributes));
 
             String state = rs.getString("state");
@@ -601,6 +603,18 @@ public class JdbcOidcAuthorizationService implements OidcAuthorizationService{
             catch (Exception ex) {
                 throw new IllegalArgumentException(ex.getMessage(), ex);
             }
+        }
+
+        private void coerceAuthorizationRequestAttribute(Map<String, Object> attributes) {
+            if (CollectionUtils.isEmpty(attributes)) {
+                return;
+            }
+            Object raw = attributes.get(OAuth2AuthorizationRequest.class.getName());
+            if (!(raw instanceof Map<?, ?> rawMap)) {
+                return;
+            }
+            OAuth2AuthorizationRequest authorizationRequest = this.objectMapper.convertValue(rawMap, OAuth2AuthorizationRequest.class);
+            attributes.put(OAuth2AuthorizationRequest.class.getName(), authorizationRequest);
         }
 
     }
