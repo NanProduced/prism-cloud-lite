@@ -82,6 +82,7 @@ public class GatewaySecurityProps {
     public static class WhiteList {
 
         private List<String> urls = List.of(
+                "/error",
                 "/auth/**",
                 "/logout",
                 "/logout_status",

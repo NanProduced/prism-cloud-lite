@@ -64,7 +64,7 @@ public class PnvProps {
          * 时间窗口（分钟）
          * <p>频率限制的时间窗口</p>
          */
-        private long windowMinutes = 60L;
+        private long windowMinutes = 1L;
     }
 
     /**

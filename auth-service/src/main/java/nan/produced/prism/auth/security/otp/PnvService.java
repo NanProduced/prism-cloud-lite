@@ -231,7 +231,7 @@ public class PnvService {
     private void ensureSceneMarker(PnvScene scene, String phone) {
         String markerKey = sceneMarkerKey(scene, phone);
         Boolean exists = redisTemplate.hasKey(markerKey);
-        if (Boolean.FALSE.equals(exists)) {
+        if (!exists) {
             throw new BizException(ErrorCode.OTP_EXPIRED);
         }
     }

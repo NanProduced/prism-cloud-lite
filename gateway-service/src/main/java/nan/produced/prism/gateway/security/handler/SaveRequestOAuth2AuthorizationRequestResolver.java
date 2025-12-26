@@ -24,7 +24,7 @@ public class SaveRequestOAuth2AuthorizationRequestResolver implements OAuth2Auth
     private static final String SAVED_REQUEST_ATTR = "SPRING_SECURITY_SAVED_REQUEST";
 
     public SaveRequestOAuth2AuthorizationRequestResolver(ClientRegistrationRepository  repository) {
-        this.delegate = new DefaultOAuth2AuthorizationRequestResolver(repository, "/oauth2/authorization/");
+        this.delegate = new DefaultOAuth2AuthorizationRequestResolver(repository, "/oauth2/authorization");
     }
 
     @Override

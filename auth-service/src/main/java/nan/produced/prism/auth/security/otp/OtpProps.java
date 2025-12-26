@@ -41,7 +41,7 @@ public class OtpProps {
          * 时间窗口（分钟）
          * 频率限制的时间窗口
          */
-        private long windowMinutes = 60L;
+        private long windowMinutes = 1L;
     }
 
 }
