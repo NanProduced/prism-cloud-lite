@@ -5,6 +5,7 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.auth.oauth.authorization.JdbcOidcAuthorizationService;
 import nan.produced.prism.auth.oauth.authorization.OidcAuthorizationService;
@@ -12,6 +13,7 @@ import nan.produced.prism.auth.oauth.oidc.PrismOidcTokenCustomer;
 import nan.produced.prism.auth.oauth.oidc.PrismOidcUserInfoMapper;
 import nan.produced.prism.auth.oauth.slo.BackChannelLogoutHandler;
 import nan.produced.prism.auth.security.SecurityProps;
+import nan.produced.prism.auth.security.principal.PrismUserPrincipal;
 import nan.produced.prism.auth.subscription.SubscriptionService;
 import nan.produced.prism.auth.security.login.handler.SpaRedirectAuthenticationEntryPoint;
 import nan.produced.prism.auth.utils.JwkUtils;
@@ -208,6 +210,7 @@ public class AuthorizationServerConfig {
         ClassLoader classLoader = AuthorizationServerConfig.class.getClassLoader();
         authorizationObjectMapper.registerModules(SecurityJackson2Modules.getModules(classLoader));
         authorizationObjectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());
+        authorizationObjectMapper.addMixIn(PrismUserPrincipal.class, PrismUserPrincipalAllowlistMixin.class);
 
         JdbcOidcAuthorizationService.OAuth2AuthorizationRowMapper rowMapper =
                 new JdbcOidcAuthorizationService.OAuth2AuthorizationRowMapper(repository);
@@ -220,6 +223,10 @@ public class AuthorizationServerConfig {
         authorizationService.setAuthorizationParametersMapper(parametersMapper);
 
         return authorizationService;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    static abstract class PrismUserPrincipalAllowlistMixin {
     }
 
     /**
