@@ -60,9 +60,9 @@ public class DeviceSecurityProps {
 
         /**
          * IP 白名单（逗号分隔）
-         * 开发环境：本地地址
+         * 开发环境：本地地址 + 常见私有网段（便于 Docker/Compose 内部调用）
          * 生产环境：应配置为实际的服务 IP 地址
          */
-        private String ipWhitelist = "127.0.0.1,::1,localhost";
+        private String ipWhitelist = "127.0.0.1,::1,localhost,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16";
     }
 }

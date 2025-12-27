@@ -24,7 +24,7 @@ public class CreateDeviceReq {
     @Schema(description = "设备密码（用于对接 device-service）", example = "********")
     private String password;
 
-    @Size(min = 1, max = 128)
+    @Size(max = 128)
     @Schema(description = "设备描述", example = "大厅入口屏幕")
     private String description;
 }
