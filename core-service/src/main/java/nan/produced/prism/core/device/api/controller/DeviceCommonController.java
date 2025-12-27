@@ -54,7 +54,7 @@ public class DeviceCommonController {
     @ApiResponse(responseCode = "400", description = "设备配额不足（已达到当前套餐设备上限）")
     @ApiResponse(responseCode = "502", description = "调用 device-service 失败或返回异常")
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
-    @PostMapping({"", "/create"})
+    @PostMapping
     public ResponseEntity<BffResponse<CreateDeviceResp>> createDevice(@RequestBody @Validated CreateDeviceReq req) {
         String userUuid = CloudAuthContext.getCurrentUser().userUuid();
         String tier = CloudAuthContext.getCurrentUser().tier();
@@ -104,7 +104,7 @@ public class DeviceCommonController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = DeviceDetailResp.class)))
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @ApiResponse(responseCode = "404", description = "设备不存在或无权访问")
-    @GetMapping({"/{deviceId:\\d+}/detail", "/{deviceId:\\d+}"})
+    @GetMapping("/{deviceId:\\d+}")
     public ResponseEntity<BffResponse<DeviceDetailResp>> getDeviceDetail(@PathVariable("deviceId") @NotNull Long deviceId) {
         UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
         DeviceDetailResp detail = deviceSearchUseCase.getDeviceDetail(userId, deviceId);

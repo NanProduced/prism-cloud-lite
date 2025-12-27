@@ -17,6 +17,7 @@ import nan.produced.prism.device.common.exception.business.BusinessErrorCode;
 import nan.produced.prism.device.common.utils.SignatureUtils;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -30,10 +31,10 @@ import java.util.Set;
 
 /**
  * 服务签名验证过滤器
- * 验证来自其他服务的 /internal/* 请求的 HMAC 签名
+ * 验证来自其他服务的 /internal/** 请求的 HMAC 签名（路径匹配由 {@link DeviceSecurityProps.InternalApi#pathPattern} 配置）
  * <p>
  * 验证流程：
- * 1. 检查请求路径是否匹配 /internal/*
+ * 1. 检查请求路径是否匹配 internalApi.pathPattern（Ant 风格）
  * 2. 验证来源 IP 是否在白名单中
  * 3. 提取 X-Service-From、X-Timestamp、X-Signature 请求头
  * 4. 读取请求体并验证签名
@@ -49,13 +50,15 @@ public class ServiceSignatureValidatorFilter extends OncePerRequestFilter {
     private final ObjectMapper objectMapper;
     private final DeviceSecurityProps securityProps;
 
+    private static final AntPathMatcher ANT_PATH_MATCHER = new AntPathMatcher();
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
         String requestPath = request.getRequestURI();
 
-        // 只验证 /internal/* 路径
+        // 只验证 /internal/** 路径（可配置）
         if (!isInternalApiPath(requestPath)) {
             filterChain.doFilter(request, response);
             return;
@@ -128,10 +131,11 @@ public class ServiceSignatureValidatorFilter extends OncePerRequestFilter {
      * 判断请求路径是否为内部 API
      */
     private boolean isInternalApiPath(String path) {
-        // 简单的通配符匹配
         String internalPathPattern = securityProps.getInternalApi().getPathPattern();
-        String pattern = internalPathPattern.replace("**", ".*").replace("*", "[^/]*");
-        return path.matches(pattern);
+        if (internalPathPattern == null || internalPathPattern.isBlank()) {
+            return false;
+        }
+        return ANT_PATH_MATCHER.match(internalPathPattern.trim(), path);
     }
 
     /**
