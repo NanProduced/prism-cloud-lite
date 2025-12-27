@@ -90,6 +90,12 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
     private void extendIdToken(JwtEncodingContext context) {
         Map<String, Object> claims = buildCommonClaims(context);
         claims.put(CLAIM_TIER, resolveTierOrDefault(resolveUserUuid(context.getPrincipal())));
+        // OIDC back-channel logout expects standard `sid` claim (session identifier).
+        // Keep the existing custom claim name (`session_id`) for compatibility, but also provide `sid`.
+        Object sessionId = claims.get(CLAIM_SESSION_ID);
+        if (sessionId != null) {
+            claims.put("sid", sessionId);
+        }
         claims.forEach((key, value) -> context.getClaims().claim(key, value));
     }
 

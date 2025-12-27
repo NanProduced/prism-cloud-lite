@@ -39,9 +39,13 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 import static nan.produced.prism.auth.oauth.oidc.OidcClaimsConstant.CLAIM_LOGIN_STATE;
+import static nan.produced.prism.auth.oauth.oidc.OidcClaimsConstant.CLAIM_SESSION_ID;
 
 @Slf4j
 @Component
@@ -63,6 +67,10 @@ public class BackChannelLogoutHandler implements AuthenticationSuccessHandler {
 
     private static final String BACK_CHANNEL_LOGOUT_URI = "settings.client.backchannel-logout-uri";
 
+    private static final String CLAIM_EVENTS = "events";
+
+    private static final String EVENT_BACKCHANNEL_LOGOUT = "http://schemas.openid.net/event/backchannel-logout";
+
     @SneakyThrows
     public BackChannelLogoutHandler(RegisteredClientRepository registeredClientRepository,
                                     OidcAuthorizationService oidcAuthorizationService,
@@ -80,26 +88,49 @@ public class BackChannelLogoutHandler implements AuthenticationSuccessHandler {
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
 
-        OidcLogoutAuthenticationToken logoutAuthenticationToken = (OidcLogoutAuthenticationToken) authentication;
-        String sessionId = logoutAuthenticationToken.getSessionId();
-        String idTokenHint = logoutAuthenticationToken.getIdTokenHint();
-        // 查询当前用户的授权信息
-        OAuth2Authorization currentAuthorization = oidcAuthorizationService.findByIdToken(idTokenHint);
-        // 查询当前调用SLO的客户端
-        RegisteredClient callingClient = registeredClientRepository.findById(currentAuthorization.getRegisteredClientId());
-        // 如果当前调用SLO的Client不存在
-        if (callingClient == null) {
-            log.warn("SLO - channel back logout - can't find current client info: {}", currentAuthorization.getRegisteredClientId());
+        if (!(authentication instanceof OidcLogoutAuthenticationToken logoutAuthenticationToken)) {
+            log.warn("SLO - unexpected logout authentication type: {}", authentication != null ? authentication.getClass() : null);
             response.sendError(HttpStatus.BAD_REQUEST.value());
             return;
         }
 
-        if (securityProps.getSlo().isEnabled()) {
-            // OP本地session立即失效
-            new SecurityContextLogoutHandler().logout(request, response, authentication);
+        String sessionId = logoutAuthenticationToken.getSessionId();
+        String idTokenHint = logoutAuthenticationToken.getIdTokenHint();
 
-            List<OAuth2Authorization> relatedAuth = oidcAuthorizationService.findBySessionId(sessionId);
-            relatedAuth.forEach(auth -> processLogout(auth, currentAuthorization));
+        OAuth2Authorization currentAuthorization;
+        RegisteredClient callingClient = null;
+        if (StringUtils.hasText(idTokenHint)) {
+            // 查询当前用户的授权信息
+            currentAuthorization = oidcAuthorizationService.findByIdToken(idTokenHint);
+            // 查询当前调用 SLO 的客户端
+            if (currentAuthorization != null) {
+                callingClient = registeredClientRepository.findById(currentAuthorization.getRegisteredClientId());
+            }
+        } else {
+            currentAuthorization = null;
+        }
+
+        // 无法解析 calling client 时，不应直接 500（避免浏览器展示错误页）；改为 best-effort 登出并跳转到安全落点。
+        if (callingClient == null) {
+            log.warn("SLO - channel back logout - can't resolve calling client: sessionId={}, hasIdTokenHint={}",
+                sessionId, StringUtils.hasText(idTokenHint));
+            if (securityProps.getSlo().isEnabled()) {
+                logoutLocallyWithoutInvalidatingSession(request, response, authentication);
+            }
+            response.sendRedirect(determinePostLogoutRedirectUriFallback(request));
+            return;
+        }
+
+        if (securityProps.getSlo().isEnabled()) {
+            // 注意：使用 Spring Session (Redis) 时，直接 invalidate HttpSession 可能在 commitSession 阶段触发
+            // RedisSessionRepository.save -> IllegalStateException("Session was invalidated")，导致浏览器看到 500。
+            // 这里采用“清空安全上下文但不 invalidate session”的方式完成 OP 侧登出。
+            logoutLocallyWithoutInvalidatingSession(request, response, authentication);
+
+            if (StringUtils.hasText(sessionId)) {
+                List<OAuth2Authorization> relatedAuth = oidcAuthorizationService.findBySessionId(sessionId);
+                relatedAuth.forEach(auth -> processLogout(auth, currentAuthorization));
+            }
         }
 
         response.sendRedirect(determinePostLogoutRedirectUri(request, callingClient));
@@ -114,18 +145,21 @@ public class BackChannelLogoutHandler implements AuthenticationSuccessHandler {
                 .build();
 
         if (authorization.getRefreshToken() != null) {
-            invalidate(authorization, authorization.getRefreshToken().getToken());
+            authorization = invalidate(authorization, authorization.getRefreshToken().getToken());
         }
         else {
-            log.warn("SLO - channel back logout - {} missing refresh_token", authorization.getId());
+            if (authorization.getAccessToken() != null) {
+                authorization = invalidate(authorization, authorization.getAccessToken().getToken());
+            }
+            log.debug("SLO - channel back logout - authorization {} missing refresh_token (refresh tokens may be disabled / not issued)", authorization.getId());
         }
 
         oidcAuthorizationService.save(authorization);
 
         if (!currentAuthorization.getRegisteredClientId().equals(authorization.getRegisteredClientId())) {
-            RegisteredClient registeredClient = registeredClientRepository.findById(currentAuthorization.getRegisteredClientId());
+            RegisteredClient registeredClient = registeredClientRepository.findById(authorization.getRegisteredClientId());
             if (registeredClient == null) {
-                log.warn("SLO - channel back logout - can't find client info: {}", currentAuthorization.getRegisteredClientId());
+                log.warn("SLO - channel back logout - can't find client info: {}", authorization.getRegisteredClientId());
                 return;
             }
             Boolean backChannelLogoutRequired = registeredClient.getClientSettings().getSetting(BACK_CHANNEL_REQUIRED);
@@ -137,15 +171,55 @@ public class BackChannelLogoutHandler implements AuthenticationSuccessHandler {
         }
     }
 
+    private String determinePostLogoutRedirectUriFallback(HttpServletRequest request) {
+        String requested = request != null ? request.getParameter("post_logout_redirect_uri") : null;
+        String state = request != null ? request.getParameter(OAuth2ParameterNames.STATE) : null;
+
+        List<String> allowlist = securityProps.getOauth2().getClient().getPrismGatewayClient().resolvePostLogoutRedirectUris();
+        String target;
+        if (StringUtils.hasText(requested) && allowlist.contains(requested)) {
+            target = requested;
+        }
+        else if (allowlist != null && !allowlist.isEmpty() && StringUtils.hasText(allowlist.getFirst())) {
+            target = allowlist.getFirst();
+        }
+        else {
+            target = securityProps.getSlo().getDefaultLogoutRedirectUri();
+        }
+
+        return StringUtils.hasText(state) ? String.format("%s?state=%s", target, state) : target;
+    }
+
+    private void logoutLocallyWithoutInvalidatingSession(HttpServletRequest request,
+                                                        HttpServletResponse response,
+                                                        Authentication authentication) {
+        SecurityContextLogoutHandler handler = new SecurityContextLogoutHandler();
+        handler.setInvalidateHttpSession(false);
+        handler.logout(request, response, authentication);
+    }
+
     @SneakyThrows
     private JWT generateLogoutToken(RegisteredClient registeredClient, OAuth2Authorization authorization) {
-        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+        Object sid = authorization != null ? authorization.getAttribute(CLAIM_SESSION_ID) : null;
+        Map<String, Object> events = new HashMap<>();
+        events.put(EVENT_BACKCHANNEL_LOGOUT, Map.of());
+
+        JWTClaimsSet.Builder builder = new JWTClaimsSet.Builder()
                 .issuer(authorizationServerProperties.getIssuer())
                 .subject(authorization.getPrincipalName())
                 .audience(registeredClient.getClientId())
+                .jwtID(UUID.randomUUID().toString())
+                .claim(CLAIM_EVENTS, events)
                 .issueTime(new Date())
                 .expirationTime(new Date(System.currentTimeMillis() + registeredClient.getTokenSettings().getAccessTokenTimeToLive().toMillis()))
-                .build();
+                ;
+
+        // Standard OIDC session identifier claim for logout-token validation at RP side (Spring Security expects `sid`).
+        if (sid != null) {
+            builder.claim("sid", sid);
+        }
+
+        JWTClaimsSet claimsSet = builder.build();
 
         SignedJWT signedJWT = new SignedJWT(
                 new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(rsaKey.getKeyID()).build(),
@@ -192,6 +266,10 @@ public class BackChannelLogoutHandler implements AuthenticationSuccessHandler {
         }
         else {
             log.warn("SLO - channel back logout - invalid post_logout_redirect_uri: {}", postLogoutRedirectUri);
+            if (registeredClient != null && registeredClient.getPostLogoutRedirectUris() != null && !registeredClient.getPostLogoutRedirectUris().isEmpty()) {
+                String fallback = registeredClient.getPostLogoutRedirectUris().iterator().next();
+                return StringUtils.hasText(state) ? String.format("%s?state=%s", fallback, state) : fallback;
+            }
             return securityProps.getSlo().getDefaultLogoutRedirectUri();
         }
 

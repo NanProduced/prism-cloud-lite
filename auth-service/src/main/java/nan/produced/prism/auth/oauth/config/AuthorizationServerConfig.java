@@ -13,6 +13,7 @@ import nan.produced.prism.auth.oauth.authorization.OidcAuthorizationService;
 import nan.produced.prism.auth.oauth.oidc.PrismOidcTokenCustomer;
 import nan.produced.prism.auth.oauth.oidc.PrismOidcUserInfoMapper;
 import nan.produced.prism.auth.oauth.slo.BackChannelLogoutHandler;
+import nan.produced.prism.auth.oauth.slo.OidcLogoutErrorRedirectHandler;
 import nan.produced.prism.auth.security.SecurityProps;
 import nan.produced.prism.auth.security.principal.PrismUserPrincipal;
 import nan.produced.prism.auth.subscription.SubscriptionService;
@@ -75,6 +76,7 @@ public class AuthorizationServerConfig {
     @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http,
                                                                      BackChannelLogoutHandler backChannelLogoutHandler,
+                                                                     OidcLogoutErrorRedirectHandler oidcLogoutErrorRedirectHandler,
                                                                      SpaRedirectAuthenticationEntryPoint spaRedirectAuthenticationEntryPoint) throws Exception {
 
         OAuth2AuthorizationServerConfigurer authorizationServerConfigurer = new OAuth2AuthorizationServerConfigurer();
@@ -87,7 +89,8 @@ public class AuthorizationServerConfig {
                             .userInfoMapper(oidcUserInfoMapper))
                     // 配置SLO处理(Back-Channel Logout)
                     .logoutEndpoint(logout -> logout
-                            .logoutResponseHandler(backChannelLogoutHandler)));
+                            .logoutResponseHandler(backChannelLogoutHandler)
+                            .errorResponseHandler(oidcLogoutErrorRedirectHandler)));
 
         return http
                 // 配置授权服务器端点
@@ -150,7 +153,6 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri(securityProps.getOauth2().getClient().getPrismGatewayClient().getRedirectUri())
-                .postLogoutRedirectUri(securityProps.getOauth2().getClient().getPrismGatewayClient().getLogoutRedirectUri())
                 .clientSettings(ClientSettings.builder()
                         .requireAuthorizationConsent(false)
                         .setting("settings.client.backchannel-logout-uri",
@@ -163,6 +165,10 @@ public class AuthorizationServerConfig {
                         .refreshTokenTimeToLive(Duration.ofDays(securityProps.getOauth2().getClient().getPrismGatewayClient().getRefreshTokenValidityMinutes()))
                         .build())
                 ;
+
+        securityProps.getOauth2().getClient().getPrismGatewayClient()
+                .resolvePostLogoutRedirectUris()
+                .forEach(builder::postLogoutRedirectUri);
 
         scopes.forEach(builder::scope);
         return builder.build();

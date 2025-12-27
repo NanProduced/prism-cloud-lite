@@ -4,8 +4,12 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.core.io.Resource;
+import org.springframework.util.StringUtils;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Data
 @RefreshScope
@@ -135,6 +139,17 @@ public class SecurityProps {
 
                 private String logoutRedirectUri = host + "/logout-status";
 
+                /**
+                 * RP-initiated logout whitelist (OIDC post_logout_redirect_uri).
+                 * <p>
+                 * If configured, takes precedence over {@link #logoutRedirectUri}. When empty, falls back to:
+                 * <ul>
+                 *   <li>{@code logoutRedirectUri} (if present)</li>
+                 *   <li>{@code {host}/logout-status} and {@code {host}/logout_status}</li>
+                 * </ul>
+                 */
+                private List<String> postLogoutRedirectUris;
+
                 private String backchannelLogoutUri;
 
                 private String scope = "openid,email,prism.account,prism.session";
@@ -142,6 +157,23 @@ public class SecurityProps {
                 private Long accessTokenValidityMinutes = 30L;
 
                 private Long refreshTokenValidityMinutes = 720L;
+
+                public List<String> resolvePostLogoutRedirectUris() {
+                    if (postLogoutRedirectUris != null && !postLogoutRedirectUris.isEmpty()) {
+                        return postLogoutRedirectUris;
+                    }
+
+                    Set<String> dedup = new LinkedHashSet<>();
+                    if (StringUtils.hasText(logoutRedirectUri)) {
+                        dedup.add(logoutRedirectUri.trim());
+                    }
+                    if (StringUtils.hasText(host)) {
+                        String normalizedHost = host.trim();
+                        dedup.add(normalizedHost + "/logout-status");
+                        dedup.add(normalizedHost + "/logout_status");
+                    }
+                    return new ArrayList<>(dedup);
+                }
 
             }
         }

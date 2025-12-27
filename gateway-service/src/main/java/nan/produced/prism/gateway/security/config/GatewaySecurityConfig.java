@@ -1,5 +1,6 @@
 package nan.produced.prism.gateway.security.config;
 
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.gateway.security.authentication.RefreshTokenErrorMapClientManager;
 import nan.produced.prism.gateway.security.filter.RemoveJwtFilter;
@@ -32,6 +33,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+@Slf4j
 @Configuration
 @EnableConfigurationProperties(GatewaySecurityProps.class)
 @RequiredArgsConstructor
@@ -72,7 +74,14 @@ public class GatewaySecurityConfig {
                         .logoutRequestMatcher(request ->
                                 request.getRequestURI().equals(gatewaySecurityProps.getOauth2().getClient().getLogoutUri()) &&
                                         HttpMethod.GET.name().equals(request.getMethod()))
-                        .logoutSuccessHandler(oidcClientInitiatedLogoutSuccessHandler))
+                        .logoutSuccessHandler((request, response, authentication) -> {
+                            try {
+                                oidcClientInitiatedLogoutSuccessHandler.onLogoutSuccess(request, response, authentication);
+                            } catch (Exception ex) {
+                                log.warn("OIDC logout failed, fallback redirect to {}", gatewaySecurityProps.getOauth2().getClient().getLogoutRedirectUri(), ex);
+                                response.sendRedirect(gatewaySecurityProps.getOauth2().getClient().getLogoutRedirectUri());
+                            }
+                        }))
                 .oidcLogout(logout -> logout.backChannel(Customizer.withDefaults()))
                 .oauth2Client(Customizer.withDefaults())
                 .build();

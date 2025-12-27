@@ -74,7 +74,10 @@ public class GatewaySecurityProps {
 
             private String jwkSetEndpoint = "http://localhost:8081/auth/oauth2/jwks";
 
-            private String logoutEndpoint = "http://localhost:8081/auth/logout";
+            /**
+             * OIDC RP-initiated logout endpoint (end_session_endpoint).
+             */
+            private String logoutEndpoint = "http://localhost:8081/auth/connect/logout";
         }
     }
 
