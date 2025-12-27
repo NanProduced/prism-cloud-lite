@@ -19,7 +19,12 @@ public interface ObjectStoragePort {
      * @param expiration   URL 有效期
      * @return 预签名 URL
      */
-    String generatePresignedPutUrl(String key, String contentType, Map<String, String> metadata, Duration expiration);
+    String generatePresignedPutUrl(String key,
+                                   String contentType,
+                                   Map<String, String> metadata,
+                                   Duration expiration,
+                                   String storageClass,
+                                   String acl);
 
     /**
      * 创建 Multipart 上传
@@ -29,7 +34,11 @@ public interface ObjectStoragePort {
      * @param metadata    自定义元数据
      * @return Multipart Upload ID
      */
-    String createMultipartUpload(String key, String contentType, Map<String, String> metadata);
+    String createMultipartUpload(String key,
+                                 String contentType,
+                                 Map<String, String> metadata,
+                                 String storageClass,
+                                 String acl);
 
     /**
      * 生成分片上传预签名 URL

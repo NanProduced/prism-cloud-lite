@@ -108,12 +108,20 @@ public class BetterUploadService {
         var key = generateObjectKey(routeConfig, file, metadataExtractor);
         var metadata = metadataExtractor.buildObjectMetadata(file.getName());
 
-        var signedUrl = objectStorage.generatePresignedPutUrl(key, file.getType(), metadata, expiration);
+        var headers = buildUploadHeaders(routeConfig);
+        var signedUrl = objectStorage.generatePresignedPutUrl(
+                key,
+                file.getType(),
+                metadata,
+                expiration,
+                headers.get(HEADER_STORAGE_CLASS),
+                headers.get(HEADER_ACL)
+        );
 
         return BetterUploadResponse.FileUploadInfo.builder()
                 .signedUrl(signedUrl)
                 .file(buildFileDetail(file, key, metadata))
-                .headers(buildUploadHeaders(routeConfig))
+                .headers(headers)
                 .build();
     }
 
@@ -160,7 +168,14 @@ public class BetterUploadService {
         var key = generateObjectKey(routeConfig, file, metadataExtractor);
         var metadata = metadataExtractor.buildObjectMetadata(file.getName());
 
-        var uploadId = objectStorage.createMultipartUpload(key, file.getType(), metadata);
+        var headers = buildUploadHeaders(routeConfig);
+        var uploadId = objectStorage.createMultipartUpload(
+                key,
+                file.getType(),
+                metadata,
+                headers.get(HEADER_STORAGE_CLASS),
+                headers.get(HEADER_ACL)
+        );
         var parts = buildMultipartParts(key, uploadId, file.getSize(), partSize, expiration);
 
         var completeUrl = objectStorage.generatePresignedCompleteUrl(key, uploadId, expiration);

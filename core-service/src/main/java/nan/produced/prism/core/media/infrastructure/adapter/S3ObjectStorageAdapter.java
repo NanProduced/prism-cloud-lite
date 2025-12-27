@@ -12,6 +12,7 @@ import software.amazon.awssdk.services.s3.presigner.model.*;
 
 import java.time.Duration;
 import java.util.Map;
+import org.springframework.util.StringUtils;
 
 /**
  * S3 对象存储适配器
@@ -26,7 +27,12 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort {
     private final S3Properties s3Properties;
 
     @Override
-    public String generatePresignedPutUrl(String key, String contentType, Map<String, String> metadata, Duration expiration) {
+    public String generatePresignedPutUrl(String key,
+                                          String contentType,
+                                          Map<String, String> metadata,
+                                          Duration expiration,
+                                          String storageClass,
+                                          String acl) {
 
         var presignRequest = PutObjectPresignRequest.builder()
                 .signatureDuration(expiration)
@@ -34,6 +40,8 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort {
                         .bucket(s3Properties.getBucket())
                         .key(key)
                         .contentType(contentType)
+                        .storageClass(parseStorageClass(storageClass))
+                        .acl(parseAcl(acl))
                         .metadata(metadata)
                         .build())
                 .build();
@@ -44,11 +52,17 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort {
     }
 
     @Override
-    public String createMultipartUpload(String key, String contentType, Map<String, String> metadata) {
+    public String createMultipartUpload(String key,
+                                        String contentType,
+                                        Map<String, String> metadata,
+                                        String storageClass,
+                                        String acl) {
         var createRequest = CreateMultipartUploadRequest.builder()
                 .bucket(s3Properties.getBucket())
                 .key(key)
                 .contentType(contentType)
+                .storageClass(parseStorageClass(storageClass))
+                .acl(parseAcl(acl))
                 .metadata(metadata)
                 .build();
 
@@ -118,6 +132,30 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort {
             return true;
         } catch (NoSuchKeyException e) {
             return false;
+        }
+    }
+
+    private StorageClass parseStorageClass(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return StorageClass.fromValue(value.trim());
+        } catch (Exception ex) {
+            log.warn("Unknown S3 storageClass '{}', fallback to default", value);
+            return null;
+        }
+    }
+
+    private ObjectCannedACL parseAcl(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return ObjectCannedACL.fromValue(value.trim());
+        } catch (Exception ex) {
+            log.warn("Unknown S3 ACL '{}', fallback to default", value);
+            return null;
         }
     }
 }
