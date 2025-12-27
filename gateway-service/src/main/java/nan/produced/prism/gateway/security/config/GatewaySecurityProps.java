@@ -23,6 +23,9 @@ public class GatewaySecurityProps {
 
     private List<ApiPolicy> apiPolicies = new ArrayList<>(List.of(
             ApiPolicy.of("/api/sse/**", ApiPolicy.Realm.END_USER, List.of("ROLE_END_USER"), ApiPolicy.TierRequirement.FREE_OR_ABOVE),
+            // Better Upload: presigned URL endpoint used by SPA via Gateway
+            ApiPolicy.of("/api/upload", ApiPolicy.Realm.END_USER, List.of("ROLE_END_USER"), ApiPolicy.TierRequirement.FREE_OR_ABOVE),
+            ApiPolicy.of("/api/upload/**", ApiPolicy.Realm.END_USER, List.of("ROLE_END_USER"), ApiPolicy.TierRequirement.FREE_OR_ABOVE),
             ApiPolicy.of("/api/v1/admin/**", ApiPolicy.Realm.ADMIN, List.of("ROLE_ADMIN"), ApiPolicy.TierRequirement.FREE_OR_ABOVE),
             ApiPolicy.of("/api/v1/pro/**", ApiPolicy.Realm.END_USER, List.of("ROLE_END_USER"), ApiPolicy.TierRequirement.PRO_ONLY),
             ApiPolicy.of("/api/v1/**", ApiPolicy.Realm.END_USER, List.of("ROLE_END_USER"), ApiPolicy.TierRequirement.FREE_OR_ABOVE)
