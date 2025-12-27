@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.auth.oauth.authorization.OidcAuthorizationService;
 import nan.produced.prism.auth.oauth.oidc.OidcLoginState;
 import nan.produced.prism.auth.security.SecurityProps;
+import nan.produced.prism.auth.security.rememberme.RememberMeTokenService;
 import nan.produced.prism.auth.utils.JwkUtils;
 import org.springframework.boot.autoconfigure.security.oauth2.server.servlet.OAuth2AuthorizationServerProperties;
 import org.springframework.http.HttpStatus;
@@ -57,6 +58,8 @@ public class BackChannelLogoutHandler implements AuthenticationSuccessHandler {
 
     private final SecurityProps securityProps;
 
+    private final RememberMeTokenService rememberMeTokenService;
+
     private final OAuth2AuthorizationServerProperties authorizationServerProperties;
 
     private final RSAKey rsaKey;
@@ -75,10 +78,12 @@ public class BackChannelLogoutHandler implements AuthenticationSuccessHandler {
     public BackChannelLogoutHandler(RegisteredClientRepository registeredClientRepository,
                                     OidcAuthorizationService oidcAuthorizationService,
                                     SecurityProps securityProps,
+                                    RememberMeTokenService rememberMeTokenService,
                                     OAuth2AuthorizationServerProperties authorizationServerProperties) {
         this.registeredClientRepository = registeredClientRepository;
         this.oidcAuthorizationService = oidcAuthorizationService;
         this.securityProps = securityProps;
+        this.rememberMeTokenService = rememberMeTokenService;
         this.authorizationServerProperties = authorizationServerProperties;
 
         rsaKey = JwkUtils.convertRsaKey(securityProps);
@@ -193,6 +198,12 @@ public class BackChannelLogoutHandler implements AuthenticationSuccessHandler {
     private void logoutLocallyWithoutInvalidatingSession(HttpServletRequest request,
                                                         HttpServletResponse response,
                                                         Authentication authentication) {
+        // If remember-me is enabled, clear the cookie as well; otherwise the next /authorize may silently login again.
+        try {
+            rememberMeTokenService.clearRememberMeCookie(response);
+        } catch (Exception ignore) {
+            // ignored
+        }
         SecurityContextLogoutHandler handler = new SecurityContextLogoutHandler();
         handler.setInvalidateHttpSession(false);
         handler.logout(request, response, authentication);
