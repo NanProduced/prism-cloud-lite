@@ -111,8 +111,10 @@ public class BetterUploadService {
         var headers = buildUploadHeaders(routeConfig);
         // PutObject 预签名会将 content-type 作为 SignedHeaders 的一部分。
         // 客户端必须携带完全一致的 Content-Type，否则 S3 会返回 403（SignatureDoesNotMatch）。
+        String contentType = null;
         if (file.getType() != null && !file.getType().isBlank()) {
-            headers.put("content-type", file.getType().trim());
+            contentType = file.getType().trim();
+            headers.put("content-type", contentType);
         }
         // PutObject 预签名会将 metadata 签入 SignedHeaders（x-amz-meta-*）。
         // 客户端必须在 PUT 请求中携带完全一致的 x-amz-meta-* 头，否则 S3 会返回 403（SignatureDoesNotMatch）。
@@ -125,7 +127,7 @@ public class BetterUploadService {
         }
         var signedUrl = objectStorage.generatePresignedPutUrl(
                 key,
-                file.getType(),
+                contentType,
                 metadata,
                 expiration,
                 headers.get(HEADER_STORAGE_CLASS),

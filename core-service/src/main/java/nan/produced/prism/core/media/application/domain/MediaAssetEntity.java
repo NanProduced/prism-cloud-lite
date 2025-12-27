@@ -2,6 +2,8 @@ package nan.produced.prism.core.media.application.domain;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -77,6 +79,7 @@ public class MediaAssetEntity {
     /**
      * 元数据
      */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String metadata;
 
