@@ -208,7 +208,7 @@ public class PlaybackTelemetryController {
     }
 
     private UUID currentUserId() {
-        return UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        return CloudAuthContext.getCurrentUserUuidAsUuid();
     }
 
     private Instant parseInstant(String value, String fieldName) {

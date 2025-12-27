@@ -49,7 +49,7 @@ public class ReceiveCardTelemetryController {
         @RequestParam(value = "receiveCardNum", required = false) Integer receiveCardNum,
         @RequestParam(value = "limit", required = false) Integer limit
     ) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<ReceiveCardSampleItem> list = sensorTelemetryFacade.listReceiveCardSamples(
             userId,
             deviceId,

@@ -45,7 +45,7 @@ public class DeviceActionController {
             @PathVariable("deviceId") @NotNull Long deviceId,
             @RequestBody @Validated DeviceActionBase action) {
 
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         DeviceActionDispatchResp resp = deviceActionDispatchUseCase.dispatchSingle(userId, deviceId, action);
         return ResponseEntity.ok(BffResponse.success(resp).withTraceId(TraceUtils.getTraceId()));
     }
@@ -60,7 +60,7 @@ public class DeviceActionController {
     public ResponseEntity<BffResponse<BatchDeviceActionDispatchResp>> dispatchBatch(
             @RequestBody @Validated BatchDeviceActionDispatchReq req) {
 
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         BatchDeviceActionDispatchResp resp = deviceActionDispatchUseCase.dispatchBatch(userId, req);
         return ResponseEntity.ok(BffResponse.success(resp).withTraceId(TraceUtils.getTraceId()));
     }

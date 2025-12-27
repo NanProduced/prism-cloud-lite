@@ -50,7 +50,7 @@ public class DeviceLogController {
         @RequestParam(value = "page", defaultValue = "0") int page,
         @RequestParam(value = "size", required = false) Integer size
     ) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         DeviceLogPageResp resp = deviceLogApplicationService.listDeviceLogs(userId, from, to, deviceId, operationIds, page, size);
         return ResponseEntity.ok(BffResponse.success(resp).withTraceId(TraceUtils.getTraceId()));
     }
@@ -64,7 +64,7 @@ public class DeviceLogController {
     @ApiResponse(responseCode = "404", description = "日志不存在或无权访问")
     @GetMapping("/{logId}")
     public ResponseEntity<BffResponse<DeviceLogDetailResp>> getDeviceLog(@PathVariable("logId") Long logId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         DeviceLogDetailResp detail = deviceLogApplicationService.getDeviceLog(userId, logId);
         return ResponseEntity.ok(BffResponse.success(detail).withTraceId(TraceUtils.getTraceId()));
     }

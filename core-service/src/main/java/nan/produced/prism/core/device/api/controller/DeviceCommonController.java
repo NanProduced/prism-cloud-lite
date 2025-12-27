@@ -56,9 +56,8 @@ public class DeviceCommonController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @PostMapping
     public ResponseEntity<BffResponse<CreateDeviceResp>> createDevice(@RequestBody @Validated CreateDeviceReq req) {
-        String userUuid = CloudAuthContext.getCurrentUser().userUuid();
         String tier = CloudAuthContext.getCurrentUser().tier();
-        UUID userId = UUID.fromString(userUuid);
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         CreateDeviceDTO createDeviceDTO = deviceConverter.toCreateDeviceDTO(userId, tier, req);
         Long deviceId = deviceManageUseCase.createDevice(createDeviceDTO);
         return ResponseEntity.ok(BffResponse.success(new CreateDeviceResp(deviceId, req.getDisplayName(), req.getAccount(), req.getPassword()))
@@ -80,7 +79,7 @@ public class DeviceCommonController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @GetMapping
     public ResponseEntity<BffResponse<List<DeviceListVO>>> listDevices() {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<DeviceListVO> list = deviceSearchUseCase.listAllUsersDevices(userId);
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
     }
@@ -106,7 +105,7 @@ public class DeviceCommonController {
     @ApiResponse(responseCode = "404", description = "设备不存在或无权访问")
     @GetMapping("/{deviceId:\\d+}")
     public ResponseEntity<BffResponse<DeviceDetailResp>> getDeviceDetail(@PathVariable("deviceId") @NotNull Long deviceId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         DeviceDetailResp detail = deviceSearchUseCase.getDeviceDetail(userId, deviceId);
         return ResponseEntity.ok(BffResponse.success(detail).withTraceId(TraceUtils.getTraceId()));
     }
@@ -130,7 +129,7 @@ public class DeviceCommonController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @PostMapping("/filter")
     public ResponseEntity<BffResponse<List<DeviceListVO>>> filterDevices(@RequestBody(required = false) FilterDeviceReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<DeviceListVO> list = deviceSearchUseCase.filterDevices(userId, req);
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
     }

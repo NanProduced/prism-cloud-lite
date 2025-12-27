@@ -58,7 +58,7 @@ public class DeviceTagController {
             content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = TagVO.class))))
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     public ResponseEntity<BffResponse<List<TagVO>>> listTags() {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<TagVO> tags = deviceTagUseCase.getUserTags(userId);
         return ResponseEntity.ok(BffResponse.success(tags).withTraceId(TraceUtils.getTraceId()));
     }
@@ -77,7 +77,7 @@ public class DeviceTagController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TagVO.class)))
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     public ResponseEntity<BffResponse<TagVO>> getTag(@PathVariable("slug") @NotBlank String slug) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         TagVO tag = deviceTagUseCase.getTagBySlug(userId, slug);
         return ResponseEntity.ok(BffResponse.success(tag).withTraceId(TraceUtils.getTraceId()));
     }
@@ -96,7 +96,7 @@ public class DeviceTagController {
             content = @Content(mediaType = "application/json", schema = @Schema(implementation = TagVO.class)))
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     public ResponseEntity<BffResponse<TagVO>> createTag(@RequestBody @Validated OperateTagReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         TagVO tag = deviceTagUseCase.createTag(userId, req.getTagName(), req.getColor(), req.getIcon(), req.getDescription());
         return ResponseEntity.ok(BffResponse.success(tag).withTraceId(TraceUtils.getTraceId()));
     }
@@ -118,7 +118,7 @@ public class DeviceTagController {
     public ResponseEntity<BffResponse<TagVO>> updateTag(
             @PathVariable("slug") @NotBlank String slug,
             @RequestBody @Validated OperateTagReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         TagVO tag = deviceTagUseCase.updateTag(userId, slug, req.getTagName(), req.getColor(), req.getIcon(), req.getDescription());
         return ResponseEntity.ok(BffResponse.success(tag).withTraceId(TraceUtils.getTraceId()));
     }
@@ -134,7 +134,7 @@ public class DeviceTagController {
     @ApiResponse(responseCode = "200", description = "成功删除标签")
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     public ResponseEntity<BffResponse<Void>> deleteTag(@PathVariable("slug") @NotBlank String slug) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         deviceTagUseCase.deleteTag(userId, slug);
         return ResponseEntity.ok(BffResponse.<Void>success(null).withTraceId(TraceUtils.getTraceId()));
     }
@@ -154,7 +154,7 @@ public class DeviceTagController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     public ResponseEntity<BffResponse<List<TagVO>>> getDeviceTags(
             @PathVariable("deviceId") @NotNull Long deviceId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<TagVO> tags = deviceTagUseCase.getDeviceTags(userId, deviceId);
         return ResponseEntity.ok(BffResponse.success(tags).withTraceId(TraceUtils.getTraceId()));
     }
@@ -178,7 +178,7 @@ public class DeviceTagController {
     public ResponseEntity<BffResponse<List<TagVO>>> linkTags(
             @PathVariable("deviceId") @NotNull Long deviceId,
             @RequestBody @Validated LinkTagsReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         deviceTagUseCase.linkTags(deviceId, userId, req.getTags());
 
         // 返回更新后的设备标签列表

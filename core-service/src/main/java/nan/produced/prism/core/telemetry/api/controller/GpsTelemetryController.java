@@ -48,7 +48,7 @@ public class GpsTelemetryController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @GetMapping("/latest")
     public ResponseEntity<BffResponse<List<GpsDeviceLocationItem>>> listLatestLocations() {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<GpsDeviceLocationItem> list = gpsTelemetryFacade.listLatestLocations(userId);
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
     }
@@ -68,7 +68,7 @@ public class GpsTelemetryController {
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
         @RequestParam(value = "limit", required = false) Integer limit
     ) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<GpsPointItem> list = gpsTelemetryFacade.listTrack(
             userId,
             deviceId,
@@ -94,7 +94,7 @@ public class GpsTelemetryController {
         @RequestParam(value = "precision", defaultValue = "2") int precision,
         @RequestParam(value = "limit", required = false) Integer limit
     ) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<GpsHeatmapCellItem> list = gpsTelemetryFacade.heatmap(
             userId,
             from != null ? from.toInstant() : null,
@@ -117,7 +117,7 @@ public class GpsTelemetryController {
         @PathVariable("deviceId") Long deviceId,
         @RequestBody @Valid ManualLocationRequest request
     ) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         ManualLocationItem item = gpsTelemetryFacade.upsertManualLocation(
             userId,
             deviceId,
@@ -132,7 +132,7 @@ public class GpsTelemetryController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @PostMapping("/overrides/{deviceId}/delete")
     public ResponseEntity<BffResponse<Object>> deleteManualLocation(@PathVariable("deviceId") Long deviceId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         gpsTelemetryFacade.deleteManualLocation(userId, deviceId);
         return ResponseEntity.ok(BffResponse.success().withTraceId(TraceUtils.getTraceId()));
     }

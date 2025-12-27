@@ -50,7 +50,7 @@ public class ScheduleController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @GetMapping
     public ResponseEntity<BffResponse<List<ScheduleListResp>>> listSchedules() {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<ScheduleListResp> list = scheduleApplicationService.listSchedules(userId);
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
     }
@@ -63,7 +63,7 @@ public class ScheduleController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @PostMapping
     public ResponseEntity<BffResponse<ScheduleDetailResp>> createSchedule(@RequestBody @Valid CreateScheduleReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         ScheduleDetailResp created = scheduleApplicationService.createSchedule(userId, req);
         return ResponseEntity.ok(BffResponse.success(created).withTraceId(TraceUtils.getTraceId()));
     }
@@ -77,7 +77,7 @@ public class ScheduleController {
     @ApiResponse(responseCode = "404", description = "排程不存在或无权访问")
     @GetMapping("/{scheduleId}")
     public ResponseEntity<BffResponse<ScheduleDetailResp>> getSchedule(@PathVariable("scheduleId") @NotNull UUID scheduleId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         ScheduleDetailResp detail = scheduleApplicationService.getScheduleDetail(userId, scheduleId);
         return ResponseEntity.ok(BffResponse.success(detail).withTraceId(TraceUtils.getTraceId()));
     }
@@ -93,7 +93,7 @@ public class ScheduleController {
     public ResponseEntity<BffResponse<ScheduleDetailResp>> updateSchedule(
             @PathVariable("scheduleId") @NotNull UUID scheduleId,
             @RequestBody @Valid UpdateScheduleReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         ScheduleDetailResp updated = scheduleApplicationService.updateSchedule(userId, scheduleId, req);
         return ResponseEntity.ok(BffResponse.success(updated).withTraceId(TraceUtils.getTraceId()));
     }
@@ -104,7 +104,7 @@ public class ScheduleController {
     @ApiResponse(responseCode = "404", description = "排程不存在或无权访问")
     @PostMapping("/{scheduleId}/delete")
     public ResponseEntity<BffResponse<Void>> deleteSchedule(@PathVariable("scheduleId") @NotNull UUID scheduleId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         scheduleApplicationService.deleteSchedule(userId, scheduleId);
         return ResponseEntity.ok(BffResponse.<Void>success(null).withTraceId(TraceUtils.getTraceId()));
     }
@@ -118,7 +118,7 @@ public class ScheduleController {
     @ApiResponse(responseCode = "404", description = "排程不存在或无权访问")
     @GetMapping("/{scheduleId}/bindings")
     public ResponseEntity<BffResponse<List<ScheduleBindingDeviceResp>>> listBindings(@PathVariable("scheduleId") @NotNull UUID scheduleId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<ScheduleBindingDeviceResp> list = scheduleApplicationService.listBindings(userId, scheduleId);
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
     }
@@ -134,7 +134,7 @@ public class ScheduleController {
     public ResponseEntity<BffResponse<ScheduleBindDevicesResp>> bindDevices(
             @PathVariable("scheduleId") @NotNull UUID scheduleId,
             @RequestBody @Valid ScheduleBindDevicesReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         ScheduleBindDevicesResp resp = scheduleApplicationService.bindDevices(userId, scheduleId, req);
         return ResponseEntity.ok(BffResponse.success(resp).withTraceId(TraceUtils.getTraceId()));
     }
@@ -147,7 +147,7 @@ public class ScheduleController {
     public ResponseEntity<BffResponse<Void>> unbindDevice(
             @PathVariable("scheduleId") @NotNull UUID scheduleId,
             @PathVariable("deviceId") @NotNull Long deviceId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         scheduleApplicationService.unbindDevice(userId, scheduleId, deviceId);
         return ResponseEntity.ok(BffResponse.<Void>success(null).withTraceId(TraceUtils.getTraceId()));
     }
@@ -163,7 +163,7 @@ public class ScheduleController {
     public ResponseEntity<BffResponse<SchedulePushResp>> pushSchedule(
             @PathVariable("scheduleId") @NotNull UUID scheduleId,
             @RequestBody(required = false) SchedulePushReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         SchedulePushResp resp = scheduleApplicationService.pushSchedule(userId, scheduleId, req);
         return ResponseEntity.ok(BffResponse.success(resp).withTraceId(TraceUtils.getTraceId()));
     }
@@ -178,7 +178,7 @@ public class ScheduleController {
     @GetMapping("/{scheduleId}/audit-logs")
     public ResponseEntity<BffResponse<List<ScheduleAuditLogResp>>> listAuditLogs(
             @PathVariable("scheduleId") @NotNull UUID scheduleId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<ScheduleAuditLogResp> logs = scheduleApplicationService.listAuditLogs(userId, scheduleId);
         return ResponseEntity.ok(BffResponse.success(logs).withTraceId(TraceUtils.getTraceId()));
     }

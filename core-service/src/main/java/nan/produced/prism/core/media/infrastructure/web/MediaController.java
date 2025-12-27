@@ -105,7 +105,7 @@ public class MediaController {
     public ResponseEntity<BffResponse<BatchFinalizeResponse>> batchFinalize(
             @RequestBody @Validated BatchFinalizeRequest request) {
 
-        var userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        var userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         log.debug("BatchFinalize request: userId={}, items={}", userId, request.getItems().size());
 
         var response = mediaService.batchFinalize(request, userId);

@@ -53,7 +53,7 @@ public class ProgramController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @PostMapping
     public ResponseEntity<BffResponse<ProgramDetailResp>> createProgram(@RequestBody @Valid CreateProgramReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         String tier = CloudAuthContext.getCurrentUser().tier();
         ProgramDetailResp created = programApplicationService.createProgram(userId, tier, req);
         return ResponseEntity.ok(BffResponse.success(created).withTraceId(TraceUtils.getTraceId()));
@@ -67,7 +67,7 @@ public class ProgramController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @GetMapping
     public ResponseEntity<BffResponse<List<ProgramListResp>>> listPrograms() {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<ProgramListResp> list = programApplicationService.listPrograms(userId);
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
     }
@@ -81,7 +81,7 @@ public class ProgramController {
     @ApiResponse(responseCode = "404", description = "节目不存在或无权访问")
     @GetMapping("/{programId}")
     public ResponseEntity<BffResponse<ProgramDetailResp>> getProgram(@PathVariable("programId") @NotNull UUID programId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         ProgramDetailResp detail = programApplicationService.getProgramDetail(userId, programId);
         return ResponseEntity.ok(BffResponse.success(detail).withTraceId(TraceUtils.getTraceId()));
     }
@@ -97,7 +97,7 @@ public class ProgramController {
     public ResponseEntity<BffResponse<ProgramDetailResp>> renameProgram(
             @PathVariable("programId") @NotNull UUID programId,
             @RequestBody @Valid ProgramRenameReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         ProgramDetailResp detail = programApplicationService.renameProgram(userId, programId, req);
         return ResponseEntity.ok(BffResponse.success(detail).withTraceId(TraceUtils.getTraceId()));
     }
@@ -108,7 +108,7 @@ public class ProgramController {
     @ApiResponse(responseCode = "404", description = "节目不存在或无权访问")
     @PostMapping("/{programId}/delete")
     public ResponseEntity<BffResponse<Void>> deleteProgram(@PathVariable("programId") @NotNull UUID programId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         programApplicationService.deleteProgram(userId, programId);
         return ResponseEntity.ok(BffResponse.<Void>success(null).withTraceId(TraceUtils.getTraceId()));
     }
@@ -124,7 +124,7 @@ public class ProgramController {
     public ResponseEntity<BffResponse<ProgramDraftResp>> ensureDraft(
             @PathVariable("programId") @NotNull UUID programId,
             @RequestParam(value = "baseVersion", required = false) Integer baseVersion) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         ProgramDraftResp draft = programApplicationService.ensureDraft(userId, programId, baseVersion);
         return ResponseEntity.ok(BffResponse.success(draft).withTraceId(TraceUtils.getTraceId()));
     }
@@ -141,7 +141,7 @@ public class ProgramController {
             @PathVariable("programId") @NotNull UUID programId,
             @PathVariable("draftId") @NotNull UUID draftId,
             @RequestBody @Valid SaveProgramDraftReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         ProgramDraftResp draft = programApplicationService.saveDraft(userId, programId, draftId, req);
         return ResponseEntity.ok(BffResponse.success(draft).withTraceId(TraceUtils.getTraceId()));
     }
@@ -154,7 +154,7 @@ public class ProgramController {
     public ResponseEntity<BffResponse<Void>> deleteDraft(
             @PathVariable("programId") @NotNull UUID programId,
             @PathVariable("draftId") @NotNull UUID draftId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         programApplicationService.deleteDraft(userId, programId, draftId);
         return ResponseEntity.ok(BffResponse.<Void>success(null).withTraceId(TraceUtils.getTraceId()));
     }
@@ -167,7 +167,7 @@ public class ProgramController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @GetMapping("/templates")
     public ResponseEntity<BffResponse<List<ProgramTemplateResp>>> listTemplates() {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<ProgramTemplateResp> list = programApplicationService.listTemplates(userId);
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
     }
@@ -183,7 +183,7 @@ public class ProgramController {
     public ResponseEntity<BffResponse<ProgramPublishResp>> publish(
             @PathVariable("programId") @NotNull UUID programId,
             @RequestBody @Valid ProgramPublishReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         String tier = CloudAuthContext.getCurrentUser().tier();
         ProgramPublishResp resp = programApplicationService.publish(userId, tier, programId, req);
         return ResponseEntity.ok(BffResponse.success(resp).withTraceId(TraceUtils.getTraceId()));
@@ -200,7 +200,7 @@ public class ProgramController {
     public ResponseEntity<BffResponse<ProgramUnpublishResp>> unpublish(
             @PathVariable("programId") @NotNull UUID programId,
             @RequestBody @Valid ProgramUnpublishReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         ProgramUnpublishResp resp = programApplicationService.unpublish(userId, programId, req);
         return ResponseEntity.ok(BffResponse.success(resp).withTraceId(TraceUtils.getTraceId()));
     }
@@ -215,7 +215,7 @@ public class ProgramController {
     @GetMapping("/{programId}/audit-logs")
     public ResponseEntity<BffResponse<List<ProgramAuditLogResp>>> listAuditLogs(
             @PathVariable("programId") @NotNull UUID programId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<ProgramAuditLogResp> logs = programApplicationService.listAuditLogs(userId, programId);
         return ResponseEntity.ok(BffResponse.success(logs).withTraceId(TraceUtils.getTraceId()));
     }

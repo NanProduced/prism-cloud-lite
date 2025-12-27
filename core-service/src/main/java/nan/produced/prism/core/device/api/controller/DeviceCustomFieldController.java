@@ -182,7 +182,7 @@ public class DeviceCustomFieldController {
     }
 
     private static UUID currentUserId() {
-        return UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        return CloudAuthContext.getCurrentUserUuidAsUuid();
     }
 
     private static String currentTier() {

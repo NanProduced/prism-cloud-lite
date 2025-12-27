@@ -51,7 +51,7 @@ public class MessageController {
         @RequestParam(value = "kind", required = false) MessageKind kind,
         @RequestParam(value = "limit", required = false) Integer limit
     ) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<MessageListItemResp> list = messageCenterApplicationService.listRecent(userId, kind, limit);
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
     }
@@ -80,7 +80,7 @@ public class MessageController {
         @RequestParam(value = "page", defaultValue = "0") int page,
         @RequestParam(value = "size", required = false) Integer size
     ) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         MessagePageResp resp = messageCenterApplicationService.listMessages(
             userId,
             kind,
@@ -109,7 +109,7 @@ public class MessageController {
     @ApiResponse(responseCode = "404", description = "消息不存在或无权访问")
     @GetMapping("/{messageId}")
     public ResponseEntity<BffResponse<MessageDetailResp>> getMessage(@PathVariable("messageId") UUID messageId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         MessageDetailResp detail = messageCenterApplicationService.getMessage(userId, messageId);
         return ResponseEntity.ok(BffResponse.success(detail).withTraceId(TraceUtils.getTraceId()));
     }
@@ -122,7 +122,7 @@ public class MessageController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @GetMapping("/unread-count")
     public ResponseEntity<BffResponse<UnreadCountResp>> countUnread() {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         long unread = messageCenterApplicationService.countUnread(userId);
         return ResponseEntity.ok(BffResponse.success(new UnreadCountResp(unread)).withTraceId(TraceUtils.getTraceId()));
     }
@@ -135,7 +135,7 @@ public class MessageController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @PostMapping("/read")
     public ResponseEntity<BffResponse<MarkReadResp>> markRead(@RequestBody(required = false) MarkReadReq req) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         int updated = messageCenterApplicationService.markRead(userId, req != null ? req.getIds() : null);
         return ResponseEntity.ok(BffResponse.success(new MarkReadResp(updated)).withTraceId(TraceUtils.getTraceId()));
     }
@@ -148,7 +148,7 @@ public class MessageController {
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @PostMapping("/{messageId}/read")
     public ResponseEntity<BffResponse<MarkReadResp>> markReadOne(@PathVariable("messageId") UUID messageId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         int updated = messageCenterApplicationService.markRead(userId, List.of(messageId));
         return ResponseEntity.ok(BffResponse.success(new MarkReadResp(updated)).withTraceId(TraceUtils.getTraceId()));
     }

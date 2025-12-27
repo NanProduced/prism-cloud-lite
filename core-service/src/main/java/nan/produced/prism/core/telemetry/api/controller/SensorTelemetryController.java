@@ -49,7 +49,7 @@ public class SensorTelemetryController {
         @RequestParam(value = "metricKeys", required = false) List<String> metricKeys,
         @RequestParam(value = "limit", required = false) Integer limit
     ) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         SensorMetricSeriesResponse resp = sensorTelemetryFacade.queryMetricSeries(
             userId,
             deviceId,

@@ -42,7 +42,7 @@ public class DeviceScheduleController {
     @ApiResponse(responseCode = "404", description = "设备不存在或无权访问")
     @GetMapping("/{deviceId:\\d+}/schedule")
     public ResponseEntity<BffResponse<DeviceScheduleResp>> getDeviceSchedule(@PathVariable("deviceId") @NotNull Long deviceId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         DeviceScheduleResp resp = scheduleApplicationService.getDeviceSchedule(userId, deviceId);
         return ResponseEntity.ok(BffResponse.success(resp).withTraceId(TraceUtils.getTraceId()));
     }
@@ -56,7 +56,7 @@ public class DeviceScheduleController {
     @ApiResponse(responseCode = "404", description = "设备不存在或无权访问")
     @GetMapping("/{deviceId:\\d+}/schedule-json")
     public ResponseEntity<BffResponse<JsonNode>> getDeviceScheduleJson(@PathVariable("deviceId") @NotNull Long deviceId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         JsonNode json = scheduleApplicationService.getDeviceScheduleJson(userId, deviceId);
         return ResponseEntity.ok(BffResponse.success(json).withTraceId(TraceUtils.getTraceId()));
     }
@@ -71,7 +71,7 @@ public class DeviceScheduleController {
     @GetMapping("/{deviceId:\\d+}/program-allowlist")
     public ResponseEntity<BffResponse<List<DeviceProgramAllowlistResp>>> listDeviceProgramAllowlist(
             @PathVariable("deviceId") @NotNull Long deviceId) {
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<DeviceProgramAllowlistResp> list = scheduleApplicationService.listDeviceProgramAllowlist(userId, deviceId);
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
     }

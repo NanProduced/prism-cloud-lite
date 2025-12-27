@@ -35,7 +35,7 @@ public class DeviceScreenshotController {
     public ResponseEntity<BffResponse<List<DeviceScreenshotItemResp>>> listScreenshots(
             @PathVariable("deviceId") @NotNull Long deviceId) {
 
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         var list = deviceScreenshotApplicationService.listScreenshots(userId, deviceId).stream()
                 .map(entity -> new DeviceScreenshotItemResp(
                         entity.getScreenshotId(),
@@ -54,7 +54,7 @@ public class DeviceScreenshotController {
             @PathVariable("deviceId") @NotNull Long deviceId,
             @PathVariable("screenshotId") @NotNull UUID screenshotId) {
 
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         deviceScreenshotApplicationService.deleteScreenshot(userId, deviceId, screenshotId);
         return ResponseEntity.ok(BffResponse.<Void>success().withTraceId(TraceUtils.getTraceId()));
     }
@@ -64,7 +64,7 @@ public class DeviceScreenshotController {
     public ResponseEntity<BffResponse<Void>> clearScreenshots(
             @PathVariable("deviceId") @NotNull Long deviceId) {
 
-        UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         deviceScreenshotApplicationService.clearScreenshots(userId, deviceId);
         return ResponseEntity.ok(BffResponse.<Void>success().withTraceId(TraceUtils.getTraceId()));
     }

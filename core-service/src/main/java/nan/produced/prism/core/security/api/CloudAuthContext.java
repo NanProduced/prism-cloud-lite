@@ -3,6 +3,8 @@ package nan.produced.prism.core.security.api;
 import nan.produced.prism.core.common.exception.AuthException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 
+import java.util.UUID;
+
 /**
  * ThreadLocal 存储当前请求的用户信息
  * <p>
@@ -53,6 +55,35 @@ public class CloudAuthContext {
      */
     public static String getCurrentPublicId() {
         return getCurrentUser().publicId();
+    }
+
+    /**
+     * 获取当前用户的 userUuid（必填）
+     *
+     * @return userUuid（字符串）
+     * @throws AuthException 如果 userUuid 缺失
+     */
+    public static String getCurrentUserUuid() {
+        String userUuid = getCurrentUser().userUuid();
+        if (userUuid == null || userUuid.isBlank()) {
+            throw new AuthException(ErrorCode.NO_AUTHENTICATED_USER, "userUuid is missing in CLOUD_AUTH");
+        }
+        return userUuid;
+    }
+
+    /**
+     * 获取当前用户的 userUuid，并解析为 UUID（必填）
+     *
+     * @return userUuid（UUID）
+     * @throws AuthException 如果 userUuid 缺失或格式非法
+     */
+    public static UUID getCurrentUserUuidAsUuid() {
+        String userUuid = getCurrentUserUuid();
+        try {
+            return UUID.fromString(userUuid);
+        } catch (IllegalArgumentException ex) {
+            throw new AuthException(ErrorCode.NO_AUTHENTICATED_USER, "Invalid userUuid in CLOUD_AUTH: " + userUuid, ex);
+        }
     }
 
     /**

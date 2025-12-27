@@ -73,7 +73,7 @@ public class BetterUploadController {
     public ResponseEntity<?> upload(
             @Valid @RequestBody BetterUploadRequest request) {
 
-        String userId = CloudAuthContext.getCurrentUser().userUuid();
+        String userId = CloudAuthContext.getCurrentUserUuid();
 
         // 验证路由是否存在
         if (!uploadRouteProperties.hasRoute(request.getRoute())) {
