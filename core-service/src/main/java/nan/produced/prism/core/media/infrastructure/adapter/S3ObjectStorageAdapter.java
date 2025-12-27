@@ -34,16 +34,24 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort {
                                           String storageClass,
                                           String acl) {
 
+        StorageClass parsedStorageClass = parseStorageClass(storageClass);
+        ObjectCannedACL parsedAcl = parseAcl(acl);
+
+        var putObjectRequestBuilder = PutObjectRequest.builder()
+                .bucket(s3Properties.getBucket())
+                .key(key)
+                .contentType(contentType)
+                .metadata(metadata);
+        if (parsedStorageClass != null) {
+            putObjectRequestBuilder.storageClass(parsedStorageClass);
+        }
+        if (parsedAcl != null) {
+            putObjectRequestBuilder.acl(parsedAcl);
+        }
+
         var presignRequest = PutObjectPresignRequest.builder()
                 .signatureDuration(expiration)
-                .putObjectRequest(r -> r
-                        .bucket(s3Properties.getBucket())
-                        .key(key)
-                        .contentType(contentType)
-                        .storageClass(parseStorageClass(storageClass))
-                        .acl(parseAcl(acl))
-                        .metadata(metadata)
-                        .build())
+                .putObjectRequest(putObjectRequestBuilder.build())
                 .build();
 
         var presignedRequest = s3Presigner.presignPutObject(presignRequest);
@@ -57,14 +65,21 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort {
                                         Map<String, String> metadata,
                                         String storageClass,
                                         String acl) {
-        var createRequest = CreateMultipartUploadRequest.builder()
+        StorageClass parsedStorageClass = parseStorageClass(storageClass);
+        ObjectCannedACL parsedAcl = parseAcl(acl);
+        var createRequestBuilder = CreateMultipartUploadRequest.builder()
                 .bucket(s3Properties.getBucket())
                 .key(key)
                 .contentType(contentType)
-                .storageClass(parseStorageClass(storageClass))
-                .acl(parseAcl(acl))
-                .metadata(metadata)
-                .build();
+                .metadata(metadata);
+        if (parsedStorageClass != null) {
+            createRequestBuilder.storageClass(parsedStorageClass);
+        }
+        if (parsedAcl != null) {
+            createRequestBuilder.acl(parsedAcl);
+        }
+
+        var createRequest = createRequestBuilder.build();
 
         var response = s3Client.createMultipartUpload(createRequest);
         log.debug("Created multipart upload for key: {}, uploadId: {}", key, response.uploadId());

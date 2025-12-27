@@ -36,4 +36,14 @@ public class S3Properties {
      * 预签名 URL 有效期（分钟）
      */
     private int presignedUrlExpirationMinutes = 15;
+
+    /**
+     * Whether to include {@code x-amz-acl} in presigned PUT requests.
+     * <p>
+     * For AWS S3 buckets with Object Ownership = "Bucket owner enforced", ACLs are disabled and sending
+     * {@code x-amz-acl} will be rejected (403).
+     * </p>
+     * Default: false (do not send / do not sign ACL header).
+     */
+    private boolean aclEnabled = false;
 }

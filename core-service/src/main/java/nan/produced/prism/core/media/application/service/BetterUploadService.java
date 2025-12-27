@@ -109,6 +109,20 @@ public class BetterUploadService {
         var metadata = metadataExtractor.buildObjectMetadata(file.getName());
 
         var headers = buildUploadHeaders(routeConfig);
+        // PutObject 预签名会将 content-type 作为 SignedHeaders 的一部分。
+        // 客户端必须携带完全一致的 Content-Type，否则 S3 会返回 403（SignatureDoesNotMatch）。
+        if (file.getType() != null && !file.getType().isBlank()) {
+            headers.put("content-type", file.getType().trim());
+        }
+        // PutObject 预签名会将 metadata 签入 SignedHeaders（x-amz-meta-*）。
+        // 客户端必须在 PUT 请求中携带完全一致的 x-amz-meta-* 头，否则 S3 会返回 403（SignatureDoesNotMatch）。
+        if (metadata != null && !metadata.isEmpty()) {
+            metadata.forEach((k, v) -> {
+                if (k != null && !k.isBlank() && v != null && !v.isBlank()) {
+                    headers.put("x-amz-meta-" + k, v);
+                }
+            });
+        }
         var signedUrl = objectStorage.generatePresignedPutUrl(
                 key,
                 file.getType(),
@@ -373,7 +387,14 @@ public class BetterUploadService {
     private Map<String, String> buildUploadHeaders(RouteConfig routeConfig) {
         var headers = new HashMap<String, String>();
         headers.put(HEADER_STORAGE_CLASS, routeConfig.getStorageClass());
-        headers.put(HEADER_ACL, routeConfig.isPublicAccess() ? ACL_PUBLIC_READ : ACL_PRIVATE);
+
+        // AWS S3 buckets commonly enable "Bucket owner enforced" (ACLs disabled).
+        // In that case, including x-amz-acl will cause the presigned PUT to be rejected (403).
+        if (s3Properties.isAclEnabled()) {
+            headers.put(HEADER_ACL, routeConfig.isPublicAccess() ? ACL_PUBLIC_READ : ACL_PRIVATE);
+        } else if (routeConfig.isPublicAccess()) {
+            log.warn("BetterUpload - publicAccess=true but S3 ACL is disabled (prism.media.s3.aclEnabled=false); x-amz-acl will be omitted");
+        }
         return headers;
     }
 }
