@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -32,6 +33,8 @@ public class DeviceTagApplicationService implements DeviceTagUseCase {
     private final DeviceTagRepository deviceTagRepository;
 
     private final DeviceTagConverter deviceTagConverter;
+
+    private final DeviceRefreshSignalPublisher deviceRefreshSignalPublisher;
 
     @Override
     @Transactional
@@ -142,5 +145,7 @@ public class DeviceTagApplicationService implements DeviceTagUseCase {
 
         deviceTagRepository.replaceDeviceTags(deviceId, userId, tagIds);
         log.info("DeviceTagApplicationService - 关联标签成功: deviceId={}, tagCount={}", deviceId, tagIds.size());
+
+        deviceRefreshSignalPublisher.publishDeviceUpdated(userId, deviceId, Set.of("tags"));
     }
 }

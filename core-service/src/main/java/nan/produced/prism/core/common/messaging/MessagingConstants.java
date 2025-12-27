@@ -69,6 +69,36 @@ public final class MessagingConstants {
         public static final String NOTIFY_DEVICE_STATUS_CHANGED = "notify.device.status.changed";
 
         /**
+         * 设备数据变更刷新信号（面向前端）
+         * <p>示例：type=device.updated</p>
+         */
+        public static final String NOTIFY_DEVICE_UPDATED = "notify.device.updated";
+
+        /**
+         * 订阅变更通知（面向前端）
+         * <p>示例：type=subscription.updated</p>
+         */
+        public static final String NOTIFY_SUBSCRIPTION_UPDATED = "notify.subscription.updated";
+
+        /**
+         * 配额使用量更新（面向前端）
+         * <p>示例：type=quota.updated</p>
+         */
+        public static final String NOTIFY_QUOTA_UPDATED = "notify.quota.updated";
+
+        /**
+         * 配额临界提醒（面向前端）
+         * <p>示例：type=quota.near_limit</p>
+         */
+        public static final String NOTIFY_QUOTA_NEAR_LIMIT = "notify.quota.near_limit";
+
+        /**
+         * 配额超限提醒（面向前端）
+         * <p>示例：type=quota.exceeded</p>
+         */
+        public static final String NOTIFY_QUOTA_EXCEEDED = "notify.quota.exceeded";
+
+        /**
          * 操作进度更新通知（面向前端）
          * <p>示例：指令确认/完成等：type=operation.updated</p>
          */

@@ -6,9 +6,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.exception.InfraException;
+import nan.produced.prism.core.common.messaging.FrontendEventMessage;
+import nan.produced.prism.core.common.messaging.MessagingConstants;
+import nan.produced.prism.core.common.messaging.RabbitMessagePublisher;
 import nan.produced.prism.core.common.response.ApiResponse;
 import nan.produced.prism.core.common.util.IdGenerator;
 import nan.produced.prism.core.common.util.JsonUtils;
@@ -31,6 +35,7 @@ import nan.produced.prism.core.message.api.MessageCenterFacade;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeviceActionDispatchApplicationService implements DeviceActionDispatchUseCase {
@@ -40,6 +45,11 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
     private final DeviceInternalClient deviceInternalClient;
     private final DeviceActionDispatchConverter deviceActionDispatchConverter;
     private final MessageCenterFacade messageCenterFacade;
+    private final RabbitMessagePublisher rabbitMessagePublisher;
+
+    private static final String SSE_TYPE_OPERATION_UPDATED = "operation.updated";
+
+    private static final int MAX_BATCH_OPERATION_SSE = 50;
 
     /**
      * 单个设备操作下发
@@ -71,6 +81,8 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
         DeviceCommandLog log = buildDeviceCommandLog(userId, deviceId, commandId, action, result, commandReq.getTtlMinutes());
         // 保存日志记录
         deviceCommandLogRepository.save(log);
+
+        publishOperationUpdatedBestEffort(log);
 
         return deviceActionDispatchConverter.toDispatchResp(deviceId, commandId, action, result);
     }
@@ -149,6 +161,8 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
                 .toList();
         deviceCommandLogRepository.saveAll(logs);
 
+        publishBatchOperationUpdatedBestEffort(logs);
+
         List<DeviceActionDispatchResp> results = pending.stream()
                 .map(pendingDispatch -> deviceActionDispatchConverter.toDispatchResp(
                         pendingDispatch.deviceId(),
@@ -174,6 +188,66 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
                 .accepted(accepted)
                 .results(results)
                 .build();
+    }
+
+    private void publishBatchOperationUpdatedBestEffort(List<DeviceCommandLog> logs) {
+        if (logs == null || logs.isEmpty()) {
+            return;
+        }
+        if (logs.size() > MAX_BATCH_OPERATION_SSE) {
+            return;
+        }
+        for (DeviceCommandLog log : logs) {
+            publishOperationUpdatedBestEffort(log);
+        }
+    }
+
+    private void publishOperationUpdatedBestEffort(DeviceCommandLog commandLog) {
+        if (commandLog == null || commandLog.getUserId() == null) {
+            return;
+        }
+
+        try {
+            Map<String, Object> data = new HashMap<>();
+            data.put("operationType", "DEVICE_COMMAND");
+            if (commandLog.getStatus() != null) {
+                data.put("status", commandLog.getStatus().name());
+            }
+            if (commandLog.getActionType() != null) {
+                data.put("actionType", commandLog.getActionType().name());
+            }
+            if (commandLog.getTrackingLevel() != null) {
+                data.put("trackingLevel", commandLog.getTrackingLevel().name());
+            }
+            data.put("accepted", commandLog.isAccepted());
+            data.put("covered", commandLog.isCovered());
+            if (commandLog.getSendMethod() != null) {
+                data.put("sendMethod", commandLog.getSendMethod());
+            }
+            if (commandLog.getQueuedId() != null) {
+                data.put("queuedId", commandLog.getQueuedId());
+            }
+            if (commandLog.getErrorMessage() != null) {
+                data.put("errorMessage", commandLog.getErrorMessage());
+            }
+
+            FrontendEventMessage message = FrontendEventMessage.builder()
+                    .success(true)
+                    .type(SSE_TYPE_OPERATION_UPDATED)
+                    .scope(FrontendEventMessage.Scope.builder()
+                            .userId(commandLog.getUserId())
+                            .deviceId(commandLog.getDeviceId())
+                            .operationId(commandLog.getOperationId())
+                            .build())
+                    .data(data)
+                    .build();
+
+            rabbitMessagePublisher.publishCoreNotification(MessagingConstants.RoutingKeys.NOTIFY_OPERATION_UPDATED, message);
+        } catch (Exception ex) {
+            // best-effort：不影响主业务流程（指令已落库并返回给前端）
+            log.debug("operation.updated publish failed (ignored): userId={}, deviceId={}, operationId={}",
+                    commandLog.getUserId(), commandLog.getDeviceId(), commandLog.getOperationId(), ex);
+        }
     }
 
     private record PendingDispatch(Long deviceId, String commandId, DeviceActionBase action) {

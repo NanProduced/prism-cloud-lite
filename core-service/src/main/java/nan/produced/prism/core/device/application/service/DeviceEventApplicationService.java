@@ -34,6 +34,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -64,6 +65,8 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
     private final RabbitMessagePublisher rabbitMessagePublisher;
 
     private final ApplicationEventPublisher applicationEventPublisher;
+
+    private final DeviceRefreshSignalPublisher deviceRefreshSignalPublisher;
 
     /**
      * 处理设备上线状态
@@ -221,6 +224,12 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
         devicePropertiesPort.handleDeviceProperties(deviceId, deviceProperties, traceId);
         // 检查指令结果
         deviceCommandFeedBackPort.chackCommandResult(deviceId, deviceProperties);
+
+        // 推送刷新信号（best-effort，内部带去抖）
+        UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);
+        if (userId != null) {
+            deviceRefreshSignalPublisher.publishDeviceUpdated(userId, deviceId, Set.of("properties"));
+        }
     }
 
     /**
@@ -419,6 +428,12 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
                 contentType,
                 occurredAt,
                 traceId);
+
+        // 推送刷新信号（best-effort，内部带去抖）
+        UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);
+        if (userId != null) {
+            deviceRefreshSignalPublisher.publishDeviceUpdated(userId, deviceId, Set.of("screenshot"));
+        }
     }
 
     /**

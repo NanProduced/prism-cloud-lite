@@ -27,6 +27,8 @@ public class UserSubscriptionService {
 
     private final AuthSubscriptionInternalClient authSubscriptionInternalClient;
 
+    private final UserSubscriptionSignalPublisher userSubscriptionSignalPublisher;
+
     public UserSubscriptionView getCurrentUserSubscription() {
         UUID userId = requireCurrentUserUuid();
         ApiResponse<AuthSubscriptionView> response = authSubscriptionInternalClient.getCurrent(userId);
@@ -45,7 +47,9 @@ public class UserSubscriptionService {
             new AuthSubscriptionRedeemRequest(request.code())
         );
         AuthSubscriptionView remote = requireAuthSuccessWithMapping(response, "兑换订阅失败");
-        return toView(remote);
+        UserSubscriptionView view = toView(remote);
+        userSubscriptionSignalPublisher.publishSubscriptionUpdated(userId, view.tier(), view.startAt(), view.endAt(), view.proActive());
+        return view;
     }
 
     public UserSubscriptionHistoryView listCurrentUserSubscriptionHistory(int page, int size) {
@@ -123,4 +127,3 @@ public class UserSubscriptionService {
         throw new InfraException(ErrorCode.EXTERNAL_SERVICE_ERROR, message + ": " + response.getMessage());
     }
 }
-

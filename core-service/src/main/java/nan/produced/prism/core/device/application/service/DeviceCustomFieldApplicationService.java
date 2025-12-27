@@ -47,6 +47,7 @@ public class DeviceCustomFieldApplicationService implements DeviceCustomFieldUse
     private final DeviceRepository deviceRepository;
     private final UserQuotaFacade userQuotaFacade;
     private final DeviceCustomFieldConverter deviceCustomFieldConverter;
+    private final DeviceRefreshSignalPublisher deviceRefreshSignalPublisher;
 
     @Override
     @Transactional(readOnly = true)
@@ -243,6 +244,7 @@ public class DeviceCustomFieldApplicationService implements DeviceCustomFieldUse
             updatedValues.put(def.getFieldKey(), extractValue(saved, def.getFieldType()));
         }
 
+        deviceRefreshSignalPublisher.publishDeviceUpdated(userId, deviceId, Set.of("customFields"));
         return updatedValues;
     }
 

@@ -30,15 +30,15 @@ public interface UserQuotaUsageRepository extends JpaRepository<UserQuotaUsageEn
      * @param bytes  字节数增量
      * @return 更新的行数
      */
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE UserQuotaUsageEntity u SET u.storageTotalBytes = u.storageTotalBytes + :bytes WHERE u.userId = :userId")
     int incrementStorageTotalBytes(@Param("userId") UUID userId, @Param("bytes") long bytes);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE UserQuotaUsageEntity u SET u.deviceCount = u.deviceCount + :delta WHERE u.userId = :userId")
     int incrementDeviceCount(@Param("userId") UUID userId, @Param("delta") int delta);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE UserQuotaUsageEntity u
             SET u.deviceCount = u.deviceCount + :delta
@@ -50,11 +50,11 @@ public interface UserQuotaUsageRepository extends JpaRepository<UserQuotaUsageEn
             @Param("delta") int delta,
             @Param("limit") int limit);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE UserQuotaUsageEntity u SET u.customColumnCount = u.customColumnCount + :delta WHERE u.userId = :userId")
     int incrementCustomColumnCount(@Param("userId") UUID userId, @Param("delta") int delta);
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE UserQuotaUsageEntity u
             SET u.customColumnCount = u.customColumnCount + :delta
