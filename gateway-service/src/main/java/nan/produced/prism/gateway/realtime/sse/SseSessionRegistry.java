@@ -47,11 +47,10 @@ public class SseSessionRegistry {
 
         emitter.onCompletion(() -> remove(userId, connectionId));
         emitter.onTimeout(() -> {
-            emitter.complete();
-            remove(userId, connectionId);
+            safeClose(userId, connectionId, emitter);
         });
         emitter.onError(ex -> {
-            remove(userId, connectionId);
+            safeClose(userId, connectionId, emitter);
             log.debug("SSE - connection error: userId={}, connectionId={}, channel={}", userId, connectionId, channel, ex);
         });
 
@@ -63,8 +62,7 @@ public class SseSessionRegistry {
                         .reconnectTime(3000));
             }
         } catch (IOException ex) {
-            remove(userId, connectionId);
-            emitter.completeWithError(ex);
+            safeClose(userId, connectionId, emitter);
         }
 
         log.debug("SSE - connected: userId={}, connectionId={}, channel={}", userId, connectionId, channel);
@@ -111,8 +109,7 @@ public class SseSessionRegistry {
             } catch (Exception ex) {
                 log.debug("SSE - send failed, removing connection: userId={}, connectionId={}, channel={}",
                         userId, connectionId, channel, ex);
-                remove(userId, connectionId);
-                emitter.complete();
+                safeClose(userId, connectionId, emitter);
             }
         });
     }
@@ -131,10 +128,25 @@ public class SseSessionRegistry {
             } catch (Exception ex) {
                 log.debug("SSE - heartbeat failed, removing connection: userId={}, connectionId={}, channel={}",
                         userId, connectionId, connection.channel(), ex);
-                remove(userId, connectionId);
-                emitter.complete();
+                safeClose(userId, connectionId, emitter);
             }
         }));
+    }
+
+    private void safeClose(UUID userId, String connectionId, SseEmitter emitter) {
+        try {
+            remove(userId, connectionId);
+        } catch (Exception ignore) {
+            // ignored
+        }
+        if (emitter == null) {
+            return;
+        }
+        try {
+            emitter.complete();
+        } catch (Exception ignore) {
+            // ignored
+        }
     }
 
     private void remove(UUID userId, String connectionId) {
