@@ -22,10 +22,9 @@ import nan.produced.prism.core.telemetry.api.dto.gps.ManualLocationItem;
 import nan.produced.prism.core.telemetry.api.dto.gps.ManualLocationRequest;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -113,7 +112,7 @@ public class GpsTelemetryController {
         content = @Content(mediaType = "application/json", schema = @Schema(implementation = ManualLocationItem.class)))
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
     @ApiResponse(responseCode = "404", description = "设备不存在或无权访问")
-    @PutMapping("/overrides/{deviceId}")
+    @PostMapping("/overrides/{deviceId}")
     public ResponseEntity<BffResponse<ManualLocationItem>> upsertManualLocation(
         @PathVariable("deviceId") Long deviceId,
         @RequestBody @Valid ManualLocationRequest request
@@ -131,7 +130,7 @@ public class GpsTelemetryController {
     @Operation(summary = "删除设备手动坐标")
     @ApiResponse(responseCode = "200", description = "删除成功")
     @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
-    @DeleteMapping("/overrides/{deviceId}")
+    @PostMapping("/overrides/{deviceId}/delete")
     public ResponseEntity<BffResponse<Object>> deleteManualLocation(@PathVariable("deviceId") Long deviceId) {
         UUID userId = UUID.fromString(CloudAuthContext.getCurrentUser().userUuid());
         gpsTelemetryFacade.deleteManualLocation(userId, deviceId);

@@ -42,4 +42,17 @@ public interface UserQuotaFacade {
      * @param count  本次释放的数量（必须 &gt; 0）
      */
     void releaseCustomColumns(UUID userId, int count);
+
+    /**
+     * 同步节目（Program）使用量。
+     *
+     * <p>
+     * 说明：节目配额的校验与事件推送由 program 模块负责；user 模块仅落库一个派生的 {@code program_count}
+     * 供前端/报表展示使用。为避免存量数据不一致，这里采用「直接 set 为真实 count」的方式同步，而不是 +1/-1。
+     * </p>
+     *
+     * @param userId       用户ID
+     * @param programCount 当前用户节目总数（&gt;= 0）
+     */
+    void syncProgramCount(UUID userId, int programCount);
 }

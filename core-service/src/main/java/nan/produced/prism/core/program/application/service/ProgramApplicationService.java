@@ -77,6 +77,7 @@ import nan.produced.prism.core.program.infrastructure.persistence.ProgramTemplat
 import nan.produced.prism.core.message.api.MessageCenterFacade;
 import nan.produced.prism.core.security.api.CloudAuthContext;
 import nan.produced.prism.core.system.api.SubscriptionQuotaFacade;
+import nan.produced.prism.core.user.api.UserQuotaFacade;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -109,6 +110,7 @@ public class ProgramApplicationService {
     private final S3Client s3Client;
     private final MessageCenterFacade messageCenterFacade;
     private final ProgramQuotaSignalPublisher programQuotaSignalPublisher;
+    private final UserQuotaFacade userQuotaFacade;
 
     @Value("${prism.media.s3.bucket}")
     private String s3Bucket;
@@ -138,7 +140,7 @@ public class ProgramApplicationService {
 
         programRepositoryJpa.save(entity);
         writeAudit(userId, entity.getId(), ProgramAuditAction.CREATE, null);
-        tryPublishProgramQuotaUpdated(userId, tier);
+        onProgramsChangedBestEffort(userId, tier);
 
         return getProgramDetail(userId, entity.getId());
     }
@@ -271,16 +273,63 @@ public class ProgramApplicationService {
         ProgramEntity program = findOwnedProgram(userId, programId);
         writeAudit(userId, programId, ProgramAuditAction.DELETE, null);
         programRepositoryJpa.delete(program);
+        onProgramsChangedBestEffort(userId, resolveTierFromContext());
+    }
 
-        String tier = null;
-        if (CloudAuthContext.hasAuthenticatedUser()) {
-            try {
-                tier = CloudAuthContext.getCurrentUser().tier();
-            } catch (Exception ignore) {
-                tier = null;
-            }
+    private void ensureProgramLimit(UUID userId, String tier) {
+        Integer limit = resolveProgramLimit(tier);
+        if (limit == null || limit < 0) {
+            return;
         }
-        tryPublishProgramQuotaUpdated(userId, tier);
+
+        long current = programRepositoryJpa.countByUserId(userId);
+        long next = current + 1;
+        if (next > limit) {
+            programQuotaSignalPublisher.publishProgramsExceeded(userId, normalizeTier(tier), next, limit);
+            throw new BizException(ErrorCode.PROGRAM_LIMIT_EXCEEDED);
+        }
+    }
+
+    private void onProgramsChangedBestEffort(UUID userId, String tier) {
+        if (userId == null) {
+            return;
+        }
+
+        try {
+            long used = programRepositoryJpa.countByUserId(userId);
+            Integer limit = resolveProgramLimit(tier);
+            programQuotaSignalPublisher.publishProgramsUpdated(userId, normalizeTier(tier), used, limit);
+            userQuotaFacade.syncProgramCount(userId, (int) Math.min(Integer.MAX_VALUE, used));
+        } catch (Exception ex) {
+            log.debug("program count sync/publish failed (ignored): userId={}", userId, ex);
+        }
+    }
+
+    private String resolveTierFromContext() {
+        if (!CloudAuthContext.hasAuthenticatedUser()) {
+            return null;
+        }
+        try {
+            return CloudAuthContext.getCurrentUser().tier();
+        } catch (Exception ignore) {
+            return null;
+        }
+    }
+
+    private String normalizeTier(String tier) {
+        if (!StringUtils.hasText(tier)) {
+            return "FREE";
+        }
+        String normalized = tier.trim().toUpperCase();
+        return "PRO".equals(normalized) ? "PRO" : "FREE";
+    }
+
+    private Integer resolveProgramLimit(String tier) {
+        try {
+            return subscriptionQuotaFacade.getQuota(normalizeTier(tier)).programLimit();
+        } catch (Exception ex) {
+            return null;
+        }
     }
 
     @Transactional
@@ -734,18 +783,6 @@ public class ProgramApplicationService {
         return "200".equals(code) || ErrorCode.SUCCESS.getCode().equals(code);
     }
 
-    private void ensureProgramLimit(UUID userId, String tier) {
-        Integer limit = subscriptionQuotaFacade.getQuota(tier).programLimit();
-        if (limit == null || limit < 0) {
-            return;
-        }
-        long current = programRepositoryJpa.countByUserId(userId);
-        if (current >= limit) {
-            programQuotaSignalPublisher.publishProgramsExceeded(userId, tier, current + 1, limit);
-            throw new BizException(ErrorCode.PROGRAM_LIMIT_EXCEEDED);
-        }
-    }
-
     private ProgramReleaseEntity createNewRelease(UUID userId, String tier, ProgramEntity program, ProgramPublishReq req, OffsetDateTime now) {
         ProgramReleaseEntity latest = programReleaseRepositoryJpa.findTopByProgramIdOrderByVersionDesc(program.getId()).orElse(null);
         int nextVersion = latest != null && latest.getVersion() != null ? latest.getVersion() + 1 : 1;
@@ -879,15 +916,6 @@ public class ProgramApplicationService {
             programQuotaSignalPublisher.publishProgramVersionsUpdated(userId, tier, program.getId(), saved.getVersion(), versionLimit);
         }
         return saved;
-    }
-
-    private void tryPublishProgramQuotaUpdated(UUID userId, String tier) {
-        if (userId == null) {
-            return;
-        }
-        Integer limit = subscriptionQuotaFacade.getQuota(tier).programLimit();
-        long used = programRepositoryJpa.countByUserId(userId);
-        programQuotaSignalPublisher.publishProgramsUpdated(userId, tier, used, limit);
     }
 
     private record MaterialFile(

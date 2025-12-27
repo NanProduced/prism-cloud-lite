@@ -116,6 +116,19 @@ public class UserQuotaService implements UserQuotaFacade {
         publishUpdatedBestEffort(userId, tier, UserQuotaSignalPublisher.RESOURCE_CUSTOM_COLUMNS, "count");
     }
 
+    @Override
+    @Transactional
+    public void syncProgramCount(UUID userId, int programCount) {
+        if (userId == null) {
+            return;
+        }
+
+        ensureQuotaUsageExists(userId);
+
+        int normalized = Math.max(0, programCount);
+        userQuotaUsageRepository.setProgramCount(userId, normalized);
+    }
+
     private void ensureQuotaUsageExists(UUID userId) {
         if (userQuotaUsageRepository.findByUserId(userId).isPresent()) {
             return;

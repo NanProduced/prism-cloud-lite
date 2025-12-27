@@ -65,4 +65,14 @@ public interface UserQuotaUsageRepository extends JpaRepository<UserQuotaUsageEn
             @Param("userId") UUID userId,
             @Param("delta") int delta,
             @Param("limit") int limit);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            UPDATE UserQuotaUsageEntity u
+            SET u.programCount = :programCount
+            WHERE u.userId = :userId
+            """)
+    int setProgramCount(
+            @Param("userId") UUID userId,
+            @Param("programCount") int programCount);
 }
