@@ -53,7 +53,8 @@ public class GatewaySecurityConfig {
                 .securityMatcher(
                         "/oauth2/authorization/**",
                         "/login/oauth2/code/**",
-                        "/logout"
+                        "/logout",
+                        "/logout/backchannel"
                 )
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(AbstractHttpConfigurer::disable)

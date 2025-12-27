@@ -85,6 +85,7 @@ public class GatewaySecurityProps {
                 "/error",
                 "/auth/**",
                 "/logout",
+                "/logout/backchannel",
                 "/logout_status",
                 "/logout-status",
                 "/swagger-ui.html",

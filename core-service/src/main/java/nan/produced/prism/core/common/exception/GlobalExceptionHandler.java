@@ -3,10 +3,16 @@ package nan.produced.prism.core.common.exception;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.response.BffResponse;
 import nan.produced.prism.core.common.util.TraceUtils;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.BindException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+
+import jakarta.validation.ConstraintViolationException;
 
 /**
  * 全局异常处理器
@@ -25,6 +31,47 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    /**
+     * 处理参数校验/绑定异常（请求不合法）
+     */
+    @ExceptionHandler({
+        MethodArgumentNotValidException.class,
+        BindException.class,
+        ConstraintViolationException.class,
+        MethodArgumentTypeMismatchException.class,
+        HttpMessageNotReadableException.class,
+        IllegalArgumentException.class
+    })
+    public ResponseEntity<BffResponse<Void>> handleBadRequest(Exception e) {
+        String displayMessage = "请求参数不合法，请检查输入";
+
+        if (e instanceof MethodArgumentNotValidException manv) {
+            var errors = manv.getBindingResult().getFieldErrors();
+            if (!errors.isEmpty() && errors.getFirst() != null && errors.getFirst().getDefaultMessage() != null) {
+                displayMessage = errors.getFirst().getDefaultMessage();
+            }
+        }
+        else if (e instanceof BindException be) {
+            var errors = be.getBindingResult().getFieldErrors();
+            if (!errors.isEmpty() && errors.getFirst() != null && errors.getFirst().getDefaultMessage() != null) {
+                displayMessage = errors.getFirst().getDefaultMessage();
+            }
+        }
+        else if (e instanceof ConstraintViolationException cve) {
+            var it = cve.getConstraintViolations() == null ? null : cve.getConstraintViolations().stream().findFirst().orElse(null);
+            if (it != null && it.getMessage() != null && !it.getMessage().isBlank()) {
+                displayMessage = it.getMessage();
+            }
+        }
+        else if (e instanceof HttpMessageNotReadableException) {
+            displayMessage = "请求体不合法，请检查 JSON 格式";
+        }
+
+        BffResponse<Void> response = BffResponse.<Void>error(ErrorCode.INVALID_REQUEST, displayMessage)
+            .withTraceId(TraceUtils.getTraceId());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
 
     /**
      * 处理所有业务异常（BaseServiceException 及其子类）
