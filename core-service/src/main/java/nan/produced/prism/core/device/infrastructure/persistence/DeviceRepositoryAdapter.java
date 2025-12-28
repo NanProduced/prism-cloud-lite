@@ -9,7 +9,8 @@ import nan.produced.prism.core.device.domain.DeviceEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -57,7 +58,7 @@ public class DeviceRepositoryAdapter implements DeviceRepository {
 
         // 设置创建时间（如果未设置）
         if (entity.getCreateTime() == null) {
-            entity.setCreateTime(LocalDateTime.now());
+            entity.setCreateTime(OffsetDateTime.now(ZoneOffset.UTC));
         }
 
         try {
@@ -129,7 +130,7 @@ public class DeviceRepositoryAdapter implements DeviceRepository {
      * @param time 当前时间（作为最后上报时间，和潜在的 onboardingTime）
      */
     @Override
-    public void updateStatusWithOnboarding(Long deviceId, Integer status, LocalDateTime time) {
+    public void updateStatusWithOnboarding(Long deviceId, Integer status, OffsetDateTime time) {
         if (deviceId == null) {
             return;
         }
@@ -158,7 +159,7 @@ public class DeviceRepositoryAdapter implements DeviceRepository {
      * @param time 最后上报时间
      */
     @Override
-    public void updateStatus(Long deviceId, Integer status, LocalDateTime time) {
+    public void updateStatus(Long deviceId, Integer status, OffsetDateTime time) {
         if (deviceId == null) {
             return;
         }

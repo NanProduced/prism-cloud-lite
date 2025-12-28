@@ -81,10 +81,10 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
         log.debug("处理设备上线状态: deviceId={}, isOnline={}, traceId={}",
                 deviceId, isOnline, traceId);
         if (isOnline)  {
-            deviceRepository.updateStatusWithOnboarding(deviceId, 1, LocalDateTime.ofInstant(timestamp, ZoneId.of("UTC")));
+            deviceRepository.updateStatusWithOnboarding(deviceId, 1, OffsetDateTime.ofInstant(timestamp, ZoneOffset.UTC));
         }
         else {
-            deviceRepository.updateStatus(deviceId, 0, LocalDateTime.ofInstant(timestamp, ZoneId.of("UTC")));
+            deviceRepository.updateStatus(deviceId, 0, OffsetDateTime.ofInstant(timestamp, ZoneOffset.UTC));
         }
 
         UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);

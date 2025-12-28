@@ -12,7 +12,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,11 +60,11 @@ public class AsyncDeviceLoginUpdateService implements DeviceLoginUpdatePort {
 
     @Override
     public void submitLoginUpdate(Long deviceId, String clientIp) {
-        submitLoginUpdate(deviceId, clientIp, LocalDateTime.now());
+        submitLoginUpdate(deviceId, clientIp, OffsetDateTime.now(ZoneOffset.UTC));
     }
 
     @Override
-    public void submitLoginUpdate(Long deviceId, String clientIp, LocalDateTime updateTime) {
+    public void submitLoginUpdate(Long deviceId, String clientIp, OffsetDateTime updateTime) {
         try {
             DeviceLoginRecord loginRecord = DeviceLoginRecord.create(deviceId, clientIp, updateTime);
 

@@ -30,6 +30,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.function.Function;
 
@@ -476,8 +477,8 @@ public class JdbcOidcAuthorizationService implements OidcAuthorizationService{
             String authorizationCodeValue = getLobValue(rs, "authorization_code_value");
 
             if (StringUtils.hasText(authorizationCodeValue)) {
-                tokenIssuedAt = rs.getTimestamp("authorization_code_issued_at").toInstant();
-                tokenExpiresAt = rs.getTimestamp("authorization_code_expires_at").toInstant();
+                tokenIssuedAt = readInstant(rs, "authorization_code_issued_at");
+                tokenExpiresAt = readInstant(rs, "authorization_code_expires_at");
                 Map<String, Object> authorizationCodeMetadata = parseMap(
                         getLobValue(rs, "authorization_code_metadata"));
 
@@ -488,8 +489,8 @@ public class JdbcOidcAuthorizationService implements OidcAuthorizationService{
 
             String accessTokenValue = getLobValue(rs, "access_token_value");
             if (StringUtils.hasText(accessTokenValue)) {
-                tokenIssuedAt = rs.getTimestamp("access_token_issued_at").toInstant();
-                tokenExpiresAt = rs.getTimestamp("access_token_expires_at").toInstant();
+                tokenIssuedAt = readInstant(rs, "access_token_issued_at");
+                tokenExpiresAt = readInstant(rs, "access_token_expires_at");
                 Map<String, Object> accessTokenMetadata = parseMap(getLobValue(rs, "access_token_metadata"));
                 OAuth2AccessToken.TokenType tokenType = null;
                 if (OAuth2AccessToken.TokenType.BEARER.getValue().equalsIgnoreCase(rs.getString("access_token_type"))) {
@@ -508,8 +509,8 @@ public class JdbcOidcAuthorizationService implements OidcAuthorizationService{
 
             String oidcIdTokenValue = getLobValue(rs, "oidc_id_token_value");
             if (StringUtils.hasText(oidcIdTokenValue)) {
-                tokenIssuedAt = rs.getTimestamp("oidc_id_token_issued_at").toInstant();
-                tokenExpiresAt = rs.getTimestamp("oidc_id_token_expires_at").toInstant();
+                tokenIssuedAt = readInstant(rs, "oidc_id_token_issued_at");
+                tokenExpiresAt = readInstant(rs, "oidc_id_token_expires_at");
                 Map<String, Object> oidcTokenMetadata = parseMap(getLobValue(rs, "oidc_id_token_metadata"));
 
                 OidcIdToken oidcToken = new OidcIdToken(oidcIdTokenValue, tokenIssuedAt, tokenExpiresAt,
@@ -519,12 +520,9 @@ public class JdbcOidcAuthorizationService implements OidcAuthorizationService{
 
             String refreshTokenValue = getLobValue(rs, "refresh_token_value");
             if (StringUtils.hasText(refreshTokenValue)) {
-                tokenIssuedAt = rs.getTimestamp("refresh_token_issued_at").toInstant();
+                tokenIssuedAt = readInstant(rs, "refresh_token_issued_at");
                 tokenExpiresAt = null;
-                Timestamp refreshTokenExpiresAt = rs.getTimestamp("refresh_token_expires_at");
-                if (refreshTokenExpiresAt != null) {
-                    tokenExpiresAt = refreshTokenExpiresAt.toInstant();
-                }
+                tokenExpiresAt = readNullableInstant(rs, "refresh_token_expires_at");
                 Map<String, Object> refreshTokenMetadata = parseMap(getLobValue(rs, "refresh_token_metadata"));
 
                 OAuth2RefreshToken refreshToken = new OAuth2RefreshToken(refreshTokenValue, tokenIssuedAt,
@@ -534,8 +532,8 @@ public class JdbcOidcAuthorizationService implements OidcAuthorizationService{
 
             String userCodeValue = getLobValue(rs, "user_code_value");
             if (StringUtils.hasText(userCodeValue)) {
-                tokenIssuedAt = rs.getTimestamp("user_code_issued_at").toInstant();
-                tokenExpiresAt = rs.getTimestamp("user_code_expires_at").toInstant();
+                tokenIssuedAt = readInstant(rs, "user_code_issued_at");
+                tokenExpiresAt = readInstant(rs, "user_code_expires_at");
                 Map<String, Object> userCodeMetadata = parseMap(getLobValue(rs, "user_code_metadata"));
 
                 OAuth2UserCode userCode = new OAuth2UserCode(userCodeValue, tokenIssuedAt, tokenExpiresAt);
@@ -544,8 +542,8 @@ public class JdbcOidcAuthorizationService implements OidcAuthorizationService{
 
             String deviceCodeValue = getLobValue(rs, "device_code_value");
             if (StringUtils.hasText(deviceCodeValue)) {
-                tokenIssuedAt = rs.getTimestamp("device_code_issued_at").toInstant();
-                tokenExpiresAt = rs.getTimestamp("device_code_expires_at").toInstant();
+                tokenIssuedAt = readInstant(rs, "device_code_issued_at");
+                tokenExpiresAt = readInstant(rs, "device_code_expires_at");
                 Map<String, Object> deviceCodeMetadata = parseMap(getLobValue(rs, "device_code_metadata"));
 
                 OAuth2DeviceCode deviceCode = new OAuth2DeviceCode(deviceCodeValue, tokenIssuedAt, tokenExpiresAt);
@@ -553,6 +551,24 @@ public class JdbcOidcAuthorizationService implements OidcAuthorizationService{
             }
 
             return builder.build();
+        }
+
+        private Instant readInstant(ResultSet rs, String column) throws SQLException {
+            Instant value = readNullableInstant(rs, column);
+            if (value == null) {
+                throw new SQLException("Required timestamp column is null: " + column);
+            }
+            return value;
+        }
+
+        private Instant readNullableInstant(ResultSet rs, String column) throws SQLException {
+            try {
+                OffsetDateTime odt = rs.getObject(column, OffsetDateTime.class);
+                return odt != null ? odt.toInstant() : null;
+            } catch (Exception ignore) {
+                Timestamp ts = rs.getTimestamp(column);
+                return ts != null ? ts.toInstant() : null;
+            }
         }
 
         private String getLobValue(ResultSet rs, String columnName) throws SQLException {

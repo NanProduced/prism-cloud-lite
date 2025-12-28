@@ -9,13 +9,13 @@ import nan.produced.prism.device.application.messaging.DeviceEventMessage;
 import nan.produced.prism.device.application.port.outbound.event.DeviceEventPublisherPort;
 import nan.produced.prism.device.application.port.outbound.repository.DeviceAccountRepository;
 import nan.produced.prism.device.application.port.outbound.status.DeviceLoginUpdatePort;
-import nan.produced.prism.device.common.utils.TimeUtils;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 
 import static nan.produced.prism.device.application.domain.CommonConstant.Device.*;
@@ -125,7 +125,7 @@ public class DeviceOnlineStatusEventHandler {
         try {
             Long deviceId = event.getDeviceId();
             String clientIp = event.getClientIp();
-            LocalDateTime loginTime = TimeUtils.convertTimestampToLocalDateTime(event.getEventTime());
+            OffsetDateTime loginTime = OffsetDateTime.ofInstant(Instant.ofEpochMilli(event.getEventTime()), ZoneOffset.UTC);
 
             // 立即更新到数据库
             deviceAccountRepository.updateLoginTimeImmediate(deviceId, clientIp, loginTime);
@@ -143,7 +143,7 @@ public class DeviceOnlineStatusEventHandler {
         try {
             Long deviceId = event.getDeviceId();
             String clientIp = event.getClientIp();
-            LocalDateTime loginTime = TimeUtils.convertTimestampToLocalDateTime(event.getEventTime());
+            OffsetDateTime loginTime = OffsetDateTime.ofInstant(Instant.ofEpochMilli(event.getEventTime()), ZoneOffset.UTC);
 
             // 提交到异步缓冲池
             deviceLoginUpdatePort.submitLoginUpdate(deviceId, clientIp, loginTime);

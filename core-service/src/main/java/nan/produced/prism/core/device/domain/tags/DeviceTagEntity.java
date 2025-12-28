@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
@@ -53,8 +53,8 @@ public class DeviceTagEntity {
     private String icon;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createTime;
+    private OffsetDateTime createTime;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updateTime;
+    private OffsetDateTime updateTime;
 }

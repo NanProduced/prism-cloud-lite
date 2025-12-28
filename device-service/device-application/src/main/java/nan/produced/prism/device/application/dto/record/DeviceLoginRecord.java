@@ -3,7 +3,8 @@ package nan.produced.prism.device.application.dto.record;
 import lombok.Builder;
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 /**
  * 登录时间更新记录
@@ -28,7 +29,7 @@ public class DeviceLoginRecord {
     /**
      * 更新时间
      */
-    private LocalDateTime updateTime;
+    private OffsetDateTime updateTime;
 
     /**
      * 创建记录的时间戳（用于去重和统计）
@@ -39,7 +40,7 @@ public class DeviceLoginRecord {
      * 创建登录更新记录
      */
     public static DeviceLoginRecord create(Long deviceId, String clientIp) {
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         return DeviceLoginRecord.builder()
                 .deviceId(deviceId)
                 .clientIp(clientIp)
@@ -51,7 +52,7 @@ public class DeviceLoginRecord {
     /**
      * 创建登录更新记录（指定时间）
      */
-    public static DeviceLoginRecord create(Long deviceId, String clientIp, LocalDateTime updateTime) {
+    public static DeviceLoginRecord create(Long deviceId, String clientIp, OffsetDateTime updateTime) {
         return DeviceLoginRecord.builder()
                 .deviceId(deviceId)
                 .clientIp(clientIp)

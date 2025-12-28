@@ -9,7 +9,7 @@ import nan.produced.prism.device.infrastructure.persistence.postgre.repository.j
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 @Repository
@@ -48,13 +48,13 @@ public class PostgreDeviceAccountRepository implements DeviceAccountRepository {
 
     @Override
     @Transactional
-    public int updateLoginTimeImmediate(Long deviceId, String clientIp, LocalDateTime loginTime) {
+    public int updateLoginTimeImmediate(Long deviceId, String clientIp, OffsetDateTime loginTime) {
         return deviceAccountJpaRepository.updateLoginTimeImmediate(deviceId, clientIp, loginTime);
     }
 
     @Override
     @Transactional
-    public int updateLoginTime(Long deviceId, String clientIp, LocalDateTime loginTime) {
+    public int updateLoginTime(Long deviceId, String clientIp, OffsetDateTime loginTime) {
         return deviceAccountJpaRepository.updateLoginTime(deviceId, clientIp, loginTime);
     }
 

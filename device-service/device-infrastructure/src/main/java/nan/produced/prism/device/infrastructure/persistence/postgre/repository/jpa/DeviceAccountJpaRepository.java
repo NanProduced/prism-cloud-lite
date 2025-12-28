@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Optional;
 
 @Repository
@@ -28,7 +28,7 @@ public interface DeviceAccountJpaRepository extends JpaRepository<DeviceAccountE
     """)
     int updateLoginTimeImmediate(@Param("deviceId") Long deviceId,
                                  @Param("clientIp") String clientIp,
-                                 @Param("loginTime") LocalDateTime loginTime);
+                                 @Param("loginTime") OffsetDateTime loginTime);
 
     @Modifying
     @Query("""
@@ -40,6 +40,5 @@ public interface DeviceAccountJpaRepository extends JpaRepository<DeviceAccountE
     """)
     int updateLoginTime(@Param("deviceId") Long deviceId,
                         @Param("clientIp") String clientIp,
-                        @Param("loginTime") LocalDateTime loginTime);
+                        @Param("loginTime") OffsetDateTime loginTime);
 }
-

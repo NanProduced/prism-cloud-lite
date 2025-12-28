@@ -3,7 +3,7 @@ package nan.produced.prism.device.application.domain.device;
 import lombok.Builder;
 import lombok.Data;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Data
 @Builder
@@ -32,12 +32,12 @@ public class DeviceAccount {
     /**
      * 上云时间
      */
-    private LocalDateTime firstLoginTime;
+    private OffsetDateTime firstLoginTime;
 
     /**
      * 最后连接时间
      */
-    private LocalDateTime lastLoginTime;
+    private OffsetDateTime lastLoginTime;
 
     /**
      * 最后连接IP

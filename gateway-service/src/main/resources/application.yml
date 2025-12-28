@@ -3,3 +3,5 @@ spring:
     name: gateway-service
   profiles:
     active: ${profileActive:dev}
+  jackson:
+    time-zone: UTC

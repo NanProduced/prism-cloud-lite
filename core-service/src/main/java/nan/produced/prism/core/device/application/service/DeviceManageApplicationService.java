@@ -15,7 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Service
 @RequiredArgsConstructor
@@ -67,7 +68,7 @@ public class DeviceManageApplicationService implements DeviceManageUseCase {
             throw new InfraException(ErrorCode.EXTERNAL_SERVICE_ERROR, "device-service 返回空 deviceId");
         }
 
-        DeviceEntity newDevice = deviceEntityConverter.toNewEntity(createDeviceDTO, deviceId, LocalDateTime.now());
+        DeviceEntity newDevice = deviceEntityConverter.toNewEntity(createDeviceDTO, deviceId, OffsetDateTime.now(ZoneOffset.UTC));
         deviceRepository.createDevice(newDevice);
         return deviceId;
     }

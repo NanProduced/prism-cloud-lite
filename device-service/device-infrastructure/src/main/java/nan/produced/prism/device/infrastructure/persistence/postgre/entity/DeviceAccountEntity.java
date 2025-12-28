@@ -9,7 +9,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Getter
 @Setter
@@ -38,23 +39,23 @@ public class DeviceAccountEntity {
     private Byte accountStatus;
 
     @Column(name = "first_login_time")
-    private LocalDateTime firstLoginTime;
+    private OffsetDateTime firstLoginTime;
 
     @Column(name = "last_login_time")
-    private LocalDateTime lastLoginTime;
+    private OffsetDateTime lastLoginTime;
 
     @Column(name = "last_login_ip", length = 64)
     private String lastLoginIp;
 
     @Column(name = "create_time", nullable = false)
-    private LocalDateTime createTime;
+    private OffsetDateTime createTime;
 
     @Column(name = "update_time", nullable = false)
-    private LocalDateTime updateTime;
+    private OffsetDateTime updateTime;
 
     @PrePersist
     void prePersist() {
-        LocalDateTime now = LocalDateTime.now();
+        OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         if (createTime == null) {
             createTime = now;
         }
@@ -63,6 +64,6 @@ public class DeviceAccountEntity {
 
     @PreUpdate
     void preUpdate() {
-        updateTime = LocalDateTime.now();
+        updateTime = OffsetDateTime.now(ZoneOffset.UTC);
     }
 }

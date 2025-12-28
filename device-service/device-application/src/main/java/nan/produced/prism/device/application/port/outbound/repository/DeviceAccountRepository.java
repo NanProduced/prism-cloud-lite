@@ -2,7 +2,7 @@ package nan.produced.prism.device.application.port.outbound.repository;
 
 import nan.produced.prism.device.application.domain.device.DeviceAccount;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 public interface DeviceAccountRepository {
 
@@ -44,7 +44,7 @@ public interface DeviceAccountRepository {
      * @param loginTime 登录时间
      * @return 更新影响的行数
      */
-    int updateLoginTimeImmediate(Long deviceId, String clientIp, LocalDateTime loginTime);
+    int updateLoginTimeImmediate(Long deviceId, String clientIp, OffsetDateTime loginTime);
 
     /**
      * 更新设备登录时间（用于批量更新）
@@ -55,6 +55,6 @@ public interface DeviceAccountRepository {
      * @param loginTime 登录时间
      * @return 更新影响的行数
      */
-    int updateLoginTime(Long deviceId, String clientIp, LocalDateTime loginTime);
+    int updateLoginTime(Long deviceId, String clientIp, OffsetDateTime loginTime);
 
 }

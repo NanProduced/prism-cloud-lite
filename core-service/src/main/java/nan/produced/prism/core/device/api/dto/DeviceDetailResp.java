@@ -6,7 +6,7 @@ import nan.produced.prism.core.device.domain.DeviceNetworkType;
 import nan.produced.prism.core.device.domain.DeviceProperties;
 import nan.produced.prism.core.device.domain.dto.TagVO;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -45,20 +45,20 @@ public class DeviceDetailResp {
     /**
      * 上云时间（设备第一次连接到服务器的时间）
      */
-    @Schema(description = "上云时间（设备第一次连接到服务器的时间）", example = "2025-12-13T02:37:19")
-    private LocalDateTime onboardingTime;
+    @Schema(description = "上云时间（UTC，设备第一次连接到服务器的时间）", example = "2025-12-13T02:37:19Z")
+    private OffsetDateTime onboardingTime;
 
     /**
      * 最后上报时间
      */
-    @Schema(description = "最后上报时间", example = "2025-12-13T02:37:19")
-    private LocalDateTime lastReportTime;
+    @Schema(description = "最后上报时间（UTC）", example = "2025-12-13T02:37:19Z")
+    private OffsetDateTime lastReportTime;
 
     /**
      * 创建设备账号的时间
      */
-    @Schema(description = "创建设备账号的时间", example = "2025-12-13T02:37:19")
-    private LocalDateTime createTime;
+    @Schema(description = "创建设备账号的时间（UTC）", example = "2025-12-13T02:37:19Z")
+    private OffsetDateTime createTime;
 
     /**
      * 设备型号

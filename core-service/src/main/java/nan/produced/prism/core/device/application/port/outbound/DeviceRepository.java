@@ -2,7 +2,7 @@ package nan.produced.prism.core.device.application.port.outbound;
 
 import nan.produced.prism.core.device.domain.DeviceEntity;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -47,7 +47,7 @@ public interface DeviceRepository {
      * @param status 状态 (0:离线,1:在线)
      * @param time  时间
      */
-    void updateStatusWithOnboarding(Long deviceId, Integer status, LocalDateTime time);
+    void updateStatusWithOnboarding(Long deviceId, Integer status, OffsetDateTime time);
 
     /**
      * 更新设备在线状态,最后上报时间
@@ -55,5 +55,5 @@ public interface DeviceRepository {
      * @param status 状态 (0:离线,1:在线)
      * @param time  时间
      */
-    void updateStatus(Long deviceId, Integer status, LocalDateTime time);
+    void updateStatus(Long deviceId, Integer status, OffsetDateTime time);
 }

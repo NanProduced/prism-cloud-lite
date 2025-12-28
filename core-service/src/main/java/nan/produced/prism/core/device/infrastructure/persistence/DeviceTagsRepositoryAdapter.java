@@ -8,7 +8,8 @@ import nan.produced.prism.core.device.domain.tags.DeviceTagMapEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -125,7 +126,7 @@ public class DeviceTagsRepositoryAdapter implements DeviceTagRepository {
 
         // 2. 如果有新标签，创建映射
         if (tagIds != null && !tagIds.isEmpty()) {
-            var now = LocalDateTime.now();
+            var now = OffsetDateTime.now(ZoneOffset.UTC);
             var mappings = tagIds.stream()
                     .map(tagId -> {
                         var mapping = new DeviceTagMapEntity();

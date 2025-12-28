@@ -8,7 +8,7 @@ import jakarta.persistence.IdClass;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.Data;
 
@@ -30,7 +30,7 @@ public class DeviceTagMapEntity {
     private UUID userId;
 
     @Column(name = "assigned_at", nullable = false)
-    private LocalDateTime assignedTime;
+    private OffsetDateTime assignedTime;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tag_id", insertable = false, updatable = false)

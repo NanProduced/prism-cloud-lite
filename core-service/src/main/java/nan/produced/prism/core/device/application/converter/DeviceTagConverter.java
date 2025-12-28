@@ -1,6 +1,6 @@
 package nan.produced.prism.core.device.application.converter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 import nan.produced.prism.core.device.domain.dto.TagVO;
 import nan.produced.prism.core.device.domain.tags.DeviceTagEntity;
@@ -37,7 +37,7 @@ public interface DeviceTagConverter {
             String color,
             String icon,
             String description,
-            LocalDateTime now);
+            OffsetDateTime now);
 
     @Mapping(target = "tagName", source = "tagName")
     @Mapping(target = "color", source = "color")
@@ -54,5 +54,5 @@ public interface DeviceTagConverter {
             String color,
             String icon,
             String description,
-            LocalDateTime updateTime);
+            OffsetDateTime updateTime);
 }

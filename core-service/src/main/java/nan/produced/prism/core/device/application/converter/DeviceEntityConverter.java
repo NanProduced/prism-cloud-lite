@@ -1,6 +1,6 @@
 package nan.produced.prism.core.device.application.converter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import nan.produced.prism.core.device.domain.DeviceEntity;
 import nan.produced.prism.core.device.domain.dto.CreateDeviceDTO;
 import org.mapstruct.Mapper;
@@ -34,6 +34,5 @@ public interface DeviceEntityConverter {
     @Mapping(target = "totalStorage", ignore = true)
     @Mapping(target = "freeStorage", ignore = true)
     @Mapping(target = "properties", ignore = true)
-    DeviceEntity toNewEntity(CreateDeviceDTO dto, Long deviceId, LocalDateTime now);
+    DeviceEntity toNewEntity(CreateDeviceDTO dto, Long deviceId, OffsetDateTime now);
 }
-

@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -68,7 +68,7 @@ public interface DeviceRepositoryJpa extends JpaRepository<DeviceEntity, Long> {
             "d.lastReportTime = :lastReportTime WHERE d.deviceId = :deviceId")
     void updateStatus(@Param("deviceId") Long deviceId,
                       @Param("status") Integer status,
-                      @Param("lastReportTime") LocalDateTime lastReportTime);
+                      @Param("lastReportTime") OffsetDateTime lastReportTime);
 
     /**
      * 更新设备在线状态、最后上报时间，以及设置 onboarding 时间（如果为空）
@@ -86,8 +86,8 @@ public interface DeviceRepositoryJpa extends JpaRepository<DeviceEntity, Long> {
             "WHERE d.deviceId = :deviceId")
     void updateStatusWithOnboarding(@Param("deviceId") Long deviceId,
                                    @Param("status") Integer status,
-                                   @Param("lastReportTime") LocalDateTime lastReportTime,
-                                   @Param("onboardingTime") LocalDateTime onboardingTime);
+                                   @Param("lastReportTime") OffsetDateTime lastReportTime,
+                                   @Param("onboardingTime") OffsetDateTime onboardingTime);
 
     /**
      * 更新设备属性和最后上报时间
@@ -117,7 +117,7 @@ public interface DeviceRepositoryJpa extends JpaRepository<DeviceEntity, Long> {
             "d.freeStorage = COALESCE(:freeStorage, d.freeStorage) " +
             "WHERE d.deviceId = :deviceId")
     void updateDeviceProperties(@Param("deviceId") Long deviceId,
-                                @Param("lastReportTime") LocalDateTime lastReportTime,
+                                @Param("lastReportTime") OffsetDateTime lastReportTime,
                                 @Param("model") String model,
                                 @Param("version") String version,
                                 @Param("brightness") Integer brightness,

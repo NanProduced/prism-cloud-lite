@@ -13,7 +13,8 @@ import nan.produced.prism.core.device.domain.tags.DeviceTagEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -46,7 +47,7 @@ public class DeviceTagApplicationService implements DeviceTagUseCase {
             throw new BizException(ErrorCode.DEVICE_TAG_SLUG_ALREADY_EXISTS);
         }
 
-        var now = LocalDateTime.now();
+        var now = OffsetDateTime.now(ZoneOffset.UTC);
         var tag = deviceTagConverter.toNewEntity(
                 userId,
                 System.currentTimeMillis(),
@@ -77,7 +78,7 @@ public class DeviceTagApplicationService implements DeviceTagUseCase {
             tag.setSlug(newSlug);
         }
 
-        deviceTagConverter.applyUpdate(tag, tagName, color, icon, description, LocalDateTime.now());
+        deviceTagConverter.applyUpdate(tag, tagName, color, icon, description, OffsetDateTime.now(ZoneOffset.UTC));
 
         var saved = deviceTagRepository.save(tag);
         log.info("DeviceTagApplicationService - 更新标签成功: userId={}, oldSlug={}, newSlug={}",

@@ -4,7 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -41,13 +41,13 @@ public class DeviceEntity {
     private Integer onlineStatus;
 
     @Column(name = "onboarding_time")
-    private LocalDateTime onboardingTime;
+    private OffsetDateTime onboardingTime;
 
     @Column(name = "last_report_time")
-    private LocalDateTime lastReportTime;
+    private OffsetDateTime lastReportTime;
 
     @Column(name = "created_at")
-    private LocalDateTime createTime;
+    private OffsetDateTime createTime;
 
     /* ====== 设备属性冗余字段 ====== */
 

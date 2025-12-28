@@ -2,7 +2,7 @@ package nan.produced.prism.device.application.port.outbound.status;
 
 import nan.produced.prism.device.application.dto.record.DeviceLoginRecord;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
@@ -27,7 +27,7 @@ public interface DeviceLoginUpdatePort {
      * @param clientIp 客户端IP
      * @param updateTime 更新时间
      */
-    void submitLoginUpdate(Long deviceId, String clientIp, LocalDateTime updateTime);
+    void submitLoginUpdate(Long deviceId, String clientIp, OffsetDateTime updateTime);
 
     /**
      * 批量提交登录时间更新到缓冲池
