@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.device.application.domain.status.ReportSource;
 import nan.produced.prism.device.application.port.inbound.status.DeviceOnlineStatusUseCase;
 import nan.produced.prism.device.infrastructure.security.DevicePrincipal;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -27,8 +28,13 @@ public class DeviceStatusUpdateInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
 
-        try{
-            Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || !authentication.isAuthenticated()) {
+                return true;
+            }
+
+            Object principal = authentication.getPrincipal();
 
             if (principal instanceof DevicePrincipal devicePrincipal) {
                 Long deviceId = devicePrincipal.getDeviceId();
@@ -70,4 +76,3 @@ public class DeviceStatusUpdateInterceptor implements HandlerInterceptor {
         return request.getRemoteAddr();
     }
 }
-
