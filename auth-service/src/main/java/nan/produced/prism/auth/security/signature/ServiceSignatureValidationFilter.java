@@ -11,15 +11,15 @@ import nan.produced.prism.auth.common.exception.ErrorCode;
 import nan.produced.prism.auth.common.response.ApiResponse;
 import nan.produced.prism.auth.security.SecurityProps;
 import org.springframework.http.MediaType;
+import org.springframework.security.web.util.matcher.IpAddressMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
+import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * 服务签名验证过滤器
@@ -134,9 +134,32 @@ public class ServiceSignatureValidationFilter extends OncePerRequestFilter {
      * 判断 IP 是否在白名单中
      */
     private boolean isIpWhitelisted(String clientIp) {
+        if (!StringUtils.hasText(clientIp)) {
+            return false;
+        }
+
         String ipWhitelist = securityProps.getInternalApi().getIpWhitelist();
-        Set<String> whitelist = new HashSet<>(Arrays.asList(ipWhitelist.split(",")));
-        return whitelist.contains(clientIp.trim());
+        if (!StringUtils.hasText(ipWhitelist)) {
+            return false;
+        }
+
+        String normalizedClientIp = clientIp.trim();
+        return Arrays.stream(ipWhitelist.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .anyMatch(entry -> isIpMatch(entry, normalizedClientIp));
+    }
+
+    private boolean isIpMatch(String whitelistEntry, String clientIp) {
+        if ("localhost".equalsIgnoreCase(whitelistEntry)) {
+            return "127.0.0.1".equals(clientIp) || "::1".equals(clientIp) || "0:0:0:0:0:0:0:1".equals(clientIp);
+        }
+
+        try {
+            return new IpAddressMatcher(whitelistEntry).matches(clientIp);
+        } catch (Exception ex) {
+            return whitelistEntry.equals(clientIp);
+        }
     }
 
     /**

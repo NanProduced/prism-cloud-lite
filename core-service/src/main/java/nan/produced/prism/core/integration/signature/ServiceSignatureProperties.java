@@ -10,7 +10,7 @@ public class ServiceSignatureProperties {
     /**
      * 共享的 HMAC 密钥
      */
-    private String secret;
+    private String secret = "NanProduced";
 
     /**
      * X-Service-From 头，标识调用方

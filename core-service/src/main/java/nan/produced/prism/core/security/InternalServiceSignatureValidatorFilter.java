@@ -14,8 +14,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.ErrorCode;
@@ -26,6 +24,7 @@ import nan.produced.prism.core.integration.signature.ServiceSignatureUtil;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
+import org.springframework.security.web.util.matcher.IpAddressMatcher;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
@@ -143,8 +142,24 @@ public class InternalServiceSignatureValidatorFilter extends OncePerRequestFilte
         if (!StringUtils.hasText(ipWhitelist)) {
             return true;
         }
-        Set<String> whitelist = new HashSet<>(Arrays.asList(ipWhitelist.split(",")));
-        return whitelist.stream().map(String::trim).anyMatch(ip -> ip.equalsIgnoreCase(clientIp.trim()));
+
+        String normalizedClientIp = clientIp.trim();
+        return Arrays.stream(ipWhitelist.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .anyMatch(entry -> isIpMatch(entry, normalizedClientIp));
+    }
+
+    private boolean isIpMatch(String whitelistEntry, String clientIp) {
+        if ("localhost".equalsIgnoreCase(whitelistEntry)) {
+            return "127.0.0.1".equals(clientIp) || "::1".equals(clientIp) || "0:0:0:0:0:0:0:1".equals(clientIp);
+        }
+
+        try {
+            return new IpAddressMatcher(whitelistEntry).matches(clientIp);
+        } catch (Exception ex) {
+            return whitelistEntry.equals(clientIp);
+        }
     }
 
     private String resolveClientIp(HttpServletRequest request) {
@@ -242,4 +257,3 @@ public class InternalServiceSignatureValidatorFilter extends OncePerRequestFilte
         }
     }
 }
-

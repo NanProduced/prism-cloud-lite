@@ -22,11 +22,10 @@ public class InternalApiSecurityProps {
      *
      * <p>开发环境允许本机回环；生产环境建议配置为服务网段或网关出口 IP。</p>
      */
-    private String ipWhitelist = "127.0.0.1,::1,localhost";
+    private String ipWhitelist = "127.0.0.1,::1,localhost,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16";
 
     /**
      * 时间戳容忍度（毫秒），防止重放攻击。默认 5 分钟。
      */
     private long timestampToleranceMs = 300000L;
 }
-
