@@ -80,11 +80,12 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
     public void handleDeviceOnlineStatus(Long deviceId, boolean isOnline, String traceId, Instant timestamp) {
         log.debug("处理设备上线状态: deviceId={}, isOnline={}, traceId={}",
                 deviceId, isOnline, traceId);
+        Instant safeTimestamp = timestamp != null ? timestamp : Instant.now();
         if (isOnline)  {
-            deviceRepository.updateStatusWithOnboarding(deviceId, 1, OffsetDateTime.ofInstant(timestamp, ZoneOffset.UTC));
+            deviceRepository.updateStatusWithOnboarding(deviceId, 1, OffsetDateTime.ofInstant(safeTimestamp, ZoneOffset.UTC));
         }
         else {
-            deviceRepository.updateStatus(deviceId, 0, OffsetDateTime.ofInstant(timestamp, ZoneOffset.UTC));
+            deviceRepository.updateStatus(deviceId, 0, OffsetDateTime.ofInstant(safeTimestamp, ZoneOffset.UTC));
         }
 
         UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);
@@ -103,7 +104,7 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
                 .data(Map.of(
                         "online", isOnline
                 ))
-                .occurredAt(timestamp)
+                .occurredAt(safeTimestamp)
                 .traceId(traceId)
                 .build();
 

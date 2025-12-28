@@ -16,6 +16,7 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.Map;
 
 import static nan.produced.prism.device.application.domain.CommonConstant.Device.*;
@@ -41,6 +42,10 @@ public class DeviceOnlineStatusEventHandler {
     @Async
     @EventListener
     public void handleDeviceOnlineStatusEvent(DeviceOnlineStatusEvent event) {
+        if (event == null || event.getEventType() == null) {
+            log.warn("DeviceStatusEvent - 收到空事件或事件类型为空，忽略: event={}", event);
+            return;
+        }
         switch (event.getEventType()) {
             case DEVICE_GO_LIVE -> processDeviceOnline(event);
             case DEVICE_RECONNECT -> processDeviceReconnect(event);
@@ -189,7 +194,7 @@ public class DeviceOnlineStatusEventHandler {
                 .deviceId(event.getDeviceId())
                 .eventType(ONLINE_TIME)
                 .payload(payload)
-                .occurredAt(Instant.ofEpochMilli(event.getEventTime()))
+                .occurredAt(resolveOccurredAt(event))
                 .build();
 
         deviceEventPublisherPort.publishReport(CommonConstant.Report.ONLINE_TIME, message);
@@ -199,16 +204,20 @@ public class DeviceOnlineStatusEventHandler {
     // ==================== mq设备在线状态推送辅助方法 ====================
 
     private void pushDeviceOnline(DeviceOnlineStatusEvent event) {
-        Map<String, Object> payload = Map.of(
-                REPORT_SOURCE, event.getReportSource().name(),
-                CLIENT_IP, event.getClientIp(),
-                STATUS_EVENT_TYPE, event.getEventType().name()
-        );
+        Map<String, Object> payload = new HashMap<>();
+        if (event.getReportSource() != null) {
+            payload.put(REPORT_SOURCE, event.getReportSource().name());
+        }
+        putIfNotNull(payload, CLIENT_IP, event.getClientIp());
+        if (event.getEventType() != null) {
+            payload.put(STATUS_EVENT_TYPE, event.getEventType().name());
+        }
+
         DeviceEventMessage message = DeviceEventMessage.builder()
                 .deviceId(event.getDeviceId())
                 .eventType("status.online")
                 .payload(payload)
-                .occurredAt(Instant.ofEpochMilli(event.getEventTime()))
+                .occurredAt(resolveOccurredAt(event))
                 .build();
 
         deviceEventPublisherPort.publishStatus(ONLINE, message);
@@ -216,19 +225,35 @@ public class DeviceOnlineStatusEventHandler {
     }
 
     private void pushDeviceOffline(DeviceOnlineStatusEvent event) {
-        Map<String, Object> payload = Map.of(
-                ONLINE_START_TIME, event.getOnlineStartTime(),
-                LAST_REPORT_TIME, event.getLastReportTime(),
-                CLIENT_IP, event.getClientIp(),
-                STATUS_EVENT_TYPE, event.getEventType().name()
-        );
+        Map<String, Object> payload = new HashMap<>();
+        putIfNotNull(payload, ONLINE_START_TIME, event.getOnlineStartTime());
+        putIfNotNull(payload, LAST_REPORT_TIME, event.getLastReportTime());
+        putIfNotNull(payload, CLIENT_IP, event.getClientIp());
+        if (event.getEventType() != null) {
+            payload.put(STATUS_EVENT_TYPE, event.getEventType().name());
+        }
+
         DeviceEventMessage message = DeviceEventMessage.builder()
                 .deviceId(event.getDeviceId())
                 .eventType("status.offline")
                 .payload(payload)
-                .occurredAt(Instant.ofEpochMilli(event.getEventTime()))
+                .occurredAt(resolveOccurredAt(event))
                 .build();
 
         deviceEventPublisherPort.publishStatus(OFFLINE, message);
+    }
+
+    private static void putIfNotNull(Map<String, Object> out, String key, Object value) {
+        if (key == null || value == null) {
+            return;
+        }
+        out.put(key, value);
+    }
+
+    private static Instant resolveOccurredAt(DeviceOnlineStatusEvent event) {
+        if (event == null || event.getEventTime() == null) {
+            return Instant.now();
+        }
+        return Instant.ofEpochMilli(event.getEventTime());
     }
 }

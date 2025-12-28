@@ -9,7 +9,6 @@ import nan.produced.prism.core.device.application.port.inbound.DeviceEventUseCas
 import nan.produced.prism.core.device.infrastructure.messaging.idempotent.DeviceEventIdempotentHandler;
 
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import static nan.produced.prism.core.common.exception.ErrorCode.MQ_MESSAGE_CONSUMING_FAILED;
@@ -43,13 +42,28 @@ public class DeviceEventListener {
      *
      * @param message 设备事件消息
      */
-    @Async("deviceEventExecutor")
     @RabbitListener(queues = MessagingConstants.Queues.DEVICE_STATUS)
     public void handleDeviceStatusEvent(DeviceEventMessage message) {
         handleEvent(STATUS_CATEGORY, message, () -> {
             // 提取事件类型（status.online 或 status.offline）
             String eventType = message.getEventType();
-            boolean isOnline = eventType != null && eventType.endsWith("online");
+            if (eventType == null || eventType.isBlank()) {
+                log.warn("DeviceEventListener -mq- status 事件类型为空，忽略: deviceId={}, traceId={}",
+                        message.getDeviceId(), message.getTraceId());
+                return;
+            }
+
+            String normalizedType = eventType.trim().toLowerCase();
+            boolean isOnline;
+            if (normalizedType.endsWith(".online") || normalizedType.equals("online")) {
+                isOnline = true;
+            } else if (normalizedType.endsWith(".offline") || normalizedType.equals("offline")) {
+                isOnline = false;
+            } else {
+                log.warn("DeviceEventListener -mq- 未识别的 status 事件类型，忽略: deviceId={}, traceId={}, eventType={}",
+                        message.getDeviceId(), message.getTraceId(), eventType);
+                return;
+            }
 
             deviceEventUseCase.handleDeviceOnlineStatus(
                     message.getDeviceId(),
@@ -66,7 +80,6 @@ public class DeviceEventListener {
      *
      * @param message 设备事件消息
      */
-    @Async("deviceEventExecutor")
     @RabbitListener(queues = MessagingConstants.Queues.DEVICE_COMMAND)
     public void handleDeviceCommandEvent(DeviceEventMessage message) {
         handleEvent(COMMAND_CATEGORY, message, () -> deviceEventUseCase.handleCommandResult(message));
@@ -85,7 +98,6 @@ public class DeviceEventListener {
      *
      * @param message 设备事件消息
      */
-    @Async("deviceEventExecutor")
     @RabbitListener(queues = MessagingConstants.Queues.DEVICE_REPORT)
     public void handleDeviceReportEvent(DeviceEventMessage message) {
         handleEvent(REPORT_CATEGORY, message, () ->
