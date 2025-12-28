@@ -41,10 +41,15 @@ public class DevicePropertiesHandler implements DevicePropertiesPort {
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         populateReportTime(deviceProperties, System.currentTimeMillis() / 1000);
         DeviceEntity existingDevice = deviceRepository.findByDeviceId(deviceId);
-        if (existingDevice == null) {
+        DeviceEntity updateDevice = handleRedundantProperties(existingDevice, deviceProperties, traceId);
+        if (updateDevice == null) {
             throw new BizException(DEVICE_NOT_FOUND_IN_CORE, "device not find: deviceId = " + deviceId);
         }
-        DeviceEntity updateDevice = handleRedundantProperties(existingDevice, deviceProperties, traceId);
+
+        // 自愈：属性上报证明设备活跃，若当前仍为离线则纠正为在线（避免 status.online 丢失导致“卡离线”）
+        if (updateDevice.getOnlineStatus() != null && updateDevice.getOnlineStatus() == 0) {
+            updateDevice.setOnlineStatus(1);
+        }
         updateDevice.setLastReportTime(now);
         deviceRepository.updateDeviceProperties(updateDevice);
     }
