@@ -56,15 +56,14 @@ public class ServiceSignatureValidatorFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
-        String requestPath = request.getRequestURI();
+        String requestUri = request.getRequestURI();
+        String requestPath = resolveApplicationPath(request);
 
         // 只验证 /internal/** 路径（可配置）
-        if (!isInternalApiPath(requestPath)) {
+        if (!isInternalApiPath(requestUri, requestPath)) {
             filterChain.doFilter(request, response);
             return;
         }
-
-        log.debug("Validating service signature for internal API: {}", requestPath);
 
         // 1. 验证 IP 白名单
         String clientIp = getClientIp(request);
@@ -109,33 +108,76 @@ public class ServiceSignatureValidatorFilter extends OncePerRequestFilter {
         // 5. 读取请求体（用于签名校验）
         String body = wrappedRequest.getCachedBodyAsString();
         String method = request.getMethod();
-        String path = request.getRequestURI();
+        String path = requestPath;
+        String contentType = request.getContentType();
 
         // 6. 验证签名
         String secret = securityProps.getServiceSignature().getSecret();
-        boolean isValid = SignatureUtils.verifySignature(
-                signature, method, path, body, timestamp, secret
-        );
+        boolean isValid = SignatureUtils.verifySignature(signature, method, path, body, timestamp, secret);
+        // Backward/edge-case compatibility: if some upstream includes context-path in the signature calculation,
+        // allow validating against the full request URI as well.
+        if (!isValid && !requestUri.equals(path)) {
+            isValid = SignatureUtils.verifySignature(signature, method, requestUri, body, timestamp, secret);
+        }
+        // Compatibility for callers that include raw query string in signature input.
+        String queryString = request.getQueryString();
+        if (!isValid && StringUtils.hasText(queryString)) {
+            String uriWithQuery = requestUri + "?" + queryString;
+            isValid = SignatureUtils.verifySignature(signature, method, uriWithQuery, body, timestamp, secret);
+        }
+        // Compatibility for Feign + non-JSON requests (e.g., @RequestParam on POST):
+        // some callers may sign with empty body even if the transport uses form body; only relax for non-JSON payloads.
+        boolean isJsonPayload = contentType != null && contentType.toLowerCase().contains("json");
+        if (!isValid && !isJsonPayload && StringUtils.hasText(body)) {
+            isValid = SignatureUtils.verifySignature(signature, method, path, "", timestamp, secret);
+            if (!isValid && !requestUri.equals(path)) {
+                isValid = SignatureUtils.verifySignature(signature, method, requestUri, "", timestamp, secret);
+            }
+            if (!isValid && StringUtils.hasText(queryString)) {
+                String uriWithQuery = requestUri + "?" + queryString;
+                isValid = SignatureUtils.verifySignature(signature, method, uriWithQuery, "", timestamp, secret);
+            }
+        }
 
         if (!isValid) {
-            log.warn("Invalid service signature from service: {}, IP: {}", serviceFrom, clientIp);
+            log.warn("Invalid service signature from service: {}, IP: {}, method: {}, uri: {}",
+                    serviceFrom, clientIp, method, requestUri);
             sendErrorResponse(response, BusinessErrorCode.INVALID_SERVICE_TOKEN);
             return;
         }
 
-        log.debug("Service signature validated successfully for service: {}", serviceFrom);
         filterChain.doFilter(wrappedRequest, response);
     }
 
     /**
      * 判断请求路径是否为内部 API
      */
-    private boolean isInternalApiPath(String path) {
+    private boolean isInternalApiPath(String requestUri, String applicationPath) {
         String internalPathPattern = securityProps.getInternalApi().getPathPattern();
         if (internalPathPattern == null || internalPathPattern.isBlank()) {
             return false;
         }
-        return ANT_PATH_MATCHER.match(internalPathPattern.trim(), path);
+
+        String pattern = internalPathPattern.trim();
+        // Prefer matching against application path (without context-path), but keep backward compatibility
+        // for configurations that include context-path in the pattern.
+        return ANT_PATH_MATCHER.match(pattern, applicationPath) || ANT_PATH_MATCHER.match(pattern, requestUri);
+    }
+
+    /**
+     * Resolve the path used for signature calculation and path matching.
+     * <p>
+     * {@link HttpServletRequest#getRequestURI()} includes the context-path, while Feign {@code template.path()}
+     * (caller side) typically does not. To keep signatures stable when context-path is configured, we strip it.
+     * </p>
+     */
+    private String resolveApplicationPath(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String contextPath = request.getContextPath();
+        if (!StringUtils.hasText(uri) || !StringUtils.hasText(contextPath)) {
+            return uri;
+        }
+        return uri.startsWith(contextPath) ? uri.substring(contextPath.length()) : uri;
     }
 
     /**

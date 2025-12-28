@@ -56,8 +56,6 @@ public class ServiceSignatureValidationFilter extends OncePerRequestFilter {
             return;
         }
 
-        log.debug("Validating service signature for internal API: {}", requestPath);
-
         // 1. 验证 IP 白名单
         String clientIp = getClientIp(request);
         if (!isIpWhitelisted(clientIp)) {
@@ -106,16 +104,16 @@ public class ServiceSignatureValidationFilter extends OncePerRequestFilter {
         // 6. 验证签名
         String secret = securityProps.getServiceSignature().getSecret();
         boolean isValid = ServiceSignatureUtil.verifySignature(
-            signature, method, path, body, timestamp, secret
+                signature, method, path, body, timestamp, secret
         );
 
         if (!isValid) {
-            log.warn("Invalid service signature from service: {}, IP: {}", serviceFrom, clientIp);
+            log.warn("Invalid service signature from service: {}, IP: {}, method: {}, uri: {}",
+                    serviceFrom, clientIp, method, path);
             sendErrorResponse(response, ErrorCode.INVALID_SERVICE_TOKEN);
             return;
         }
 
-        log.debug("Service signature validated successfully for service: {}", serviceFrom);
         filterChain.doFilter(wrappedRequest, response);
     }
 

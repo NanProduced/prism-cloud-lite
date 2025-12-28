@@ -7,6 +7,7 @@ import nan.produced.prism.device.application.domain.device.DeviceAccountStatus;
 import nan.produced.prism.device.application.port.inbound.auth.DeviceAccountUseCase;
 import nan.produced.prism.device.application.port.outbound.auth.EncodePort;
 import nan.produced.prism.device.application.port.outbound.repository.DeviceAccountRepository;
+import nan.produced.prism.device.common.utils.IdGenerator;
 import nan.produced.prism.device.common.exception.business.BusinessErrorCode;
 import nan.produced.prism.device.common.exception.business.BusinessException;
 import org.springframework.stereotype.Service;
@@ -39,6 +40,7 @@ public class DeviceAccountApplicationService implements DeviceAccountUseCase {
 
         // 3. 创建域对象
         DeviceAccount deviceAccount = DeviceAccount.builder()
+                .deviceId(IdGenerator.nextId())
                 .accountName(account)
                 .passwordHash(encodedPassword)
                 .status(DeviceAccountStatus.ENABLE)
