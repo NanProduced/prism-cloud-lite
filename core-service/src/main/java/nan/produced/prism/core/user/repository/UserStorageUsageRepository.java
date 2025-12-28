@@ -44,8 +44,8 @@ public interface UserStorageUsageRepository extends JpaRepository<UserStorageUsa
     @Modifying
     @Query("""
             UPDATE UserStorageUsageEntity u
-            SET u.fileCount = u.fileCount + :fileCount,
-                u.totalBytes = u.totalBytes + :bytes
+            SET u.fileCount = CASE WHEN (u.fileCount + :fileCount) < 0 THEN 0 ELSE (u.fileCount + :fileCount) END,
+                u.totalBytes = CASE WHEN (u.totalBytes + :bytes) < 0 THEN 0 ELSE (u.totalBytes + :bytes) END
             WHERE u.userId = :userId
               AND u.sourceType = :sourceType
               AND u.fileType = :fileType

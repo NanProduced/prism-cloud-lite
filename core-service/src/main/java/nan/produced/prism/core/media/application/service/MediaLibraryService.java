@@ -310,12 +310,12 @@ public class MediaLibraryService {
             if (currentRef > 0 && nextRef == 0) {
                 var fileType = StorageFileTypeResolver.fromMimeType(fileEntity.getMimeType());
                 long bytes = fileEntity.getSize() != null ? fileEntity.getSize() : 0L;
-                userStorageUsageFacade.incrementUsage(
+                userStorageUsageFacade.decrementUsage(
                         userId,
                         StorageSourceType.MEDIA_LIBRARY,
                         fileType,
-                        -1,
-                        -bytes);
+                        1,
+                        bytes);
             }
         }
 

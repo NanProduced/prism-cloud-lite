@@ -39,7 +39,9 @@ public class UserStorageUsageService implements UserStorageUsageFacade {
             return;
         }
 
-        if (fileCount == 0 && bytes == 0L) {
+        int normalizedFileCount = Math.max(0, fileCount);
+        long normalizedBytes = Math.max(0L, bytes);
+        if (normalizedFileCount == 0 && normalizedBytes == 0L) {
             return;
         }
 
@@ -47,8 +49,8 @@ public class UserStorageUsageService implements UserStorageUsageFacade {
                 userId,
                 sourceType,
                 fileType,
-                fileCount,
-                bytes);
+                normalizedFileCount,
+                normalizedBytes);
 
         if (updated == 0) {
             var storageUsage = UserStorageUsageEntity.builder()
@@ -56,20 +58,20 @@ public class UserStorageUsageService implements UserStorageUsageFacade {
                     .userId(userId)
                     .sourceType(sourceType)
                     .fileType(fileType)
-                    .fileCount(fileCount)
-                    .totalBytes(bytes)
+                    .fileCount(normalizedFileCount)
+                    .totalBytes(normalizedBytes)
                     .build();
             userStorageUsageRepository.save(storageUsage);
         }
 
-        if (bytes != 0L) {
-            userQuotaUsageRepository.incrementStorageTotalBytes(userId, bytes);
+        if (normalizedBytes != 0L) {
+            userQuotaUsageRepository.incrementStorageTotalBytes(userId, normalizedBytes);
         }
 
         publishStorageQuotaUpdatedBestEffort(userId);
 
         log.debug("Storage usage incremented: userId={}, sourceType={}, fileType={}, fileCount+={}, bytes+={}",
-                userId, sourceType, fileType, fileCount, bytes);
+                userId, sourceType, fileType, normalizedFileCount, normalizedBytes);
     }
 
     @Override
@@ -138,7 +140,7 @@ public class UserStorageUsageService implements UserStorageUsageFacade {
             limit = subscriptionQuotaFacade.getQuota(tier).storageLimitBytes();
         }
 
-        long used = usage.getStorageTotalBytes() != null ? usage.getStorageTotalBytes() : 0L;
+        long used = usage.getStorageTotalBytes() != null ? Math.max(0L, usage.getStorageTotalBytes()) : 0L;
         userQuotaSignalPublisher.publishQuotaUpdated(
                 userId,
                 tier,

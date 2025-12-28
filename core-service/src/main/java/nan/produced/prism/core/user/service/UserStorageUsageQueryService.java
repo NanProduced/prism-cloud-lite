@@ -32,11 +32,10 @@ public class UserStorageUsageQueryService implements UserStorageUsageQueryFacade
                 .map(row -> new StorageUsageItem(
                         row.getFileType(),
                         row.getFileCount() != null ? row.getFileCount() : 0,
-                        row.getTotalBytes() != null ? row.getTotalBytes() : 0L))
+                        row.getTotalBytes() != null ? Math.max(0L, row.getTotalBytes()) : 0L))
                 .toList();
 
         long totalBytes = items.stream().mapToLong(StorageUsageItem::totalBytes).sum();
         return new StorageUsageSummary(totalBytes, items);
     }
 }
-

@@ -31,7 +31,14 @@ public interface UserQuotaUsageRepository extends JpaRepository<UserQuotaUsageEn
      * @return 更新的行数
      */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE UserQuotaUsageEntity u SET u.storageTotalBytes = u.storageTotalBytes + :bytes WHERE u.userId = :userId")
+    @Query("""
+            UPDATE UserQuotaUsageEntity u
+            SET u.storageTotalBytes = CASE
+                WHEN (u.storageTotalBytes + :bytes) < 0 THEN 0
+                ELSE (u.storageTotalBytes + :bytes)
+            END
+            WHERE u.userId = :userId
+            """)
     int incrementStorageTotalBytes(@Param("userId") UUID userId, @Param("bytes") long bytes);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
