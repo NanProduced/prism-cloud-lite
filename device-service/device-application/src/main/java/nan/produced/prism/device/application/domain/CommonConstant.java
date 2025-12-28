@@ -33,6 +33,8 @@ public class CommonConstant {
 
         public static final String OFFLINE_TIME = "offlineTime";
 
+        public static final String ONLINE_TIME_EVENT_TYPE = "report.onlineTime";
+
         public static final String ONLINE = "online";
 
         public static final String OFFLINE = "offline";

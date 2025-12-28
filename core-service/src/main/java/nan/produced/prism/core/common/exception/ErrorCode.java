@@ -34,6 +34,7 @@ public enum ErrorCode {
     DEVICE_SCREENSHOT_NOT_FOUND("CORE-2009", "设备截图不存在", "截图不存在或无权访问", HttpStatus.NOT_FOUND, false),
     DEVICE_LOG_NOT_FOUND("CORE-2010", "设备日志不存在", "日志不存在或无权访问", HttpStatus.NOT_FOUND, false),
     MESSAGE_NOT_FOUND("CORE-2011", "消息不存在", "消息不存在或无权访问", HttpStatus.NOT_FOUND, false),
+    DEVICE_COMMAND_LOG_NOT_FOUND("CORE-2012", "设备指令日志不存在", "日志不存在或无权访问", HttpStatus.NOT_FOUND, false),
 
     // ============ 设备标签相关 (CORE-21xx) ============
     DEVICE_TAG_NOT_FOUND("CORE-2100", "设备标签不存在", "指定的标签不存在或无权访问", HttpStatus.NOT_FOUND, false),

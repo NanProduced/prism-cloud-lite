@@ -192,7 +192,7 @@ public class DeviceOnlineStatusEventHandler {
 
         DeviceEventMessage message = DeviceEventMessage.builder()
                 .deviceId(event.getDeviceId())
-                .eventType(ONLINE_TIME)
+                .eventType(ONLINE_TIME_EVENT_TYPE)
                 .payload(payload)
                 .occurredAt(resolveOccurredAt(event))
                 .build();
