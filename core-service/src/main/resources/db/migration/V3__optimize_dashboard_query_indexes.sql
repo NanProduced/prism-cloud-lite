@@ -36,3 +36,4 @@ BEGIN
             ON pcc_device_command_log(operation_id);
     END IF;
 END $$;
+

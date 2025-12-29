@@ -7,15 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import nan.produced.prism.core.device.domain.command.action.BrightnessAction;
-import nan.produced.prism.core.device.domain.command.action.ClearCacheAction;
-import nan.produced.prism.core.device.domain.command.action.ColorTempAction;
-import nan.produced.prism.core.device.domain.command.action.ContentReportSwitchAction;
-import nan.produced.prism.core.device.domain.command.action.InputModeAction;
-import nan.produced.prism.core.device.domain.command.action.LocaleAction;
-import nan.produced.prism.core.device.domain.command.action.PowerAction;
-import nan.produced.prism.core.device.domain.command.action.TimezoneAction;
-import nan.produced.prism.core.device.domain.command.action.VolumeAction;
+import nan.produced.prism.core.device.domain.command.action.*;
 
 @Schema(
         description = "设备动作（单入口多动作）",
@@ -29,7 +21,10 @@ import nan.produced.prism.core.device.domain.command.action.VolumeAction;
                 InputModeAction.class,
                 TimezoneAction.class,
                 LocaleAction.class,
-                ContentReportSwitchAction.class
+                ContentReportSwitchAction.class,
+                ScreenshotAction.class,
+                SensorReportTimeAction.class,
+                ClearProgramAction.class
         },
         discriminatorMapping = {
                 @DiscriminatorMapping(value = "BRIGHTNESS", schema = BrightnessAction.class),
@@ -40,7 +35,10 @@ import nan.produced.prism.core.device.domain.command.action.VolumeAction;
                 @DiscriminatorMapping(value = "INPUT_MODE", schema = InputModeAction.class),
                 @DiscriminatorMapping(value = "TIMEZONE", schema = TimezoneAction.class),
                 @DiscriminatorMapping(value = "LOCALE", schema = LocaleAction.class),
-                @DiscriminatorMapping(value = "CONTENT_REPORT_SWITCH", schema = ContentReportSwitchAction.class)
+                @DiscriminatorMapping(value = "CONTENT_REPORT_SWITCH", schema = ContentReportSwitchAction.class),
+                @DiscriminatorMapping(value = "SCREENSHOT", schema = ScreenshotAction.class),
+                @DiscriminatorMapping(value = "SET_SENSOR_REPORT_TIME", schema = SensorReportTimeAction.class),
+                @DiscriminatorMapping(value = "CLEAR_DEVICE_PROGRAM", schema = ClearProgramAction.class)
         }
 )
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.EXISTING_PROPERTY, property = "type", visible = true)
@@ -53,7 +51,10 @@ import nan.produced.prism.core.device.domain.command.action.VolumeAction;
         @JsonSubTypes.Type(value = InputModeAction.class, name = "INPUT_MODE"),
         @JsonSubTypes.Type(value = TimezoneAction.class, name = "TIMEZONE"),
         @JsonSubTypes.Type(value = LocaleAction.class, name = "LOCALE"),
-        @JsonSubTypes.Type(value = ContentReportSwitchAction.class, name = "CONTENT_REPORT_SWITCH")
+        @JsonSubTypes.Type(value = ContentReportSwitchAction.class, name = "CONTENT_REPORT_SWITCH"),
+        @JsonSubTypes.Type(value = ScreenshotAction.class, name = "SCREENSHOT"),
+        @JsonSubTypes.Type(value = SensorReportTimeAction.class, name = "SET_SENSOR_REPORT_TIME"),
+        @JsonSubTypes.Type(value = ClearProgramAction.class, name = "CLEAR_DEVICE_PROGRAM")
 })
 @Data
 public abstract class DeviceActionBase {

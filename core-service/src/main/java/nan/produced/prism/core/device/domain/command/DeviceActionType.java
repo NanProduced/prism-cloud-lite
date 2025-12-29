@@ -2,6 +2,10 @@ package nan.produced.prism.core.device.domain.command;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
+import nan.produced.prism.core.device.application.service.DeviceEventApplicationService;
+
+import java.time.Instant;
+import java.util.Map;
 
 /**
  * 设备操作（指令）类型
@@ -41,7 +45,20 @@ public enum DeviceActionType {
     LOCALE("api/locale", DeviceCommandMethod.PUT, DeviceActionTrackingLevel.PROPERTY_MATCH),
 
     @Schema(description = "素材/节目统计上报开关设置（PUT api/contentreport）")
-    CONTENT_REPORT_SWITCH("api/contentreport", DeviceCommandMethod.PUT, DeviceActionTrackingLevel.PROPERTY_MATCH);
+    CONTENT_REPORT_SWITCH("api/contentreport", DeviceCommandMethod.PUT, DeviceActionTrackingLevel.PROPERTY_MATCH),
+
+    /**
+     * 根据截图上报推送SSE
+     * <p>逻辑实现在 {@link DeviceEventApplicationService#handleScreenshotUploaded(Long, Map, String, Instant)} 中。</p>
+     */
+    @Schema(description = "屏幕截图（POST api/transmission/ftp/config）")
+    SCREENSHOT("api/transmission/ftp/config", DeviceCommandMethod.POST, DeviceActionTrackingLevel.UPDATE_ONLY),
+
+    @Schema(description = "传感器上报时间设置（POST api/setreporttime）")
+    SET_SENSOR_REPORT_TIME("api/setreporttime", DeviceCommandMethod.POST, DeviceActionTrackingLevel.UPDATE_ONLY),
+
+    @Schema(description = "清除设备上的节目，即清除设备上当前已下载的节目（POST api/clrprgms）")
+    CLEAR_DEVICE_PROGRAM("api/clrprgms", DeviceCommandMethod.POST, DeviceActionTrackingLevel.UPDATE_ONLY);
 
     /**
      * 对应DeviceCommand.authorUrl
