@@ -108,4 +108,13 @@ public interface MediaAssetRepository {
      * 按 folderId 统计素材数量（group by folderId）
      */
     Map<String, Long> countAssetsByFolderIds(UUID userId, List<String> folderIds);
+
+    /**
+     * 统计某个文件在素材表中的引用数量（排除指定素材）
+     *
+     * <p>用于删除素材时判断是否可以清理底层存储对象（fileEntity + s3 object）。</p>
+     */
+    long countFileReferencesExcludingAsset(String fileId, String excludedAssetId);
+
+    // reserved for future aggregation queries
 }

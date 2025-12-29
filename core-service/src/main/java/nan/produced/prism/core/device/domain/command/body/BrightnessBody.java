@@ -15,8 +15,8 @@ public class BrightnessBody extends DeviceActionBodyBase {
 
     @NotNull
     @Min(0)
-    @Max(100)
-    @Schema(description = "亮度值（0-100）", example = "13", minimum = "0", maximum = "100")
+    @Max(255)
+    @Schema(description = "亮度值（0-255，设备原始范围；UI 建议换算为 0-100% 展示）", example = "128", minimum = "0", maximum = "255")
     private Integer brightness;
 
 }

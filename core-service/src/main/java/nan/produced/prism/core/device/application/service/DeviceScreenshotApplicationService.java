@@ -2,6 +2,7 @@ package nan.produced.prism.core.device.application.service;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ public class DeviceScreenshotApplicationService {
     private final DeviceRepository deviceRepository;
     private final DeviceScreenshotRepository deviceScreenshotRepository;
     private final UserStorageUsageFacade userStorageUsageFacade;
+    private final DeviceRefreshSignalPublisher deviceRefreshSignalPublisher;
     private final S3Client s3Client;
 
     @Value("${prism.media.s3.bucket}")
@@ -100,6 +102,8 @@ public class DeviceScreenshotApplicationService {
                 StorageFileType.IMAGE,
                 1,
                 entity.getSizeBytes() != null ? entity.getSizeBytes() : 0L);
+
+        deviceRefreshSignalPublisher.publishDeviceUpdated(userId, deviceId, Set.of("screenshot"));
     }
 
     @Transactional
@@ -131,6 +135,8 @@ public class DeviceScreenshotApplicationService {
                 screenshots.size(),
                 totalBytes);
 
+        deviceRefreshSignalPublisher.publishDeviceUpdated(userId, deviceId, Set.of("screenshot"));
+
         return screenshots.size();
     }
 
@@ -138,10 +144,14 @@ public class DeviceScreenshotApplicationService {
         if (!StringUtils.hasText(s3Key) || !StringUtils.hasText(s3Bucket)) {
             return;
         }
-        s3Client.deleteObject(DeleteObjectRequest.builder()
-                .bucket(s3Bucket)
-                .key(s3Key)
-                .build());
+        try {
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(s3Bucket)
+                    .key(s3Key)
+                    .build());
+        } catch (Exception ex) {
+            log.warn("DeviceScreenshot - delete object failed (ignored): key={}", s3Key, ex);
+        }
     }
 
     private void assertDeviceAccessible(UUID userId, Long deviceId) {

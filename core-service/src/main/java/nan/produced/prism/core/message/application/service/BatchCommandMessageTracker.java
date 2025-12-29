@@ -186,6 +186,8 @@ public class BatchCommandMessageTracker {
             payload,
             null,
             null,
+            null,
+            null,
             batchOperationId,
             null
         );

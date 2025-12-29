@@ -78,4 +78,11 @@ public interface ObjectStoragePort {
      * @return 是否存在
      */
     boolean objectExists(String key);
+
+    /**
+     * 删除对象（best-effort）
+     *
+     * @param key S3 对象 Key
+     */
+    void deleteObject(String key);
 }

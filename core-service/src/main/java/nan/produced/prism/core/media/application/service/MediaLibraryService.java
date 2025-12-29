@@ -7,11 +7,13 @@ import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.util.FileNameUtils;
 import nan.produced.prism.core.user.api.StorageFileTypeResolver;
 import nan.produced.prism.core.media.application.domain.MediaAssetEntity;
+import nan.produced.prism.core.media.application.domain.FileEntity;
 import nan.produced.prism.core.media.application.domain.MediaFolderEntity;
 import nan.produced.prism.core.media.application.dto.MediaLibraryNodesResponse;
 import nan.produced.prism.core.media.application.dto.MediaLibraryUsageResponse;
 import nan.produced.prism.core.media.application.dto.MediaNodeDto;
 import nan.produced.prism.core.media.application.dto.MoveNodesResponse;
+import nan.produced.prism.core.media.application.port.outbound.ObjectStoragePort;
 import nan.produced.prism.core.media.application.port.outbound.MediaObjectUrlPort;
 import nan.produced.prism.core.media.application.repository.FileEntityRepository;
 import nan.produced.prism.core.media.application.repository.MediaAssetRepository;
@@ -45,6 +47,7 @@ public class MediaLibraryService {
     private final UserStorageUsageQueryFacade userStorageUsageQueryFacade;
     private final SubscriptionQuotaFacade subscriptionQuotaFacade;
     private final MediaObjectUrlPort mediaObjectUrlPort;
+    private final ObjectStoragePort objectStoragePort;
 
     /**
      * 获取媒体库使用情况
@@ -64,6 +67,7 @@ public class MediaLibraryService {
         var bytesByKind = defaultBytesByKind();
         var counts = defaultCounts(folders);
 
+        // bytes/counts：按“存储对象”的真实 fileType 统计（用于空间/配额展示与对账）。
         if (usage != null && usage.items() != null) {
             for (var item : usage.items()) {
                 if (item == null || item.fileType() == null) {
@@ -288,38 +292,76 @@ public class MediaLibraryService {
     }
 
     private void deleteAsset(UUID userId, MediaAssetEntity asset) {
-        var fileIds = new LinkedHashSet<String>();
-        if (asset.getOriginalFile() != null) {
-            fileIds.add(asset.getOriginalFile().getFileId());
-        }
-        if (asset.getCoverFile() != null) {
-            fileIds.add(asset.getCoverFile().getFileId());
+        if (asset == null) {
+            return;
         }
 
-        for (var fileId : fileIds) {
+        String assetId = asset.getId();
+
+        String originalFileId = asset.getOriginalFile() != null ? asset.getOriginalFile().getFileId() : null;
+        String coverFileId = asset.getCoverFile() != null ? asset.getCoverFile().getFileId() : null;
+
+        var fileIds = new LinkedHashSet<String>();
+        if (StringUtils.hasText(originalFileId)) {
+            fileIds.add(originalFileId);
+        }
+        if (StringUtils.hasText(coverFileId)) {
+            fileIds.add(coverFileId);
+        }
+
+        // 先计算引用并修正 refCount（避免历史数据或并发导致 refCount 不可信）
+        var remainingRefs = new HashMap<String, Integer>();
+        var fileEntities = new HashMap<String, FileEntity>();
+
+        for (String fileId : fileIds) {
             var fileEntity = fileEntityRepository.findById(fileId).orElse(null);
+            if (fileEntity == null) {
+                log.warn("Media deleteAsset - file entity missing, skip cleanup: assetId={}, fileId={}", assetId, fileId);
+                continue;
+            }
+
+            long otherRefsLong = mediaAssetRepository.countFileReferencesExcludingAsset(fileId, assetId);
+            int otherRefs = otherRefsLong > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) Math.max(0L, otherRefsLong);
+            fileEntity.setRefCount(otherRefs);
+            fileEntityRepository.save(fileEntity);
+
+            remainingRefs.put(fileId, otherRefs);
+            fileEntities.put(fileId, fileEntity);
+        }
+
+        // 先删素材本身，避免删除 FileEntity 时触发外键约束
+        mediaAssetRepository.delete(asset);
+
+        // 再清理底层文件（当该文件不再被任何素材引用时）
+        for (String fileId : fileIds) {
+            Integer refs = remainingRefs.get(fileId);
+            if (refs == null || refs > 0) {
+                continue;
+            }
+
+            var fileEntity = fileEntities.get(fileId);
             if (fileEntity == null) {
                 continue;
             }
 
-            int currentRef = fileEntity.getRefCount() != null ? fileEntity.getRefCount() : 0;
-            int nextRef = Math.max(0, currentRef - 1);
-            fileEntity.setRefCount(nextRef);
-            fileEntityRepository.save(fileEntity);
-
-            if (currentRef > 0 && nextRef == 0) {
-                var fileType = StorageFileTypeResolver.fromMimeType(fileEntity.getMimeType());
-                long bytes = fileEntity.getSize() != null ? fileEntity.getSize() : 0L;
-                userStorageUsageFacade.decrementUsage(
-                        userId,
-                        StorageSourceType.MEDIA_LIBRARY,
-                        fileType,
-                        1,
-                        bytes);
+            StorageFileType fileType;
+            if (StringUtils.hasText(coverFileId) && coverFileId.equals(fileId)) {
+                fileType = StorageFileType.COVER;
+            } else {
+                fileType = StorageFileTypeResolver.fromMimeType(fileEntity.getMimeType());
             }
-        }
 
-        mediaAssetRepository.delete(asset);
+            long bytes = fileEntity.getSize() != null ? fileEntity.getSize() : 0L;
+            userStorageUsageFacade.decrementUsage(
+                    userId,
+                    StorageSourceType.MEDIA_LIBRARY,
+                    fileType,
+                    1,
+                    bytes);
+
+            objectStoragePort.deleteObject(fileEntity.getS3Key());
+            fileEntityRepository.deleteById(fileId);
+        }
     }
 
     private void moveFolder(
@@ -461,6 +503,7 @@ public class MediaLibraryService {
         }
         return switch (fileType) {
             case IMAGE -> "image";
+            case COVER -> "cover";
             case VIDEO -> "video";
             case DOCUMENT -> "document";
             case AUDIO, VSN, OTHER -> "other";
@@ -571,6 +614,7 @@ public class MediaLibraryService {
     private Map<String, Long> defaultBytesByKind() {
         var map = new LinkedHashMap<String, Long>();
         map.put("image", 0L);
+        map.put("cover", 0L);
         map.put("video", 0L);
         map.put("document", 0L);
         map.put("other", 0L);
@@ -580,6 +624,7 @@ public class MediaLibraryService {
     private Map<String, Long> defaultCounts(long folders) {
         var map = new LinkedHashMap<String, Long>();
         map.put("image", 0L);
+        map.put("cover", 0L);
         map.put("video", 0L);
         map.put("document", 0L);
         map.put("other", 0L);

@@ -16,6 +16,7 @@ public interface MessageCenterFacade {
     record DeviceCommandFinishedMessage(
         UUID userId,
         Long deviceId,
+        String deviceName,
         String operationId,
         String actionType,
         String trackingLevel,

@@ -12,6 +12,7 @@ import nan.produced.prism.core.device.domain.command.DeviceActionTrackingLevel;
 import nan.produced.prism.core.device.domain.command.DeviceActionType;
 import nan.produced.prism.core.device.domain.command.DeviceCommandLog;
 import nan.produced.prism.core.device.domain.command.DeviceCommandStatus;
+import nan.produced.prism.core.device.infrastructure.persistence.DeviceRepositoryJpa;
 import nan.produced.prism.core.message.api.MessageCenterFacade;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -33,6 +34,8 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
     private final RabbitMessagePublisher rabbitMessagePublisher;
 
     private final MessageCenterFacade messageCenterFacade;
+
+    private final DeviceRepositoryJpa deviceRepositoryJpa;
 
     private static final String COMMAND_LISTENER_KEY = "command:listener:%d:%s";
 
@@ -224,10 +227,20 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
         }
 
         String actionType = commandLog.getActionType() != null ? commandLog.getActionType().name() : "UNKNOWN";
+        String deviceNameSnapshot = null;
+        try {
+            var device = deviceRepositoryJpa.findByDeviceIdAndUserId(commandLog.getDeviceId(), commandLog.getUserId());
+            if (device != null) {
+                deviceNameSnapshot = device.getDeviceName();
+            }
+        } catch (Exception ignore) {
+            deviceNameSnapshot = null;
+        }
 
         messageCenterFacade.publishDeviceCommandFinished(new MessageCenterFacade.DeviceCommandFinishedMessage(
             commandLog.getUserId(),
             commandLog.getDeviceId(),
+            deviceNameSnapshot,
             commandLog.getOperationId().toString(),
             actionType,
             commandLog.getTrackingLevel() != null ? commandLog.getTrackingLevel().name() : null,

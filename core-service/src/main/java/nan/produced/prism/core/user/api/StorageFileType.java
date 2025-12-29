@@ -4,6 +4,11 @@ public enum StorageFileType {
 
     IMAGE,
 
+    /**
+     * 素材封面（Media Library coverFile）。
+     */
+    COVER,
+
     VIDEO,
 
     AUDIO,

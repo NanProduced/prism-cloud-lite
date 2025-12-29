@@ -185,4 +185,12 @@ public class MediaAssetRepositoryAdapter implements MediaAssetRepository {
         }
         return counts;
     }
+
+    @Override
+    public long countFileReferencesExcludingAsset(String fileId, String excludedAssetId) {
+        if (!StringUtils.hasText(fileId) || !StringUtils.hasText(excludedAssetId)) {
+            return 0L;
+        }
+        return mediaAssetRepositoryJpa.countFileReferencesExcludingAsset(fileId.trim(), excludedAssetId.trim());
+    }
 }

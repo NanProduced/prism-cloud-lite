@@ -63,6 +63,13 @@ public interface FileEntityRepository {
     List<FileEntity> saveAll(List<FileEntity> fileEntities);
 
     /**
+     * 删除文件实体
+     *
+     * @param fileId 文件ID
+     */
+    void deleteById(String fileId);
+
+    /**
      * 增加引用计数
      *
      * @param fileId 文件ID

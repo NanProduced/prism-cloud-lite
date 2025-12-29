@@ -103,4 +103,14 @@ public interface MediaAssetRepositoryJpa extends JpaRepository<MediaAssetEntity,
 
         Long getCount();
     }
+
+    @Query("""
+            SELECT COUNT(a)
+            FROM MediaAssetEntity a
+            WHERE (a.originalFile.fileId = :fileId OR a.coverFile.fileId = :fileId)
+              AND a.id <> :excludedAssetId
+            """)
+    long countFileReferencesExcludingAsset(
+            @Param("fileId") String fileId,
+            @Param("excludedAssetId") String excludedAssetId);
 }

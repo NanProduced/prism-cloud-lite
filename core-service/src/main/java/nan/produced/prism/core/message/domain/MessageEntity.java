@@ -54,8 +54,14 @@ public class MessageEntity {
     @Column(name = "device_id")
     private Long deviceId;
 
+    @Column(name = "device_name_snapshot", length = 256)
+    private String deviceNameSnapshot;
+
     @Column(name = "program_id")
     private UUID programId;
+
+    @Column(name = "program_name_snapshot", length = 256)
+    private String programNameSnapshot;
 
     @Column(name = "operation_id", length = 128)
     private String operationId;

@@ -46,8 +46,8 @@ public class MediaLibraryController {
             返回当前用户在素材库（Media Library）下的配额（quota）与使用量（usage）统计。
 
             - `quotaBytes` 来自订阅套餐；`usedBytes` 为当前已占用；
-            - `bytesByKind` 统计 image/video/document/other 的字节数；
-            - `counts` 统计各类型文件数量与 folders 数量。
+            - `bytesByKind` 统计 image/cover/video/document/other 的字节数；
+            - `counts` 统计各类型文件数量与 folders 数量（用于对账）。
             """)
     @ApiResponse(
         responseCode = "200",

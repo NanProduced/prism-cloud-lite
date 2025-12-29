@@ -147,6 +147,24 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort {
             return true;
         } catch (NoSuchKeyException e) {
             return false;
+        } catch (Exception ex) {
+            log.warn("S3 headObject failed, treat as non-exist: key={}", key, ex);
+            return false;
+        }
+    }
+
+    @Override
+    public void deleteObject(String key) {
+        if (!StringUtils.hasText(key)) {
+            return;
+        }
+        try {
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(s3Properties.getBucket())
+                    .key(key)
+                    .build());
+        } catch (Exception ex) {
+            log.warn("S3 deleteObject failed (ignored): key={}", key, ex);
         }
     }
 

@@ -4,16 +4,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.exception.InfraException;
 import nan.produced.prism.core.common.util.JsonUtils;
-import nan.produced.prism.core.device.domain.DeviceEntity;
-import nan.produced.prism.core.device.infrastructure.persistence.DeviceRepositoryJpa;
 import nan.produced.prism.core.message.api.dto.MessageDetailResp;
 import nan.produced.prism.core.message.api.dto.MessageListItemResp;
 import nan.produced.prism.core.message.api.dto.MessagePageResp;
@@ -22,8 +21,6 @@ import nan.produced.prism.core.message.domain.MessageKind;
 import nan.produced.prism.core.message.domain.MessageStatus;
 import nan.produced.prism.core.message.infrastructure.config.MessageCenterProperties;
 import nan.produced.prism.core.message.infrastructure.persistence.MessageRepositoryJpa;
-import nan.produced.prism.core.program.domain.ProgramEntity;
-import nan.produced.prism.core.program.infrastructure.persistence.ProgramRepositoryJpa;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
@@ -34,13 +31,8 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class MessageCenterApplicationService {
 
-    private static final int MAX_DEVICE_MATCHES = 200;
-    private static final int MAX_PROGRAM_MATCHES = 200;
-
     private final MessageRepositoryJpa messageRepositoryJpa;
     private final MessageCenterProperties messageCenterProperties;
-    private final DeviceRepositoryJpa deviceRepositoryJpa;
-    private final ProgramRepositoryJpa programRepositoryJpa;
 
     public List<MessageListItemResp> listRecent(UUID userId, MessageKind kind, Integer limit) {
         if (userId == null) {
@@ -68,10 +60,8 @@ public class MessageCenterApplicationService {
 
         var pageable = PageRequest.of(0, safeLimit, Sort.by(Sort.Direction.DESC, "createdAt"));
         List<MessageEntity> content = messageRepositoryJpa.findAll(spec, pageable).getContent();
-        Map<Long, String> deviceNameById = loadDeviceNameById(userId, content);
-        Map<UUID, String> programNameById = loadProgramNameById(userId, content);
         return content.stream()
-            .map(entity -> toListItem(entity, deviceNameById.get(entity.getDeviceId()), programNameById.get(entity.getProgramId())))
+            .map(entity -> toListItem(entity, entity.getDeviceNameSnapshot(), entity.getProgramNameSnapshot()))
             .toList();
     }
 
@@ -127,15 +117,6 @@ public class MessageCenterApplicationService {
 
         String normalizedRead = normalizeReadFilter(read);
 
-        List<Long> deviceIds = resolveDeviceIdsByName(userId, deviceName);
-        if (deviceIds != null && deviceIds.isEmpty()) {
-            return new MessagePageResp(List.of(), safePage, safeSize, 0);
-        }
-        List<UUID> programIds = resolveProgramIdsByName(userId, programName);
-        if (programIds != null && programIds.isEmpty()) {
-            return new MessagePageResp(List.of(), safePage, safeSize, 0);
-        }
-
         Specification<MessageEntity> spec = buildSpec(
             userId,
             kind,
@@ -145,19 +126,17 @@ public class MessageCenterApplicationService {
             safeFrom,
             safeTo,
             deviceId,
-            deviceIds,
             programId,
-            programIds,
+            deviceName,
+            programName,
             operationId,
             taskId);
 
         var pageable = PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"));
         var result = messageRepositoryJpa.findAll(spec, pageable);
 
-        Map<Long, String> deviceNameById = loadDeviceNameById(userId, result.getContent());
-        Map<UUID, String> programNameById = loadProgramNameById(userId, result.getContent());
         List<MessageListItemResp> items = result.getContent().stream()
-            .map(entity -> toListItem(entity, deviceNameById.get(entity.getDeviceId()), programNameById.get(entity.getProgramId())))
+            .map(entity -> toListItem(entity, entity.getDeviceNameSnapshot(), entity.getProgramNameSnapshot()))
             .toList();
 
         return new MessagePageResp(items, safePage, safeSize, result.getTotalElements());
@@ -179,21 +158,8 @@ public class MessageCenterApplicationService {
             payload = JsonUtils.fromJson(entity.getPayload());
         }
 
-        String deviceName = null;
-        if (entity.getDeviceId() != null) {
-            DeviceEntity device = deviceRepositoryJpa.findByDeviceIdAndUserId(entity.getDeviceId(), userId);
-            if (device != null) {
-                deviceName = device.getDeviceName();
-            }
-        }
-
-        String programName = null;
-        if (entity.getProgramId() != null) {
-            ProgramEntity program = programRepositoryJpa.findByIdAndUserId(entity.getProgramId(), userId).orElse(null);
-            if (program != null) {
-                programName = program.getName();
-            }
-        }
+        String deviceName = entity.getDeviceNameSnapshot();
+        String programName = entity.getProgramNameSnapshot();
 
         return new MessageDetailResp(
             entity.getId(),
@@ -252,9 +218,9 @@ public class MessageCenterApplicationService {
                                                    OffsetDateTime from,
                                                    OffsetDateTime to,
                                                    Long deviceId,
-                                                   List<Long> deviceIds,
                                                    UUID programId,
-                                                   List<UUID> programIds,
+                                                   String deviceName,
+                                                   String programName,
                                                    String operationId,
                                                    String taskId) {
         return (root, query, cb) -> {
@@ -284,15 +250,18 @@ public class MessageCenterApplicationService {
                 predicates.add(cb.isNotNull(root.get("readAt")));
             }
 
-            if (deviceIds != null && !deviceIds.isEmpty()) {
-                predicates.add(root.get("deviceId").in(deviceIds));
-            } else if (deviceId != null) {
+            if (deviceId != null) {
                 predicates.add(cb.equal(root.get("deviceId"), deviceId));
+            } else if (StringUtils.hasText(deviceName)) {
+                String keyword = deviceName.trim().toLowerCase(Locale.ROOT);
+                predicates.add(cb.like(cb.lower(root.get("deviceNameSnapshot")), "%" + keyword + "%"));
             }
-            if (programIds != null && !programIds.isEmpty()) {
-                predicates.add(root.get("programId").in(programIds));
-            } else if (programId != null) {
+
+            if (programId != null) {
                 predicates.add(cb.equal(root.get("programId"), programId));
+            } else if (StringUtils.hasText(programName)) {
+                String keyword = programName.trim().toLowerCase(Locale.ROOT);
+                predicates.add(cb.like(cb.lower(root.get("programNameSnapshot")), "%" + keyword + "%"));
             }
             if (StringUtils.hasText(operationId)) {
                 predicates.add(cb.equal(root.get("operationId"), operationId.trim()));
@@ -322,63 +291,5 @@ public class MessageCenterApplicationService {
             .createdAt(entity.getCreatedAt())
             .readAt(entity.getReadAt())
             .build();
-    }
-
-    private List<Long> resolveDeviceIdsByName(UUID userId, String deviceName) {
-        if (!StringUtils.hasText(deviceName)) {
-            return null;
-        }
-        String keyword = deviceName.trim();
-        var pageable = PageRequest.of(0, MAX_DEVICE_MATCHES + 1, Sort.by(Sort.Direction.DESC, "createTime"));
-        List<DeviceEntity> devices = deviceRepositoryJpa.findByUserIdAndDeviceNameLike(userId, keyword, pageable);
-        if (devices.size() > MAX_DEVICE_MATCHES) {
-            throw new InfraException(ErrorCode.INVALID_REQUEST, "too many devices matched by deviceName, please refine");
-        }
-        return devices.stream().map(DeviceEntity::getDeviceId).toList();
-    }
-
-    private List<UUID> resolveProgramIdsByName(UUID userId, String programName) {
-        if (!StringUtils.hasText(programName)) {
-            return null;
-        }
-        String keyword = programName.trim();
-        var pageable = PageRequest.of(0, MAX_PROGRAM_MATCHES + 1, Sort.by(Sort.Direction.DESC, "updatedAt"));
-        List<ProgramEntity> programs = programRepositoryJpa.findByUserIdAndNameLike(userId, keyword, pageable);
-        if (programs.size() > MAX_PROGRAM_MATCHES) {
-            throw new InfraException(ErrorCode.INVALID_REQUEST, "too many programs matched by programName, please refine");
-        }
-        return programs.stream().map(ProgramEntity::getId).toList();
-    }
-
-    private Map<Long, String> loadDeviceNameById(UUID userId, Collection<MessageEntity> messages) {
-        if (messages == null || messages.isEmpty()) {
-            return Map.of();
-        }
-        List<Long> deviceIds = messages.stream()
-            .map(MessageEntity::getDeviceId)
-            .filter(java.util.Objects::nonNull)
-            .distinct()
-            .toList();
-        if (deviceIds.isEmpty()) {
-            return Map.of();
-        }
-        return deviceRepositoryJpa.findByUserIdAndDeviceIdIn(userId, deviceIds).stream()
-            .collect(java.util.stream.Collectors.toMap(DeviceEntity::getDeviceId, DeviceEntity::getDeviceName));
-    }
-
-    private Map<UUID, String> loadProgramNameById(UUID userId, Collection<MessageEntity> messages) {
-        if (messages == null || messages.isEmpty()) {
-            return Map.of();
-        }
-        List<UUID> programIds = messages.stream()
-            .map(MessageEntity::getProgramId)
-            .filter(java.util.Objects::nonNull)
-            .distinct()
-            .toList();
-        if (programIds.isEmpty()) {
-            return Map.of();
-        }
-        return programRepositoryJpa.findByUserIdAndIdIn(userId, programIds).stream()
-            .collect(java.util.stream.Collectors.toMap(ProgramEntity::getId, ProgramEntity::getName));
     }
 }

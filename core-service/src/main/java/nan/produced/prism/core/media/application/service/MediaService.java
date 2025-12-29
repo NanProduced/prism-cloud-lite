@@ -181,7 +181,15 @@ public class MediaService {
                 hasInstantUpload = true;
             } else {
                 // 新上传的文件需要统计存储
-                var fileType = StorageFileTypeResolver.fromMimeType(fileItem.getType());
+                StorageFileType fileType;
+                if (fileItem.isCover()) {
+                    if (!isImageMimeType(fileItem.getType())) {
+                        throw new BizException(ErrorCode.INVALID_REQUEST, "cover file must be image/*");
+                    }
+                    fileType = StorageFileType.COVER;
+                } else {
+                    fileType = StorageFileTypeResolver.fromMimeType(fileItem.getType());
+                }
                 storageIncrements.merge(fileType,
                         new StorageIncrement(1, fileItem.getSize()),
                         StorageIncrement::add);
@@ -304,6 +312,13 @@ public class MediaService {
             return null;
         }
         return trimmed.toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isImageMimeType(String mimeType) {
+        if (!StringUtils.hasText(mimeType)) {
+            return false;
+        }
+        return mimeType.toLowerCase(Locale.ROOT).startsWith("image/");
     }
 
     /**

@@ -22,9 +22,9 @@ public class MediaLibraryUsageResponse {
     @Schema(description = "已使用（字节）")
     private long usedBytes;
 
-    @Schema(description = "按素材类型统计的字节数（key=image|video|document|other）")
+    @Schema(description = "按文件类型统计的字节数（key=image|cover|video|document|other）")
     private Map<String, Long> bytesByKind;
 
-    @Schema(description = "计数统计（key=image|video|document|other|folders）")
+    @Schema(description = "计数统计（key=image|cover|video|document|other|folders；为文件数量口径，用于对账）")
     private Map<String, Long> counts;
 }

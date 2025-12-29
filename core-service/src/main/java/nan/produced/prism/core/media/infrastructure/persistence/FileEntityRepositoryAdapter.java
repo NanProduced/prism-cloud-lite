@@ -92,6 +92,14 @@ public class FileEntityRepositoryAdapter implements FileEntityRepository {
     }
 
     @Override
+    public void deleteById(String fileId) {
+        if (fileId == null || fileId.isBlank()) {
+            return;
+        }
+        fileEntityRepositoryJpa.deleteById(fileId);
+    }
+
+    @Override
     @Transactional
     public int incrementRefCount(String fileId, int delta) {
         if (fileId == null || fileId.isBlank()) {

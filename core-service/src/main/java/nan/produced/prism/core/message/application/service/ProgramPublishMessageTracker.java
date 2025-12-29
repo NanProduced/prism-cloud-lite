@@ -184,7 +184,9 @@ public class ProgramPublishMessageTracker {
             summary,
             payload,
             null,
+            null,
             parseUuid(asString(meta.get(FIELD_PROGRAM_ID))),
+            programName,
             publishOperationId,
             null
         );
@@ -233,7 +235,9 @@ public class ProgramPublishMessageTracker {
             summary,
             payload,
             null,
+            null,
             parseUuid(asString(meta.get(FIELD_PROGRAM_ID))),
+            programName,
             publishOperationId,
             null
         );
@@ -303,4 +307,3 @@ public class ProgramPublishMessageTracker {
         }
     }
 }
-

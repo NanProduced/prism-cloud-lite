@@ -40,6 +40,8 @@ public class MessageCenterFacadeImpl implements MessageCenterFacade {
             null,
             null,
             null,
+            null,
+            null,
             taskId
         ).getId();
     }
@@ -134,6 +136,8 @@ public class MessageCenterFacadeImpl implements MessageCenterFacade {
             summary,
             payload,
             message.deviceId(),
+            StringUtils.hasText(message.deviceName()) ? message.deviceName().trim() : null,
+            null,
             null,
             message.operationId(),
             null

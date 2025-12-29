@@ -38,7 +38,9 @@ public class MessageWriteApplicationService {
                                          String summary,
                                          Object payload,
                                          Long deviceId,
+                                         String deviceNameSnapshot,
                                          UUID programId,
+                                         String programNameSnapshot,
                                          String operationId,
                                          String taskId) {
         if (userId == null) {
@@ -68,7 +70,9 @@ public class MessageWriteApplicationService {
             .summary(StringUtils.hasText(summary) ? summary.trim() : null)
             .payload(serializePayload(payload))
             .deviceId(deviceId)
+            .deviceNameSnapshot(normalizeSnapshot(deviceNameSnapshot))
             .programId(programId)
+            .programNameSnapshot(normalizeSnapshot(programNameSnapshot))
             .operationId(StringUtils.hasText(operationId) ? operationId.trim() : null)
             .taskId(StringUtils.hasText(taskId) ? taskId.trim() : null)
             .createdAt(now)
@@ -136,6 +140,17 @@ public class MessageWriteApplicationService {
         return json;
     }
 
+    private String normalizeSnapshot(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return trimmed.length() > 256 ? trimmed.substring(0, 256) : trimmed;
+    }
+
     private void publishMessageCreated(MessageEntity entity) {
         if (entity == null || entity.getUserId() == null) {
             return;
@@ -149,7 +164,9 @@ public class MessageWriteApplicationService {
             .title(entity.getTitle())
             .summary(entity.getSummary())
             .deviceId(entity.getDeviceId())
+            .deviceName(entity.getDeviceNameSnapshot())
             .programId(entity.getProgramId())
+            .programName(entity.getProgramNameSnapshot())
             .operationId(entity.getOperationId())
             .taskId(entity.getTaskId())
             .createdAt(entity.getCreatedAt())
@@ -184,7 +201,9 @@ public class MessageWriteApplicationService {
             .title(entity.getTitle())
             .summary(entity.getSummary())
             .deviceId(entity.getDeviceId())
+            .deviceName(entity.getDeviceNameSnapshot())
             .programId(entity.getProgramId())
+            .programName(entity.getProgramNameSnapshot())
             .operationId(entity.getOperationId())
             .taskId(entity.getTaskId())
             .createdAt(entity.getCreatedAt())
