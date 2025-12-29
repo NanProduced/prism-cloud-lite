@@ -187,6 +187,50 @@ public class MediaAssetRepositoryAdapter implements MediaAssetRepository {
     }
 
     @Override
+    public List<String> listAssetIdsForEditor(
+            UUID userId,
+            String keyword,
+            boolean includeImage,
+            boolean includeVideo,
+            boolean includeDocument,
+            boolean includeOther,
+            int limit,
+            int offset) {
+
+        if (userId == null) {
+            return Collections.emptyList();
+        }
+
+        int safeLimit = Math.max(0, Math.min(limit, 500));
+        int safeOffset = Math.max(0, offset);
+        if (safeLimit == 0) {
+            return Collections.emptyList();
+        }
+
+        return mediaAssetRepositoryJpa.listAssetIdsForEditor(
+                userId,
+                StringUtils.hasText(keyword) ? keyword.trim() : null,
+                includeImage,
+                includeVideo,
+                includeDocument,
+                includeOther,
+                safeLimit,
+                safeOffset);
+    }
+
+    @Override
+    public List<MediaAssetEntity> findWithFilesByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyList();
+        }
+        var validIds = ids.stream().filter(StringUtils::hasText).distinct().toList();
+        if (validIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return mediaAssetRepositoryJpa.findWithFilesByIds(validIds);
+    }
+
+    @Override
     public long countFileReferencesExcludingAsset(String fileId, String excludedAssetId) {
         if (!StringUtils.hasText(fileId) || !StringUtils.hasText(excludedAssetId)) {
             return 0L;

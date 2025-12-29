@@ -98,11 +98,56 @@ public interface MediaAssetRepositoryJpa extends JpaRepository<MediaAssetEntity,
             @Param("folderIds") List<String> folderIds,
             @Param("userId") UUID userId);
 
+    @Query(value = """
+            SELECT a.id
+            FROM pcc_media_asset a
+            JOIN pcc_file_entity f ON a.original_file_id = f.file_id
+            WHERE a.user_id = :userId
+              AND (:keyword IS NULL OR :keyword = '' OR LOWER(a.title) LIKE CONCAT('%', LOWER(:keyword), '%'))
+              AND (
+                   (:includeImage = true AND LOWER(f.mime_type) LIKE 'image/%')
+                OR (:includeVideo = true AND LOWER(f.mime_type) LIKE 'video/%')
+                OR (:includeDocument = true AND (
+                       LOWER(f.mime_type) LIKE 'application/pdf%'
+                    OR LOWER(f.mime_type) LIKE 'application/msword%'
+                    OR LOWER(f.mime_type) LIKE 'application/vnd.%'
+                ))
+                OR (:includeOther = true AND NOT (
+                       LOWER(f.mime_type) LIKE 'image/%'
+                    OR LOWER(f.mime_type) LIKE 'video/%'
+                    OR LOWER(f.mime_type) LIKE 'application/pdf%'
+                    OR LOWER(f.mime_type) LIKE 'application/msword%'
+                    OR LOWER(f.mime_type) LIKE 'application/vnd.%'
+                ))
+              )
+            ORDER BY a.updated_at DESC, a.id DESC
+            LIMIT :limit OFFSET :offset
+            """, nativeQuery = true)
+    List<String> listAssetIdsForEditor(
+            @Param("userId") UUID userId,
+            @Param("keyword") String keyword,
+            @Param("includeImage") boolean includeImage,
+            @Param("includeVideo") boolean includeVideo,
+            @Param("includeDocument") boolean includeDocument,
+            @Param("includeOther") boolean includeOther,
+            @Param("limit") int limit,
+            @Param("offset") int offset);
+
     interface FolderAssetCountRow {
         String getFolderId();
 
         Long getCount();
     }
+
+    @Query("""
+            SELECT a
+            FROM MediaAssetEntity a
+            JOIN FETCH a.originalFile
+            LEFT JOIN FETCH a.coverFile
+            WHERE a.id IN :ids
+            ORDER BY a.updatedAt DESC, a.id DESC
+            """)
+    List<MediaAssetEntity> findWithFilesByIds(@Param("ids") List<String> ids);
 
     @Query("""
             SELECT COUNT(a)

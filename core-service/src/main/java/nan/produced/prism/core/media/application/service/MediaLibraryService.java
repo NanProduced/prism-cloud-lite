@@ -131,6 +131,66 @@ public class MediaLibraryService {
                 .build();
     }
 
+    /**
+     * 编辑器使用：扁平化素材列表（跨文件夹）
+     *
+     * <p>相比 /nodes：不返回 folder 节点，且支持按素材类型筛选。</p>
+     */
+    @Transactional(readOnly = true)
+    public MediaLibraryNodesResponse listAssetsForEditor(
+            UUID userId,
+            String q,
+            String assetKinds,
+            Integer limit,
+            String cursor) {
+
+        if (userId == null) {
+            return MediaLibraryNodesResponse.builder().items(Collections.emptyList()).nextCursor(null).build();
+        }
+
+        int safeLimit = (limit == null || limit <= 0) ? 50 : Math.min(limit, 500);
+        int offset = parseCursor(cursor);
+        if (offset < 0) {
+            offset = 0;
+        }
+
+        var kindSet = parseAssetKinds(assetKinds);
+        boolean noKindFilter = kindSet.isEmpty();
+
+        boolean includeImage = noKindFilter || kindSet.contains("image");
+        boolean includeVideo = noKindFilter || kindSet.contains("video");
+        boolean includeDocument = noKindFilter || kindSet.contains("document");
+        boolean includeOther = noKindFilter || kindSet.contains("other");
+
+        // 使用 limit+1 判断是否还有下一页，避免额外 count 查询
+        int queryLimit = Math.min(501, safeLimit + 1);
+        var ids = mediaAssetRepository.listAssetIdsForEditor(
+                userId,
+                StringUtils.hasText(q) ? q.trim() : null,
+                includeImage,
+                includeVideo,
+                includeDocument,
+                includeOther,
+                queryLimit,
+                offset);
+
+        if (ids == null || ids.isEmpty()) {
+            return MediaLibraryNodesResponse.builder().items(Collections.emptyList()).nextCursor(null).build();
+        }
+
+        boolean hasMore = ids.size() > safeLimit;
+        var pageIds = hasMore ? ids.subList(0, safeLimit) : ids;
+
+        var assets = mediaAssetRepository.findWithFilesByIds(pageIds);
+        var items = assets.stream().map(this::toAssetNode).toList();
+
+        String nextCursor = hasMore ? String.valueOf(offset + safeLimit) : null;
+        return MediaLibraryNodesResponse.builder()
+                .items(items)
+                .nextCursor(nextCursor)
+                .build();
+    }
+
     public List<MediaNodeDto> listAllFolders(UUID userId) {
         if (userId == null) {
             return Collections.emptyList();
@@ -495,6 +555,31 @@ public class MediaLibraryService {
             return "document";
         }
         return "other";
+    }
+
+    private Set<String> parseAssetKinds(String assetKinds) {
+        if (!StringUtils.hasText(assetKinds)) {
+            return Collections.emptySet();
+        }
+        var raw = assetKinds.trim().toLowerCase(Locale.ROOT);
+        if (raw.isEmpty()) {
+            return Collections.emptySet();
+        }
+
+        var set = new HashSet<String>();
+        for (String part : raw.split("[,\\s]+")) {
+            if (!StringUtils.hasText(part)) {
+                continue;
+            }
+            String normalized = part.trim();
+            if (normalized.equals("image")
+                    || normalized.equals("video")
+                    || normalized.equals("document")
+                    || normalized.equals("other")) {
+                set.add(normalized);
+            }
+        }
+        return set;
     }
 
     private String toAssetKind(StorageFileType fileType) {

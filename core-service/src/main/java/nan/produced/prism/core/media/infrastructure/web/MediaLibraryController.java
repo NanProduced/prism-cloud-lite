@@ -101,6 +101,42 @@ public class MediaLibraryController {
     }
 
     /**
+     * 编辑器使用：扁平化素材列表（跨文件夹）
+     */
+    @GetMapping("/assets")
+    @Operation(
+        summary = "扁平化素材列表（用于节目编辑器快速插入）",
+        description = """
+            用于节目编辑器的“快速查找并插入素材”场景：返回扁平化的素材列表（不包含 folder 节点），支持跨文件夹搜索与按素材类型筛选。
+
+            - `q` 为名称模糊匹配（匹配素材 title）；
+            - `assetKinds` 为筛选素材类型：`image,video,document,other`（逗号或空格分隔；不传表示全部）；
+            - `limit` 最大 500；默认 50；
+            - `cursor` 为 offset 字符串：使用上一次响应的 `nextCursor` 继续翻页；非法 cursor 会被视为 0。
+            """)
+    @ApiResponse(
+        responseCode = "200",
+        description = "成功返回素材列表（含 nextCursor）",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = MediaLibraryNodesResponse.class)))
+    @ApiResponse(responseCode = "400", description = "请求参数不合法")
+    @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
+    public ResponseEntity<BffResponse<MediaLibraryNodesResponse>> listAssetsForEditor(
+            @Parameter(description = "名称搜索关键字（可选）")
+            @RequestParam(value = "q", required = false) String q,
+            @Parameter(description = "素材类型筛选：image,video,document,other（逗号/空格分隔；不传表示全部）")
+            @RequestParam(value = "assetKinds", required = false) String assetKinds,
+            @Parameter(description = "每页数量（最大 500，默认 50）")
+            @RequestParam(value = "limit", required = false) Integer limit,
+            @Parameter(description = "游标（offset 字符串），使用上一次响应的 nextCursor 继续分页")
+            @RequestParam(value = "cursor", required = false) String cursor) {
+
+        var user = CloudAuthContext.getCurrentUser();
+        UUID userId = UUID.fromString(user.userUuid());
+        var response = mediaLibraryService.listAssetsForEditor(userId, q, assetKinds, limit, cursor);
+        return ResponseEntity.ok(BffResponse.success(response).withTraceId(TraceUtils.getTraceId()));
+    }
+
+    /**
      * 获取全部文件夹（用于上传目的地 Tree）
      */
     @GetMapping("/folders")
@@ -206,7 +242,7 @@ public class MediaLibraryController {
         description = """
             删除指定节点：
             - 若为文件夹：仅允许删除空文件夹（非空会返回 400）；
-            - 若为素材：删除素材记录，并减少引用文件的 refCount；当 refCount 变为 0 时会同步扣减存储统计。
+            - 若为素材：删除素材记录，并减少引用文件的 refCount；当 refCount 变为 0 时会同步扣减存储统计并清理底层物理文件（对象存储 + file_entity）。
             """)
     @ApiResponse(responseCode = "200", description = "成功删除")
     @ApiResponse(responseCode = "400", description = "文件夹非空或请求参数不合法")

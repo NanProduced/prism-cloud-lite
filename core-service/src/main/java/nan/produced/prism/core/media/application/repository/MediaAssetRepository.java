@@ -110,6 +110,26 @@ public interface MediaAssetRepository {
     Map<String, Long> countAssetsByFolderIds(UUID userId, List<String> folderIds);
 
     /**
+     * 编辑器使用：按关键字/类型筛选，返回素材 ID（扁平化、跨文件夹），支持 offset 分页。
+     */
+    List<String> listAssetIdsForEditor(
+            UUID userId,
+            String keyword,
+            boolean includeImage,
+            boolean includeVideo,
+            boolean includeDocument,
+            boolean includeOther,
+            int limit,
+            int offset);
+
+    /**
+     * 按 ID 批量查询素材（联表加载 original/cover 文件信息）。
+     *
+     * <p>用于在先分页取 ID 后再批量加载详情，避免 N+1。</p>
+     */
+    List<MediaAssetEntity> findWithFilesByIds(List<String> ids);
+
+    /**
      * 统计某个文件在素材表中的引用数量（排除指定素材）
      *
      * <p>用于删除素材时判断是否可以清理底层存储对象（fileEntity + s3 object）。</p>
