@@ -146,34 +146,34 @@ public final class MessagingConstants {
         /**
          *  设备数据上报 - 素材播放记录
          */
-        public static final String REPORT_MEDIA_PLAY_RECORD = "report.mediaPlayRecord";
+        public static final String REPORT_MEDIA_PLAY_RECORD = "report.mediaplayrecord";
 
         /**
          * 设备数据上报 - 节目播放记录
          */
-        public static final String REPORT_PROGRAM_PLAY_RECORD = "report.programPlayRecord";
+        public static final String REPORT_PROGRAM_PLAY_RECORD = "report.programplayrecord";
 
         /**
          * 设备数据上报 - 设备日志
          */
-        public static final String REPORT_DEVICE_LOG = "report.deviceLog";
+        public static final String REPORT_DEVICE_LOG = "report.devicelog";
 
         /**
          * 设备数据上报 - 传感器数据
          */
-        public static final String REPORT_SENSOR_DATA = "report.sensorData";
+        public static final String REPORT_SENSOR_DATA = "report.sensordata";
 
         /**
          * 设备数据上报 - 素材下载进度
          */
-        public static final String REPORT_DOWNLOADING_PROGRESS = "report.downloadingProgress";
+        public static final String REPORT_DOWNLOADING_PROGRESS = "report.downloadingprogress";
 
         /**
          * 设备数据上报 - 设备截图
          */
         public static final String REPORT_SCREENSHOT = "report.screenshot";
 
-        public static final String REPORT_ONLINE_TIME = "report.onlineTime";
+        public static final String REPORT_ONLINE_TIME = "report.onlinetime";
 
     }
 }

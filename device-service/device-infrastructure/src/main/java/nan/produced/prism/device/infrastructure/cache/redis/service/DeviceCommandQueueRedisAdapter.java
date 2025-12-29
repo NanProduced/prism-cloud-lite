@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +37,7 @@ import static nan.produced.prism.device.infrastructure.cache.redis.config.RedisK
 public class DeviceCommandQueueRedisAdapter implements DeviceCommandQueuePort {
 
     private final RedisTemplate<String, Object> redisTemplate;
+    private static final long DEFAULT_TTL_MINUTES = 60L;
 
     /**
      * 缓存指令
@@ -82,6 +84,7 @@ public class DeviceCommandQueueRedisAdapter implements DeviceCommandQueuePort {
 
             // 2. 缓存新指令
             command.setCacheTime(LocalDateTime.now());
+            command.setTtlMinutes(resolveTtlMinutes(command));
             String commandJson = JsonUtils.toJson(command);
             redisTemplate.opsForValue().set(detailKey, commandJson, command.getTtlMinutes(), TimeUnit.MINUTES);
 
@@ -101,6 +104,21 @@ public class DeviceCommandQueueRedisAdapter implements DeviceCommandQueuePort {
         }
 
         return Pair.of(true, covered);
+    }
+
+    private long resolveTtlMinutes(DeviceCommand command) {
+        if (command == null) {
+            return DEFAULT_TTL_MINUTES;
+        }
+        Long ttlMinutes = command.getTtlMinutes();
+        if (ttlMinutes != null && ttlMinutes > 0) {
+            return ttlMinutes;
+        }
+        if (command.getExpireTime() != null) {
+            long minutes = ChronoUnit.MINUTES.between(LocalDateTime.now(), command.getExpireTime());
+            return Math.max(1L, minutes);
+        }
+        return DEFAULT_TTL_MINUTES;
     }
 
     /**

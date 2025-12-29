@@ -18,6 +18,7 @@ public interface DeviceCommandConverter {
      * 将请求对象转换为实体对象
      */
     @Mapping(source = "content.raw", target = "contentRaw")
+    @Mapping(source = "ttlMinutes", target = "ttlMinutes")
     @Mapping(source = "ttlMinutes", target = "expireTime", qualifiedByName = "calculateExpireTime")
     @Mapping(target = "queueId", ignore = true)
     @Mapping(target = "cacheTime", ignore = true)
@@ -54,11 +55,10 @@ public interface DeviceCommandConverter {
 
     /**
      * 自定义转换逻辑：计算过期时间
-     * 如果 ttlMinutes 为空，这里设置了一个默认值（例如 30分钟），你可以根据业务修改
+     * 如果 ttlMinutes 为空，这里设置默认值（60 分钟）
      */
     @Named("calculateExpireTime")
-    default LocalDateTime calculateExpireTime(Integer ttlMinutes) {
-        // 默认过期时间：如果请求未传，默认 60 分钟后过期
+    default LocalDateTime calculateExpireTime(Long ttlMinutes) {
         long minutes = (ttlMinutes != null) ? ttlMinutes : 60L;
         return LocalDateTime.now().plusMinutes(minutes);
     }

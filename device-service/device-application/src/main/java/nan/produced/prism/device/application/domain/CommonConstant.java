@@ -65,31 +65,31 @@ public class CommonConstant {
          * 素材播放记录上报
          * <p>/wp-json/led/flowfee</p>
          */
-        public static final String MEDIA_PLAY_RECORD = "mediaPlayRecord";
+        public static final String MEDIA_PLAY_RECORD = "mediaplayrecord";
 
         /**
          * 节目播放记录上报
          * <p>/wp-json/led/flowfee/v2/program</p>
          */
-        public static final String PROGRAM_PLAY_RECORD = "programPlayRecord";
+        public static final String PROGRAM_PLAY_RECORD = "programplayrecord";
 
         /**
          * 终端日志上报
          * <p>/wp-json/led/monitor/log</p>
          */
-        public static final String DEVICE_LOG = "deviceLog";
+        public static final String DEVICE_LOG = "devicelog";
 
         /**
          * 传感器数据上报
          * <P>/wp-json/led/v2/monitor</P>
          */
-        public static final String SENSOR_DATA = "sensorData";
+        public static final String SENSOR_DATA = "sensordata";
 
         /**
          * 素材下载进度上报
          * <p>/wp-json/screen/v1/info</p>
          */
-        public static final String DOWNLOADING_PROGRESS = "downloadingProgress";
+        public static final String DOWNLOADING_PROGRESS = "downloadingprogress";
 
         /**
          * 设备截图上报
@@ -101,7 +101,7 @@ public class CommonConstant {
          * 设备在线时长上报
          * <p>device-service生成</p>
          */
-        public static final String ONLINE_TIME = "onlineTime";
+        public static final String ONLINE_TIME = "onlinetime";
     }
 
 }
