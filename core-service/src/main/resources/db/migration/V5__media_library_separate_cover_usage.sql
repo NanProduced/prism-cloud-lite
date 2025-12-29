@@ -41,6 +41,25 @@ DO UPDATE SET
     updated_at = NOW();
 
 -- Move cover bytes/count out of IMAGE bucket (best-effort, keep non-negative).
+WITH cover_distinct AS (
+    SELECT DISTINCT
+        a.user_id AS user_id,
+        f.file_id AS file_id,
+        COALESCE(f.size, 0) AS size_bytes
+    FROM pcc_media_asset a
+    JOIN pcc_file_entity f
+      ON f.file_id = a.cover_file_id
+    WHERE a.cover_file_id IS NOT NULL
+      AND f.mime_type ILIKE 'image/%'
+),
+cover_by_user AS (
+    SELECT
+        user_id,
+        COUNT(*)::BIGINT AS cover_count,
+        COALESCE(SUM(size_bytes), 0)::BIGINT AS cover_bytes
+    FROM cover_distinct
+    GROUP BY user_id
+)
 UPDATE pcc_user_storage_usage u
 SET
     file_count = GREATEST(0, u.file_count - c.cover_count::INT),
@@ -50,4 +69,3 @@ FROM cover_by_user c
 WHERE u.user_id = c.user_id
   AND u.source_type = 'MEDIA_LIBRARY'
   AND u.file_type = 'IMAGE';
-
