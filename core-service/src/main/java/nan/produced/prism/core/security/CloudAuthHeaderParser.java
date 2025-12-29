@@ -69,9 +69,6 @@ public class CloudAuthHeaderParser {
             List<String> roles = getRoles(jsonNode);
             String tier = getString(jsonNode, "tier");
 
-            log.debug("Parsed CLOUD_AUTH: publicId={}, userUuid={}, roles={}, tier={}",
-                publicId, userUuid, roles, tier);
-
             return new CloudAuthUser(publicId, userUuid, roles, tier);
 
         } catch (InvalidCloudAuthException e) {

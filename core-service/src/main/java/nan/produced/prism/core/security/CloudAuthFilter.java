@@ -94,9 +94,6 @@ public class CloudAuthFilter implements Filter {
             // 存储到 ThreadLocal（供后续业务代码使用）
             CloudAuthContext.setCurrentUser(user);
 
-            log.debug("Authenticated request from publicId: {} ({})",
-                user.publicId(), httpRequest.getRequestURI());
-
             // 继续过滤器链
             chain.doFilter(request, response);
 

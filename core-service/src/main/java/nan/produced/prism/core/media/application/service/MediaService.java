@@ -276,6 +276,23 @@ public class MediaService {
             fileEntityRepository.incrementRefCount(fileEntity.getFileId(), 1);
             log.debug("Instant upload: incremented refCount for fileId={}", fileEntity.getFileId());
 
+            boolean updated = false;
+            if (fileEntity.getWidth() == null && fileItem.getWidth() != null) {
+                fileEntity.setWidth(fileItem.getWidth());
+                updated = true;
+            }
+            if (fileEntity.getHeight() == null && fileItem.getHeight() != null) {
+                fileEntity.setHeight(fileItem.getHeight());
+                updated = true;
+            }
+            if (fileEntity.getDurationMs() == null && fileItem.getDurationMs() != null) {
+                fileEntity.setDurationMs(fileItem.getDurationMs());
+                updated = true;
+            }
+            if (updated) {
+                fileEntityRepository.save(fileEntity);
+            }
+
             return fileEntity;
         }
 
