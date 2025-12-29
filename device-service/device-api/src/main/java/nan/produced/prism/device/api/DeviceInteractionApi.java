@@ -23,7 +23,7 @@ public interface DeviceInteractionApi {
      * @param report 上报数据
      * @return 200 Ok - 状态信息上报成功
      */
-    @PostMapping(value = "/wp-json/screen/v1/status")
+    @PutMapping(value = "/wp-json/screen/v1/status")
     ResponseEntity<Void> reportDeviceProperties(@RequestBody String report);
 
     /**
