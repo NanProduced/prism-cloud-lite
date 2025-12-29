@@ -111,6 +111,18 @@ public class DeviceRepositoryAdapter implements DeviceRepository {
         }
     }
 
+    @Override
+    public int updateLastReportTimeIfNewer(Long deviceId, OffsetDateTime time) {
+        if (deviceId == null || time == null) {
+            return 0;
+        }
+        try {
+            return deviceRepositoryJpa.updateLastReportTimeIfNewer(deviceId, time);
+        } catch (Exception e) {
+            throw new BizException(ErrorCode.DEVICE_UPDATED_FAILED, "设备最后上报时间更新失败: " + e.getMessage(), e);
+        }
+    }
+
     /**
      * 更新设备在线状态和最后上报时间
      * 如果设备尚未记录 onboarding 时间，则同时设置为当前时间

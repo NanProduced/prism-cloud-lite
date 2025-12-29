@@ -68,6 +68,8 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
 
     private final DeviceRefreshSignalPublisher deviceRefreshSignalPublisher;
 
+    private final DeviceLastReportTimeWriteBehindBuffer deviceLastReportTimeWriteBehindBuffer;
+
     /**
      * 处理设备上线状态
      *
@@ -152,6 +154,10 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
             if (eventType == null) {
                 log.warn("DeviceEventApplicationService - 事件类型为空，traceId={}", traceId);
                 return;
+            }
+
+            if (eventType.startsWith("report.") && !MessagingConstants.DeviceEventTypes.REPORT_PROPERTIES.equals(eventType)) {
+                deviceLastReportTimeWriteBehindBuffer.record(message.getDeviceId(), message.getOccurredAt());
             }
 
             switch (eventType) {

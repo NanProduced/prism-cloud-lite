@@ -42,6 +42,15 @@ public interface DeviceRepository {
     void updateDeviceProperties(DeviceEntity entity);
 
     /**
+     * 更新设备最后上报时间（仅当新时间更晚时更新，防止回退）。
+     *
+     * @param deviceId 设备ID
+     * @param time 新的最后上报时间（UTC）
+     * @return 实际更新行数（0/1）
+     */
+    int updateLastReportTimeIfNewer(Long deviceId, OffsetDateTime time);
+
+    /**
      * 更新设备在线状态,最后上报时间,如果onboardingTime为空则同时插入onboardingTime
      * @param deviceId 设备ID
      * @param status 状态 (0:离线,1:在线)

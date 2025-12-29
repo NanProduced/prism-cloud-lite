@@ -137,4 +137,20 @@ public interface DeviceRepositoryJpa extends JpaRepository<DeviceEntity, Long> {
                                 @Param("resolution") String resolution,
                                 @Param("totalStorage") Long totalStorage,
                                 @Param("freeStorage") Long freeStorage);
+
+    /**
+     * 更新最后上报时间（仅当新时间更晚时更新，防止回退）。
+     *
+     * @return 实际更新行数（0/1）
+     */
+    @Transactional
+    @Modifying
+    @Query("""
+            UPDATE DeviceEntity d
+               SET d.lastReportTime = :lastReportTime
+             WHERE d.deviceId = :deviceId
+               AND (d.lastReportTime IS NULL OR d.lastReportTime < :lastReportTime)
+            """)
+    int updateLastReportTimeIfNewer(@Param("deviceId") Long deviceId,
+                                    @Param("lastReportTime") OffsetDateTime lastReportTime);
 }
