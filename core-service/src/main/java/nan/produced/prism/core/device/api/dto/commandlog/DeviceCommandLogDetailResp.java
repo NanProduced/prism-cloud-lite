@@ -9,6 +9,8 @@ public record DeviceCommandLogDetailResp(
         Long id,
         @Schema(description = "设备ID")
         Long deviceId,
+        @Schema(description = "设备名称（冗余字段，便于前端展示）")
+        String deviceName,
         @Schema(description = "操作ID（operationId == commandId）")
         String operationId,
         @Schema(description = "动作类型（DeviceActionType）")
@@ -37,4 +39,3 @@ public record DeviceCommandLogDetailResp(
         OffsetDateTime updatedAt
 ) {
 }
-

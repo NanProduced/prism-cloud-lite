@@ -1,6 +1,7 @@
 package nan.produced.prism.core.device.infrastructure.persistence;
 
 import java.time.OffsetDateTime;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCommandLogRepository;
 import nan.produced.prism.core.device.domain.command.DeviceCommandLog;
@@ -35,7 +36,13 @@ public class DeviceCommandLogRepositoryAdapter implements DeviceCommandLogReposi
         if (!StringUtils.hasText(commandId) || status == null) {
             return;
         }
-        repositoryJpa.updateStatus(commandId, status, OffsetDateTime.now());
+        UUID operationId;
+        try {
+            operationId = UUID.fromString(commandId.trim());
+        } catch (IllegalArgumentException ex) {
+            return;
+        }
+        repositoryJpa.updateStatus(operationId, status, OffsetDateTime.now());
     }
 
     @Override
@@ -43,7 +50,13 @@ public class DeviceCommandLogRepositoryAdapter implements DeviceCommandLogReposi
         if (!StringUtils.hasText(operationId)) {
             return null;
         }
-        return repositoryJpa.findByOperationId(operationId).orElse(null);
+        UUID id;
+        try {
+            id = UUID.fromString(operationId.trim());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+        return repositoryJpa.findByOperationId(id).orElse(null);
     }
 
     @Override

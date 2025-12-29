@@ -1,6 +1,7 @@
 package nan.produced.prism.core.device.api.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -31,7 +32,9 @@ public class DeviceCommandLogController {
 
     private final DeviceCommandLogApplicationService deviceCommandLogApplicationService;
 
-    @Operation(summary = "查询设备指令日志（分页）", description = "支持时间范围、设备、operationId、actionType、status 等过滤；按创建时间倒序。")
+    @Operation(
+            summary = "查询设备指令日志（分页）",
+            description = "支持时间范围、deviceId/deviceName、actionTypes、statuses、accepted/covered、sendMethod 等过滤；按创建时间倒序。operationId/queuedId 为内部调试参数（默认不在 OpenAPI 展示）。")
     @ApiResponse(
             responseCode = "200",
             description = "成功返回日志分页",
@@ -44,14 +47,16 @@ public class DeviceCommandLogController {
             @RequestParam(value = "to", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
             @RequestParam(value = "deviceId", required = false) Long deviceId,
+            @RequestParam(value = "deviceName", required = false) String deviceName,
+            @Parameter(hidden = true)
             @RequestParam(value = "operationId", required = false) String operationId,
             @RequestParam(value = "actionTypes", required = false) List<String> actionTypes,
             @RequestParam(value = "statuses", required = false) List<String> statuses,
             @RequestParam(value = "accepted", required = false) Boolean accepted,
             @RequestParam(value = "covered", required = false) Boolean covered,
+            @Parameter(hidden = true)
             @RequestParam(value = "queuedId", required = false) Integer queuedId,
             @RequestParam(value = "sendMethod", required = false) String sendMethod,
-            @RequestParam(value = "keyword", required = false) String keyword,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", required = false) Integer size
     ) {
@@ -61,6 +66,7 @@ public class DeviceCommandLogController {
                 from,
                 to,
                 deviceId,
+                deviceName,
                 operationId,
                 actionTypes,
                 statuses,
@@ -68,7 +74,6 @@ public class DeviceCommandLogController {
                 covered,
                 queuedId,
                 sendMethod,
-                keyword,
                 page,
                 size
         );
@@ -89,4 +94,3 @@ public class DeviceCommandLogController {
         return ResponseEntity.ok(BffResponse.success(detail).withTraceId(TraceUtils.getTraceId()));
     }
 }
-

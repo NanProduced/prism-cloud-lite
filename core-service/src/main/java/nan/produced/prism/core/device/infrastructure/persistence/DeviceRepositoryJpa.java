@@ -4,6 +4,7 @@ import nan.produced.prism.core.device.domain.DeviceEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +51,16 @@ public interface DeviceRepositoryJpa extends JpaRepository<DeviceEntity, Long> {
     List<DeviceEntity> findByUserIdOrderByCreateTimeDesc(UUID userId);
 
     List<DeviceEntity> findByUserIdAndDeviceIdIn(UUID userId, Collection<Long> deviceIds);
+
+    @Query("""
+        SELECT d
+          FROM DeviceEntity d
+         WHERE d.userId = :userId
+           AND LOWER(d.deviceName) LIKE CONCAT('%', LOWER(:keyword), '%')
+        """)
+    List<DeviceEntity> findByUserIdAndDeviceNameLike(@Param("userId") UUID userId,
+                                                     @Param("keyword") String keyword,
+                                                     Pageable pageable);
 
     @Query("SELECT d.userId FROM DeviceEntity d WHERE d.deviceId = :deviceId")
     Optional<UUID> findUserIdByDeviceId(@Param("deviceId") Long deviceId);

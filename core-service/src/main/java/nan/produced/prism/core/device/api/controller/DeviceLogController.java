@@ -33,7 +33,7 @@ public class DeviceLogController {
 
     private final DeviceLogApplicationService deviceLogApplicationService;
 
-    @Operation(summary = "查询设备日志（分页）", description = "仅支持时间范围、设备、operation_id 过滤；按接收时间倒序。")
+    @Operation(summary = "查询设备日志（分页）", description = "支持时间范围、deviceId/deviceName、operationIds 过滤；按接收时间倒序。")
     @ApiResponse(
         responseCode = "200",
         description = "成功返回日志分页",
@@ -46,12 +46,13 @@ public class DeviceLogController {
         @RequestParam(value = "to", required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
         @RequestParam(value = "deviceId", required = false) Long deviceId,
+        @RequestParam(value = "deviceName", required = false) String deviceName,
         @RequestParam(value = "operationIds", required = false) List<Integer> operationIds,
         @RequestParam(value = "page", defaultValue = "0") int page,
         @RequestParam(value = "size", required = false) Integer size
     ) {
         UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
-        DeviceLogPageResp resp = deviceLogApplicationService.listDeviceLogs(userId, from, to, deviceId, operationIds, page, size);
+        DeviceLogPageResp resp = deviceLogApplicationService.listDeviceLogs(userId, from, to, deviceId, deviceName, operationIds, page, size);
         return ResponseEntity.ok(BffResponse.success(resp).withTraceId(TraceUtils.getTraceId()));
     }
 

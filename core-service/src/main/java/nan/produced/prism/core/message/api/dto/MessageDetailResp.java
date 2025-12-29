@@ -17,7 +17,9 @@ public record MessageDetailResp(
     @Schema(description = "摘要") String summary,
     @Schema(description = "详情载荷（JSON）") JsonNode payload,
     @Schema(description = "关联设备ID") Long deviceId,
+    @Schema(description = "关联设备名称（冗余字段，可为空）") String deviceName,
     @Schema(description = "关联节目ID") UUID programId,
+    @Schema(description = "关联节目名称（冗余字段，可为空）") String programName,
     @Schema(description = "关联操作ID") String operationId,
     @Schema(description = "关联任务ID") String taskId,
     @Schema(description = "已读时间（null=未读）") OffsetDateTime readAt,
@@ -25,4 +27,3 @@ public record MessageDetailResp(
     @Schema(description = "更新时间") OffsetDateTime updatedAt
 ) {
 }
-

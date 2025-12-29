@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 public interface DeviceCommandLogRepositoryJpa extends JpaRepository<DeviceCommandLog, Long>, JpaSpecificationExecutor<DeviceCommandLog> {
 
-    Optional<DeviceCommandLog> findByOperationId(String operationId);
+    Optional<DeviceCommandLog> findByOperationId(UUID operationId);
 
     Optional<DeviceCommandLog> findFirstByDeviceIdAndQueuedIdOrderByCreatedAtDesc(Long deviceId, Integer queuedId);
 
@@ -26,7 +26,7 @@ public interface DeviceCommandLogRepositoryJpa extends JpaRepository<DeviceComma
     @Modifying
     @Query("UPDATE DeviceCommandLog d SET d.status = :status, d.updatedAt = :updatedAt WHERE d.operationId = :operationId")
     void updateStatus(
-            @Param("operationId") String operationId,
+            @Param("operationId") UUID operationId,
             @Param("status") DeviceCommandStatus status,
             @Param("updatedAt") OffsetDateTime updatedAt);
 }

@@ -1,6 +1,7 @@
 package nan.produced.prism.core.message.api.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -56,7 +57,7 @@ public class MessageController {
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
     }
 
-    @Operation(summary = "消息中心：分页查询", description = "支持按类别/类型/状态/已读、时间范围、关键字与关联资源筛选。")
+    @Operation(summary = "消息中心：分页查询", description = "支持按类别/类型/状态/已读、时间范围与关联资源（deviceId/deviceName、programId/programName）筛选；operationId/taskId 为内部调试参数（默认不在 OpenAPI 展示）。")
     @ApiResponse(
         responseCode = "200",
         description = "成功返回消息分页",
@@ -72,10 +73,13 @@ public class MessageController {
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
         @RequestParam(value = "to", required = false)
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
-        @RequestParam(value = "keyword", required = false) String keyword,
         @RequestParam(value = "deviceId", required = false) Long deviceId,
+        @RequestParam(value = "deviceName", required = false) String deviceName,
         @RequestParam(value = "programId", required = false) UUID programId,
+        @RequestParam(value = "programName", required = false) String programName,
+        @Parameter(hidden = true)
         @RequestParam(value = "operationId", required = false) String operationId,
+        @Parameter(hidden = true)
         @RequestParam(value = "taskId", required = false) String taskId,
         @RequestParam(value = "page", defaultValue = "0") int page,
         @RequestParam(value = "size", required = false) Integer size
@@ -89,9 +93,10 @@ public class MessageController {
             read,
             from,
             to,
-            keyword,
             deviceId,
+            deviceName,
             programId,
+            programName,
             operationId,
             taskId,
             page,

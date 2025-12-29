@@ -237,7 +237,7 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
                     .scope(FrontendEventMessage.Scope.builder()
                             .userId(commandLog.getUserId())
                             .deviceId(commandLog.getDeviceId())
-                            .operationId(commandLog.getOperationId())
+                            .operationId(commandLog.getOperationId().toString())
                             .build())
                     .data(data)
                     .build();
@@ -246,7 +246,7 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
         } catch (Exception ex) {
             // best-effort：不影响主业务流程（指令已落库并返回给前端）
             log.debug("operation.updated publish failed (ignored): userId={}, deviceId={}, operationId={}",
-                    commandLog.getUserId(), commandLog.getDeviceId(), commandLog.getOperationId(), ex);
+                    commandLog.getUserId(), commandLog.getDeviceId(), commandLog.getOperationId().toString(), ex);
         }
     }
 
@@ -336,7 +336,7 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
                 .id(IdGenerator.nextId())
                 .userId(userId)
                 .deviceId(deviceId)
-                .operationId(commandId)
+                .operationId(UUID.fromString(commandId))
                 .actionType(action != null ? action.getType() : null)
                 .trackingLevel(action != null && action.getType() != null ? action.getType().getTrackingLevel() : null)
                 .status(accepted ? DeviceCommandStatus.PUBLISHED : DeviceCommandStatus.FAILED)

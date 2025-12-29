@@ -9,6 +9,8 @@ public record DeviceLogDetailResp(
     Long id,
     @Schema(description = "设备ID")
     Long deviceId,
+    @Schema(description = "设备名称（冗余字段，便于前端展示）")
+    String deviceName,
     @Schema(description = "操作类型ID（operation_id）")
     Integer operationId,
     @Schema(description = "日志等级（0-7）")
@@ -51,4 +53,3 @@ public record DeviceLogDetailResp(
     OffsetDateTime createTime
 ) {
 }
-

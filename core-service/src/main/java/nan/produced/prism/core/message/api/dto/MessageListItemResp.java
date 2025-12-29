@@ -38,8 +38,14 @@ public class MessageListItemResp {
     @Schema(description = "关联设备ID（可为空）")
     private Long deviceId;
 
+    @Schema(description = "关联设备名称（冗余字段，便于前端展示，可为空）")
+    private String deviceName;
+
     @Schema(description = "关联节目ID（可为空）")
     private UUID programId;
+
+    @Schema(description = "关联节目名称（冗余字段，便于前端展示，可为空）")
+    private String programName;
 
     @Schema(description = "关联操作ID（指令/批量/发布等，可为空）")
     private String operationId;
@@ -53,4 +59,3 @@ public class MessageListItemResp {
     @Schema(description = "已读时间（null=未读）")
     private OffsetDateTime readAt;
 }
-

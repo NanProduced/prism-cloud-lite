@@ -139,11 +139,11 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
         }
 
         // 标记指令已过期
-        deviceCommandLogRepository.updateStatus(commandLog.getOperationId(), DeviceCommandStatus.EXPIRED);
+        deviceCommandLogRepository.updateStatus(commandLog.getOperationId().toString(), DeviceCommandStatus.EXPIRED);
         clearCommandListener(commandLog);
         publishOperationUpdated(commandLog, DeviceCommandStatus.EXPIRED);
 
-        boolean inBatch = messageCenterFacade.onBatchCommandFinalState(commandLog.getOperationId(), commandLog.getUserId(), false, true);
+        boolean inBatch = messageCenterFacade.onBatchCommandFinalState(commandLog.getOperationId().toString(), commandLog.getUserId(), false, true);
         if (!inBatch) {
             publishDeviceCommandMessage(commandLog, DeviceCommandStatus.EXPIRED);
         }
@@ -210,7 +210,7 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
                 .scope(FrontendEventMessage.Scope.builder()
                         .userId(commandLog.getUserId())
                         .deviceId(commandLog.getDeviceId())
-                        .operationId(commandLog.getOperationId())
+                        .operationId(commandLog.getOperationId().toString())
                         .build())
                 .data(data)
                 .build();
@@ -228,7 +228,7 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
         messageCenterFacade.publishDeviceCommandFinished(new MessageCenterFacade.DeviceCommandFinishedMessage(
             commandLog.getUserId(),
             commandLog.getDeviceId(),
-            commandLog.getOperationId(),
+            commandLog.getOperationId().toString(),
             actionType,
             commandLog.getTrackingLevel() != null ? commandLog.getTrackingLevel().name() : null,
             finalStatus != null ? finalStatus.name() : null,

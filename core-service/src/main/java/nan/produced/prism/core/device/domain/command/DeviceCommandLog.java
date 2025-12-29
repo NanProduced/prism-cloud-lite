@@ -37,7 +37,7 @@ public class DeviceCommandLog {
      * 对应deviceCommand中的commandId
      */
     @Column(name = "operation_id", nullable = false)
-    private String operationId;
+    private UUID operationId;
 
     /**
      * 操作类型
