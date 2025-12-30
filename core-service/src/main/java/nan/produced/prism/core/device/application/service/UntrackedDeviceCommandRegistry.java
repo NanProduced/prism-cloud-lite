@@ -3,6 +3,7 @@ package nan.produced.prism.core.device.application.service;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.core.device.api.UntrackedDeviceCommandFacade;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -15,7 +16,7 @@ import org.springframework.util.StringUtils;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class UntrackedDeviceCommandRegistry {
+public class UntrackedDeviceCommandRegistry implements UntrackedDeviceCommandFacade {
 
     private static final long TTL_HOURS = 48;
 
@@ -24,6 +25,7 @@ public class UntrackedDeviceCommandRegistry {
 
     private final StringRedisTemplate redisTemplate;
 
+    @Override
     public void markByCommandId(String commandId, String type) {
         if (!StringUtils.hasText(commandId) || !StringUtils.hasText(type)) {
             return;
@@ -35,6 +37,7 @@ public class UntrackedDeviceCommandRegistry {
                 TimeUnit.HOURS);
     }
 
+    @Override
     public void markByQueue(Long deviceId, Integer queueId, String commandId, String type) {
         if (deviceId == null || deviceId <= 0 || queueId == null || queueId <= 0) {
             return;
@@ -77,4 +80,3 @@ public class UntrackedDeviceCommandRegistry {
         }
     }
 }
-

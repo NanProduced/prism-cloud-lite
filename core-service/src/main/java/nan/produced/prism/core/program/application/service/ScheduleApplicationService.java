@@ -25,7 +25,7 @@ import nan.produced.prism.core.common.exception.InfraException;
 import nan.produced.prism.core.common.response.ApiResponse;
 import nan.produced.prism.core.common.util.IdGenerator;
 import nan.produced.prism.core.common.util.JsonUtils;
-import nan.produced.prism.core.device.application.service.UntrackedDeviceCommandRegistry;
+import nan.produced.prism.core.device.api.UntrackedDeviceCommandFacade;
 import nan.produced.prism.core.device.domain.command.DeviceActionBase;
 import nan.produced.prism.core.device.domain.command.DeviceActionType;
 import nan.produced.prism.core.integration.device.client.DeviceInternalClient;
@@ -96,7 +96,7 @@ public class ScheduleApplicationService {
     private final ScheduleAuditLogRepositoryJpa scheduleAuditLogRepositoryJpa;
     private final DeviceInternalClient deviceInternalClient;
     private final ScheduleDeviceDistributionService scheduleDeviceDistributionService;
-    private final UntrackedDeviceCommandRegistry untrackedDeviceCommandRegistry;
+    private final UntrackedDeviceCommandFacade untrackedDeviceCommandRegistry;
 
     @Transactional(readOnly = true)
     public List<ScheduleListResp> listSchedules(UUID userId) {

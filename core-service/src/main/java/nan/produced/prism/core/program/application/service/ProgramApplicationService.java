@@ -34,7 +34,7 @@ import nan.produced.prism.core.common.util.IdGenerator;
 import nan.produced.prism.core.common.util.FileNameUtils;
 import nan.produced.prism.core.common.util.JsonUtils;
 import nan.produced.prism.core.common.util.ObjectKeyUtils;
-import nan.produced.prism.core.device.application.service.UntrackedDeviceCommandRegistry;
+import nan.produced.prism.core.device.api.UntrackedDeviceCommandFacade;
 import nan.produced.prism.core.device.api.DeviceStatusFacade;
 import nan.produced.prism.core.integration.device.client.DeviceInternalClient;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandReq;
@@ -120,7 +120,7 @@ public class ProgramApplicationService {
     private final MessageCenterFacade messageCenterFacade;
     private final ProgramQuotaSignalPublisher programQuotaSignalPublisher;
     private final UserQuotaFacade userQuotaFacade;
-    private final UntrackedDeviceCommandRegistry untrackedDeviceCommandRegistry;
+    private final UntrackedDeviceCommandFacade untrackedDeviceCommandRegistry;
     private final ScheduleContentsRuleRepositoryJpa scheduleContentsRuleRepositoryJpa;
     private final ScheduleRepositoryJpa scheduleRepositoryJpa;
 

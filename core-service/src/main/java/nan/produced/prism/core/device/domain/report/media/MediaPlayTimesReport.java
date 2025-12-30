@@ -1,8 +1,11 @@
 package nan.produced.prism.core.device.domain.report.media;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Data;
+import nan.produced.prism.core.device.domain.report.jackson.UtcOffsetDateTimeDeserializer;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 /**
@@ -59,25 +62,27 @@ public class MediaPlayTimesReport {
      * 播放开始时间（UTC）
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonDeserialize(using = UtcOffsetDateTimeDeserializer.class)
     private OffsetDateTime startUtcTime;
 
     /**
      * 播放开始时间（本地）
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private OffsetDateTime startLocalTime;
+    private LocalDateTime startLocalTime;
 
     /**
      * 播放结束时间（UTC）
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonDeserialize(using = UtcOffsetDateTimeDeserializer.class)
     private OffsetDateTime endUtcTime;
 
     /**
      * 播放结束时间（本地）
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private OffsetDateTime endLocalTime;
+    private LocalDateTime endLocalTime;
 
     /**
      * 素材播放时长（注意是实际播放时长，不一定等于素材时长）

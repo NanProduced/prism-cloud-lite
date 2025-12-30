@@ -2,8 +2,11 @@ package nan.produced.prism.core.device.domain.report.program;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Data;
+import nan.produced.prism.core.device.domain.report.jackson.UtcOffsetDateTimeDeserializer;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.LinkedList;
 
@@ -38,24 +41,26 @@ public class ProgramPlayTimesReport {
      * 节目播放开始时间（本地）
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LinkedList<OffsetDateTime> startLocalTime;
+    private LinkedList<LocalDateTime> startLocalTime;
 
     /**
      * 节目播放开始时间（UTC）
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonDeserialize(contentUsing = UtcOffsetDateTimeDeserializer.class)
     private LinkedList<OffsetDateTime> startUtcTime;
 
     /**
      * 节目播放结束时间（本地）
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LinkedList<OffsetDateTime> endLocalTime;
+    private LinkedList<LocalDateTime> endLocalTime;
 
     /**
      * 节目播放结束时间（UTC）
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @JsonDeserialize(contentUsing = UtcOffsetDateTimeDeserializer.class)
     private LinkedList<OffsetDateTime> endUtcTime;
 
     /**

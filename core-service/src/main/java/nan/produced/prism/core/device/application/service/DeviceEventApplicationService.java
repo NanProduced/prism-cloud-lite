@@ -210,7 +210,7 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
                     log.warn("不支持的事件类型: eventType={}, traceId={}", eventType, traceId);
             }
         } catch (Exception e) {
-            log.error("处理设备事件异常: deviceId={}, eventType={}, traceId={}", message.getDeviceId(), eventType, traceId, e);
+            log.error("处理设备事件异常: deviceId={}, eventType={}, message={}, traceId={}", message.getDeviceId(), eventType, message.getReportData(), traceId, e);
             throw new BizException(ErrorCode.DEVICE_REPORT_EVENT_HANDLE_FAILED, e);
         }
     }

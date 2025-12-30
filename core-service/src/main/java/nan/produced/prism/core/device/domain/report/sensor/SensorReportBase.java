@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.Data;
 import nan.produced.prism.core.device.domain.report.sensor.type.*;
 
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 /**
@@ -58,7 +59,7 @@ public class SensorReportBase {
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @JsonProperty("date")
-    private OffsetDateTime reportTime;
+    private LocalDateTime reportTime;
 
     /**
      * 传感器Id
