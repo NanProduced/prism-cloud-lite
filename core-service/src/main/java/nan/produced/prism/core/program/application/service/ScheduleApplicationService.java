@@ -556,7 +556,9 @@ public class ScheduleApplicationService {
             }
 
             String commandId = UUID.randomUUID().toString();
-            untrackedDeviceCommandRegistry.markByCommandId(commandId, UNTRACKED_COMMAND_TYPE_SCHEDULE_TRIGGER);
+            if (untrackedDeviceCommandRegistry != null) {
+                untrackedDeviceCommandRegistry.markByCommandId(commandId, UNTRACKED_COMMAND_TYPE_SCHEDULE_TRIGGER);
+            }
             DeviceCommandReq command = buildScheduleTriggerCommand(deviceId, commandId);
             commands.add(command);
 
@@ -600,7 +602,7 @@ public class ScheduleApplicationService {
     }
 
     private void markUntrackedScheduleTriggerQueues(List<SchedulePushResultResp> results) {
-        if (results == null || results.isEmpty()) {
+        if (untrackedDeviceCommandRegistry == null || results == null || results.isEmpty()) {
             return;
         }
         for (SchedulePushResultResp r : results) {

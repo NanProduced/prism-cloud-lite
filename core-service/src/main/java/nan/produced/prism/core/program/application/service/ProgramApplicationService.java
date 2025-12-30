@@ -500,7 +500,9 @@ public class ProgramApplicationService {
             programAssignmentRepositoryJpa.save(assignment);
 
             String commandId = UUID.randomUUID().toString();
-            untrackedDeviceCommandRegistry.markByCommandId(commandId, UNTRACKED_COMMAND_TYPE_PROGRAM_DIRTY);
+            if (untrackedDeviceCommandRegistry != null) {
+                untrackedDeviceCommandRegistry.markByCommandId(commandId, UNTRACKED_COMMAND_TYPE_PROGRAM_DIRTY);
+            }
             DeviceCommandReq command = buildProgramDirtyCommand(deviceId, commandId);
             commands.add(command);
 
@@ -606,7 +608,9 @@ public class ProgramApplicationService {
             removed++;
 
             String commandId = UUID.randomUUID().toString();
-            untrackedDeviceCommandRegistry.markByCommandId(commandId, UNTRACKED_COMMAND_TYPE_PROGRAM_DIRTY);
+            if (untrackedDeviceCommandRegistry != null) {
+                untrackedDeviceCommandRegistry.markByCommandId(commandId, UNTRACKED_COMMAND_TYPE_PROGRAM_DIRTY);
+            }
             DeviceCommandReq command = buildProgramDirtyCommand(deviceId, commandId);
             commands.add(command);
 
@@ -756,7 +760,7 @@ public class ProgramApplicationService {
     }
 
     private void markUntrackedProgramDirtyQueues(List<ProgramPublishDeviceResultResp> results) {
-        if (results == null || results.isEmpty()) {
+        if (untrackedDeviceCommandRegistry == null || results == null || results.isEmpty()) {
             return;
         }
         for (ProgramPublishDeviceResultResp r : results) {

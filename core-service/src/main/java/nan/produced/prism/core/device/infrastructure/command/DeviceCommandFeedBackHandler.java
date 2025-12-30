@@ -47,9 +47,13 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
     public void handleCommandConfirm(String commandId, Long deviceId, Integer queueId) {
         DeviceCommandLog commandLog = deviceCommandLogRepository.findByOperationId(commandId);
         if (commandLog ==  null) {
-            String untrackedMark = untrackedDeviceCommandRegistry.findTypeByCommandId(commandId);
-            if (!StringUtils.hasText(untrackedMark) && deviceId != null && queueId != null) {
-                untrackedMark = untrackedDeviceCommandRegistry.findValueByQueue(deviceId, queueId);
+            UntrackedDeviceCommandRegistry registry = this.untrackedDeviceCommandRegistry;
+            String untrackedMark = null;
+            if (registry != null) {
+                untrackedMark = registry.findTypeByCommandId(commandId);
+                if (!StringUtils.hasText(untrackedMark) && deviceId != null && queueId != null) {
+                    untrackedMark = registry.findValueByQueue(deviceId, queueId);
+                }
             }
             if (StringUtils.hasText(untrackedMark)) {
                 log.debug("DeviceCommandFeedBackHandler - 忽略未追踪指令回执, mark={}, commandId={}, deviceId={}, queueId={}",
@@ -151,7 +155,8 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
     public void handleCommandExpired(Long deviceId, Integer queueId) {
         DeviceCommandLog commandLog = deviceCommandLogRepository.findByDeviceIdAndQueueId(deviceId, queueId);
         if (commandLog == null) {
-            String untrackedMark = untrackedDeviceCommandRegistry.findValueByQueue(deviceId, queueId);
+            UntrackedDeviceCommandRegistry registry = this.untrackedDeviceCommandRegistry;
+            String untrackedMark = registry != null ? registry.findValueByQueue(deviceId, queueId) : null;
             if (StringUtils.hasText(untrackedMark)) {
                 log.debug("DeviceCommandFeedBackHandler - 忽略未追踪指令过期回执, mark={}, deviceId={}, queueId={}",
                         untrackedMark, deviceId, queueId);
