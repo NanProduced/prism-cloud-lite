@@ -72,9 +72,6 @@ public class MediaTranscodeService {
 
         String taskId = MediaTranscodeConstant.TASK_ID_PREFIX + UUID.randomUUID();
 
-        String title = String.format("素材转码：%s", StringUtils.hasText(asset.getTitle()) ? asset.getTitle() : asset.getId());
-        String summary = MediaTranscodeConstant.SummaryText.QUEUED;
-
         Map<String, Object> payload = new HashMap<>();
         payload.put(MediaTranscodeConstant.PayloadKey.TASK_TYPE, MediaTranscodeConstant.TASK_TYPE);
         payload.put(MediaTranscodeConstant.PayloadKey.TASK_ID, taskId);
@@ -86,12 +83,19 @@ public class MediaTranscodeService {
         if (StringUtils.hasText(normalizedTargetFolderId)) {
             payload.put(MediaTranscodeConstant.PayloadKey.TARGET_FOLDER_ID, normalizedTargetFolderId);
         }
+        Map<String, Object> source = new HashMap<>();
+        source.put(MediaTranscodeConstant.SourceKey.ASSET_ID, asset.getId());
+        if (StringUtils.hasText(asset.getTitle())) {
+            source.put(MediaTranscodeConstant.SourceKey.TITLE, asset.getTitle());
+        }
+        payload.put(MediaTranscodeConstant.PayloadKey.SOURCE, source);
+        payload.put(MediaTranscodeConstant.PayloadKey.PRESET, Map.of(
+            MediaTranscodeConstant.PresetKey.PRESET_ID, presetId
+        ));
 
         UUID messageId = messageCenterFacade.createTaskMessage(
             userId,
             MediaTranscodeConstant.MESSAGE_TYPE,
-            title,
-            summary,
             payload,
             taskId
         );
@@ -140,9 +144,6 @@ public class MediaTranscodeService {
             throw new BizException(ErrorCode.MEDIA_FOLDER_NOT_FOUND);
         }
 
-        String title = String.format("素材转码：%s", StringUtils.hasText(asset.getTitle()) ? asset.getTitle() : asset.getId());
-        String summary = MediaTranscodeConstant.SummaryText.QUEUED;
-
         Map<String, Object> payload = new HashMap<>();
         payload.put(MediaTranscodeConstant.PayloadKey.TASK_TYPE, MediaTranscodeConstant.TASK_TYPE);
         payload.put(MediaTranscodeConstant.PayloadKey.TASK_ID, taskId.trim());
@@ -154,12 +155,19 @@ public class MediaTranscodeService {
         if (StringUtils.hasText(normalizedTargetFolderId)) {
             payload.put(MediaTranscodeConstant.PayloadKey.TARGET_FOLDER_ID, normalizedTargetFolderId);
         }
+        Map<String, Object> source = new HashMap<>();
+        source.put(MediaTranscodeConstant.SourceKey.ASSET_ID, asset.getId());
+        if (StringUtils.hasText(asset.getTitle())) {
+            source.put(MediaTranscodeConstant.SourceKey.TITLE, asset.getTitle());
+        }
+        payload.put(MediaTranscodeConstant.PayloadKey.SOURCE, source);
+        payload.put(MediaTranscodeConstant.PayloadKey.PRESET, Map.of(
+            MediaTranscodeConstant.PresetKey.PRESET_ID, presetId
+        ));
 
         UUID messageId = messageCenterFacade.createTaskMessage(
             userId,
             MediaTranscodeConstant.MESSAGE_TYPE,
-            title,
-            summary,
             payload,
             taskId.trim()
         );

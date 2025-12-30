@@ -6,12 +6,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import nan.produced.prism.core.common.util.VsnFilenameUtils;
 import nan.produced.prism.core.program.application.port.inbound.ProgramDeploymentHandleFacade;
 import nan.produced.prism.core.program.domain.ProgramDeploymentEntity;
 import nan.produced.prism.core.program.domain.ProgramDeploymentStatus;
@@ -179,48 +179,7 @@ public class ProgramDeploymentHandleApplicationService implements ProgramDeploym
 
         programDeploymentRepositoryJpa.deleteByDeviceId(deviceId);
     }
-    
-    /**
-     * 解析VSN文件名，获取MD5和大小信息
-     */
-    private VsnMeta parseVsnMeta(String vsn) {
-        if (vsn == null || vsn.trim().isEmpty()) {
-            return null;
-        }
-        String s = vsn.trim();
-        int lastSlash = Math.max(s.lastIndexOf('/'), s.lastIndexOf('\\'));
-        if (lastSlash >= 0 && lastSlash + 1 < s.length()) {
-            s = s.substring(lastSlash + 1);
-        }
-        if (s.toLowerCase(Locale.ROOT).endsWith(".vsn")) {
-            s = s.substring(0, s.length() - 4);
-        }
 
-        int lastUnderscore = s.lastIndexOf('_');
-        if (lastUnderscore <= 0 || lastUnderscore >= s.length() - 1) {
-            return null;
-        }
-        int secondLastUnderscore = s.lastIndexOf('_', lastUnderscore - 1);
-        if (secondLastUnderscore <= 0 || secondLastUnderscore >= lastUnderscore - 1) {
-            return null;
-        }
-
-        String md5 = s.substring(secondLastUnderscore + 1, lastUnderscore).trim();
-        String sizeStr = s.substring(lastUnderscore + 1).trim();
-        if (!md5.matches("(?i)[0-9a-f]{32}")) {
-            return null;
-        }
-
-        long sizeBytes;
-        try {
-            sizeBytes = Long.parseLong(sizeStr);
-        } catch (NumberFormatException e) {
-            return null;
-        }
-
-        return new VsnMeta(md5.toLowerCase(Locale.ROOT), sizeBytes);
-    }
-    
     private Map<UUID, ProgramReleaseEntity> resolveLatestReleaseByProgramId(UUID userId, List<String> programVsnList) {
         if (userId == null || programVsnList == null || programVsnList.isEmpty()) {
             return Map.of();
@@ -231,12 +190,12 @@ public class ProgramDeploymentHandleApplicationService implements ProgramDeploym
         Set<String> miss = new HashSet<>();
 
         for (String vsn : programVsnList) {
-            VsnMeta meta = parseVsnMeta(vsn);
+            VsnFilenameUtils.VsnMeta meta = VsnFilenameUtils.parseVsnMeta(vsn);
             if (meta == null) {
                 continue;
             }
 
-            String key = meta.md5() + ":" + meta.sizeBytes();
+            String key = meta.vsnMd5() + ":" + meta.vsnSizeBytes();
             if (miss.contains(key)) {
                 continue;
             }
@@ -244,7 +203,7 @@ public class ProgramDeploymentHandleApplicationService implements ProgramDeploym
             ProgramReleaseEntity release = cache.get(key);
             if (release == null) {
                 release = programReleaseRepositoryJpa
-                        .findByUserIdAndVsnMd5AndVsnSizeBytes(userId, meta.md5(), meta.sizeBytes())
+                        .findByUserIdAndVsnMd5AndVsnSizeBytes(userId, meta.vsnMd5(), meta.vsnSizeBytes())
                         .orElse(null);
                 if (release == null || release.getProgramId() == null) {
                     miss.add(key);
@@ -265,9 +224,4 @@ public class ProgramDeploymentHandleApplicationService implements ProgramDeploym
 
         return latestByProgramId;
     }
-    
-    /**
-     * VSN元数据记录类
-     */
-    private record VsnMeta(String md5, long sizeBytes) {}
 }

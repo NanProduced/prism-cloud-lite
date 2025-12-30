@@ -166,8 +166,6 @@ public class MessageCenterApplicationService {
             entity.getKind(),
             entity.getType(),
             entity.getStatus(),
-            entity.getTitle(),
-            entity.getSummary(),
             payload,
             entity.getDeviceId(),
             deviceName,
@@ -275,13 +273,20 @@ public class MessageCenterApplicationService {
     }
 
     private MessageListItemResp toListItem(MessageEntity entity, String deviceName, String programName) {
+        JsonNode payload = null;
+        if (StringUtils.hasText(entity.getPayload())) {
+            try {
+                payload = JsonUtils.fromJson(entity.getPayload());
+            } catch (Exception ignore) {
+            }
+        }
+
         return MessageListItemResp.builder()
             .id(entity.getId())
             .kind(entity.getKind())
             .type(entity.getType())
             .status(entity.getStatus())
-            .title(entity.getTitle())
-            .summary(entity.getSummary())
+            .payload(payload)
             .deviceId(entity.getDeviceId())
             .deviceName(deviceName)
             .programId(entity.getProgramId())

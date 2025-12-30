@@ -130,6 +130,7 @@ public class DeviceInteractionController implements DeviceInteractionApi {
         Long deviceId = devicePrincipal.getDeviceId();
 
         List<DeviceProgramDTO> programs = coreProgramDistributionService.listDevicePrograms(deviceId, baseUrl);
+        log.debug("DeviceProgram - 终端获取节目, deviceNum: {}, programs: {}", deviceId, programs);
         return deviceProgramConverter.toDeviceApiProgram( programs);
     }
 
@@ -162,6 +163,7 @@ public class DeviceInteractionController implements DeviceInteractionApi {
                     .sourceUrl(item.getUrl())
                     .build());
         }
+        log.debug("DeviceProgram - 终端获取素材, deviceNum: {}, media: {}", deviceId, media);
         return list;
     }
 

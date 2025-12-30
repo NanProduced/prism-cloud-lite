@@ -25,8 +25,6 @@ public class MessageCenterFacadeImpl implements MessageCenterFacade {
     @Override
     public UUID createTaskMessage(UUID userId,
                                  String type,
-                                 String title,
-                                 String summary,
                                  Object payload,
                                  String taskId) {
         return messageWriteApplicationService.createAndPublish(
@@ -34,8 +32,6 @@ public class MessageCenterFacadeImpl implements MessageCenterFacade {
             type,
             MessageStatus.PENDING,
             userId,
-            title,
-            summary,
             payload,
             null,
             null,
@@ -50,11 +46,9 @@ public class MessageCenterFacadeImpl implements MessageCenterFacade {
     public void updateTaskMessage(UUID userId,
                                   UUID messageId,
                                   String status,
-                                  String title,
-                                  String summary,
                                   Object payload) {
         MessageStatus parsed = parseStatus(status);
-        messageWriteApplicationService.updateAndPublish(userId, messageId, parsed, title, summary, payload);
+        messageWriteApplicationService.updateAndPublish(userId, messageId, parsed, payload);
     }
 
     @Override
@@ -101,10 +95,6 @@ public class MessageCenterFacadeImpl implements MessageCenterFacade {
         boolean expired = "EXPIRED".equals(finalStatus);
 
         MessageStatus status = expired ? MessageStatus.FAILED : MessageStatus.SUCCESS;
-        String title = expired ? "设备指令执行超时" : "设备指令已完成";
-        String summary = expired
-            ? String.format("设备 %d 的指令 %s 已过期", message.deviceId(), actionType)
-            : String.format("设备 %d 的指令 %s 已完成", message.deviceId(), actionType);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("operationType", "DEVICE_COMMAND");
@@ -115,6 +105,7 @@ public class MessageCenterFacadeImpl implements MessageCenterFacade {
             payload.put("trackingLevel", message.trackingLevel());
         }
         payload.put("finalStatus", finalStatus);
+        payload.put("expired", expired);
         payload.put("accepted", message.accepted());
         payload.put("covered", message.covered());
         if (StringUtils.hasText(message.sendMethod())) {
@@ -132,8 +123,6 @@ public class MessageCenterFacadeImpl implements MessageCenterFacade {
             MESSAGE_TYPE_DEVICE_COMMAND_FINISHED,
             status,
             message.userId(),
-            title,
-            summary,
             payload,
             message.deviceId(),
             StringUtils.hasText(message.deviceName()) ? message.deviceName().trim() : null,

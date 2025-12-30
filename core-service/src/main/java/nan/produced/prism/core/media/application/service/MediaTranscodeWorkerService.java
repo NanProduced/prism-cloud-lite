@@ -109,7 +109,6 @@ public class MediaTranscodeWorkerService {
         UUID messageId = message.messageId();
 
         Path taskDir = null;
-        String title = null;
         String stage = MediaTranscodeConstant.Stage.PENDING;
         Map<String, Object> payload = null;
         boolean success = false;
@@ -138,8 +137,6 @@ public class MediaTranscodeWorkerService {
                 throw new IllegalArgumentException("target folder not found");
             }
 
-            title = String.format("素材转码：%s", StringUtils.hasText(asset.getTitle()) ? asset.getTitle() : asset.getId());
-
             taskDir = prepareTaskDir(message.taskId());
             String sourceExt = FileNameUtils.resolveExtensionOrDefault(original.getS3Key(), mimeType, MediaTranscodeConstant.DEFAULT_SOURCE_EXT);
             Path sourcePath = taskDir.resolve(MediaTranscodeConstant.TEMP_SOURCE_FILENAME_PREFIX + sourceExt);
@@ -148,7 +145,7 @@ public class MediaTranscodeWorkerService {
             payload = basePayload(message, asset, original, preset, targetFolderId);
 
             stage = MediaTranscodeConstant.Stage.DOWNLOADING;
-            update(userId, messageId, MessageCenterConstants.TASK_STATUS_RUNNING, title, MediaTranscodeConstant.SummaryText.DOWNLOADING, patch(payload, stage, null, null));
+            update(userId, messageId, MessageCenterConstants.TASK_STATUS_RUNNING, patch(payload, stage, null, null));
             download(mediaObjectUrlPort.toPublicUrl(original.getS3Key()), sourcePath);
 
             Long durationMs = original.getDurationMs();
@@ -157,14 +154,14 @@ public class MediaTranscodeWorkerService {
             }
 
             stage = MediaTranscodeConstant.Stage.TRANSCODING;
-            update(userId, messageId, MessageCenterConstants.TASK_STATUS_RUNNING, title, MediaTranscodeConstant.SummaryText.TRANSCODING, patch(payload, stage, 0.0, null));
-            TranscodeProgress progress = runFfmpegWithProgress(message, title, payload, sourcePath, outputPath, durationMs, preset);
+            update(userId, messageId, MessageCenterConstants.TASK_STATUS_RUNNING, patch(payload, stage, 0.0, null));
+            TranscodeProgress progress = runFfmpegWithProgress(message, payload, sourcePath, outputPath, durationMs, preset);
 
             long outputSize = Files.size(outputPath);
             ensureQuota(message, outputSize);
 
             stage = MediaTranscodeConstant.Stage.UPLOADING;
-            update(userId, messageId, MessageCenterConstants.TASK_STATUS_RUNNING, title, MediaTranscodeConstant.SummaryText.UPLOADING, patch(payload, stage, progress.percent(), progress));
+            update(userId, messageId, MessageCenterConstants.TASK_STATUS_RUNNING, patch(payload, stage, progress.percent(), progress));
             String outputMd5Lower = md5HexLower(outputPath);
             var routeConfig = uploadRouteProperties.getRouteConfig(MediaTranscodeConstant.UPLOAD_ROUTE_MEDIA_LIBRARY);
             String outputKey = MediaLibraryObjectKeyUtils.buildMediaLibraryFilesObjectKey(
@@ -177,7 +174,7 @@ public class MediaTranscodeWorkerService {
             putObject(outputKey, preset.outputContentType(), outputPath);
 
             stage = MediaTranscodeConstant.Stage.FINALIZING;
-            update(userId, messageId, MessageCenterConstants.TASK_STATUS_RUNNING, title, MediaTranscodeConstant.SummaryText.FINALIZING, patch(payload, stage, 0.99, progress));
+            update(userId, messageId, MessageCenterConstants.TASK_STATUS_RUNNING, patch(payload, stage, 0.99, progress));
             PersistedResult result = persistOutput(userId, asset, targetFolderId, message.taskId(), preset, outputKey, outputMd5Lower, outputSize, outputPath);
 
             Map<String, Object> done = new HashMap<>(payload);
@@ -185,12 +182,10 @@ public class MediaTranscodeWorkerService {
             done.put(MediaTranscodeConstant.PayloadKey.PROGRESS, Map.of(MediaTranscodeConstant.ProgressKey.PERCENT, 1.0));
             done.put(MediaTranscodeConstant.PayloadKey.OUTPUT, Map.of(
                 MediaTranscodeConstant.OutputKey.ASSET_ID, result.assetId(),
-                MediaTranscodeConstant.OutputKey.FILE_ID, result.fileId(),
-                MediaTranscodeConstant.OutputKey.S3_KEY, outputKey,
                 MediaTranscodeConstant.OutputKey.URL, mediaObjectUrlPort.toPublicUrl(outputKey)
             ));
 
-            update(userId, messageId, MessageCenterConstants.TASK_STATUS_SUCCESS, title, MediaTranscodeConstant.SummaryText.SUCCESS, done);
+            update(userId, messageId, MessageCenterConstants.TASK_STATUS_SUCCESS, done);
             success = true;
         } catch (Exception ex) {
             log.error("Transcode task execution failed: taskId={}, messageId={}, userId={}", message.taskId(), message.messageId(), message.userId(), ex);
@@ -316,7 +311,6 @@ public class MediaTranscodeWorkerService {
     }
 
     private TranscodeProgress runFfmpegWithProgress(TranscodeTaskPendingMessage message,
-                                                   String title,
                                                    Map<String, Object> basePayload,
                                                    Path input,
                                                    Path output,
@@ -419,8 +413,12 @@ public class MediaTranscodeWorkerService {
 
                         TranscodeProgress p = new TranscodeProgress(percent, outTimeMs, duration, speed);
                         Map<String, Object> payload = patch(basePayload, MediaTranscodeConstant.Stage.TRANSCODING, percent, p);
-                        String summary = String.format("转码中… %d%%", percentInt);
-                        messageCenterFacade.updateTaskMessage(message.userId(), message.messageId(), MessageCenterConstants.TASK_STATUS_RUNNING, title, summary, payload);
+                        messageCenterFacade.updateTaskMessage(
+                            message.userId(),
+                            message.messageId(),
+                            MessageCenterConstants.TASK_STATUS_RUNNING,
+                            payload
+                        );
                     }
                 }
             }
@@ -689,8 +687,6 @@ public class MediaTranscodeWorkerService {
         if (StringUtils.hasText(asset.getTitle())) {
             sourceObj.put(MediaTranscodeConstant.SourceKey.TITLE, asset.getTitle());
         }
-        sourceObj.put(MediaTranscodeConstant.SourceKey.FILE_ID, original.getFileId());
-        sourceObj.put(MediaTranscodeConstant.SourceKey.S3_KEY, original.getS3Key());
         sourceObj.put(MediaTranscodeConstant.SourceKey.MIME_TYPE, original.getMimeType());
         sourceObj.put(MediaTranscodeConstant.SourceKey.SIZE_BYTES, original.getSize());
         if (original.getDurationMs() != null) {
@@ -722,8 +718,8 @@ public class MediaTranscodeWorkerService {
         return patched;
     }
 
-    private void update(UUID userId, UUID messageId, String status, String title, String summary, Map<String, Object> payload) {
-        messageCenterFacade.updateTaskMessage(userId, messageId, status, title, summary, payload);
+    private void update(UUID userId, UUID messageId, String status, Map<String, Object> payload) {
+        messageCenterFacade.updateTaskMessage(userId, messageId, status, payload);
     }
 
     private void fail(TranscodeTaskPendingMessage message, String error) {
@@ -741,6 +737,7 @@ public class MediaTranscodeWorkerService {
         payload.put(MediaTranscodeConstant.PayloadKey.STAGE, MediaTranscodeConstant.Stage.FAILED);
 
         Map<String, Object> errorObj = new HashMap<>();
+        errorObj.put(MediaTranscodeConstant.ErrorKey.CODE, errorCode(ex));
         errorObj.put(MediaTranscodeConstant.ErrorKey.MESSAGE, error);
         if (StringUtils.hasText(stage)) {
             errorObj.put(MediaTranscodeConstant.ErrorKey.STAGE, stage);
@@ -754,19 +751,33 @@ public class MediaTranscodeWorkerService {
         }
 
         payload.put(MediaTranscodeConstant.PayloadKey.ERROR, errorObj);
+        messageCenterFacade.updateTaskMessage(message.userId(), message.messageId(), MessageCenterConstants.TASK_STATUS_FAILED, payload);
+    }
 
-        String summary = StringUtils.hasText(error) ? ("转码失败：" + error) : "转码失败";
-        messageCenterFacade.updateTaskMessage(message.userId(), message.messageId(), MessageCenterConstants.TASK_STATUS_FAILED, null, summary, payload);
+    private String errorCode(Exception ex) {
+        if (ex instanceof FfmpegFailedException) {
+            return "FFMPEG_FAILED";
+        }
+        if (ex instanceof StorageQuotaExceededException) {
+            return "STORAGE_QUOTA_EXCEEDED";
+        }
+        if (ex instanceof IllegalArgumentException) {
+            return "INVALID_ARGUMENT";
+        }
+        if (ex instanceof IOException) {
+            return "IO_ERROR";
+        }
+        return "INTERNAL_ERROR";
     }
 
     private String safeMessage(Exception ex) {
         if (ex instanceof FfmpegFailedException ff) {
-            return "ffmpeg 转码失败（exitCode=" + ff.exitCode + "）";
+            return "ffmpeg failed (exitCode=" + ff.exitCode + ")";
         }
         if (ex instanceof StorageQuotaExceededException) {
-            return "存储空间不足";
+            return "storage quota exceeded";
         }
-        return ex.getMessage() != null ? ex.getMessage() : "转码失败";
+        return ex.getMessage() != null ? ex.getMessage() : "transcode failed";
     }
 
     private Path prepareTaskDir(String taskId) throws IOException {

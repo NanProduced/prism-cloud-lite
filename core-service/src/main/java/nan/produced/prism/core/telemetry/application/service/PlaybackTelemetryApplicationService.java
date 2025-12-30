@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
+import nan.produced.prism.core.common.util.VsnFilenameUtils;
 import nan.produced.prism.core.device.domain.report.media.MediaPlayTimesReport;
 import nan.produced.prism.core.device.domain.report.program.ProgramPlayTimesReport;
 import nan.produced.prism.core.media.application.domain.MediaAssetEntity;
@@ -74,9 +75,9 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
 
             UUID programId = null;
             Integer releaseVersion = null;
-            VsnMeta meta = parseVsnMeta(programVsn);
-            String vsnMd5 = meta != null ? meta.md5() : null;
-            Long vsnSizeBytes = meta != null ? meta.sizeBytes() : null;
+            VsnFilenameUtils.VsnMeta meta = VsnFilenameUtils.parseVsnMeta(programVsn);
+            String vsnMd5 = meta != null ? meta.vsnMd5() : null;
+            Long vsnSizeBytes = meta != null ? meta.vsnSizeBytes() : null;
 
             if (!isLan) {
                 if (meta == null) {
@@ -160,13 +161,13 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
             }
 
             String programVsn = StringUtils.hasText(report.getProgramName()) ? report.getProgramName().trim() : null;
-            VsnMeta meta = parseVsnMeta(programVsn);
+            VsnFilenameUtils.VsnMeta meta = VsnFilenameUtils.parseVsnMeta(programVsn);
 
             boolean isLan = true;
             UUID programId = null;
             Integer releaseVersion = null;
-            String vsnMd5 = meta != null ? meta.md5() : null;
-            Long vsnSizeBytes = meta != null ? meta.sizeBytes() : null;
+            String vsnMd5 = meta != null ? meta.vsnMd5() : null;
+            Long vsnSizeBytes = meta != null ? meta.vsnSizeBytes() : null;
 
             if (meta != null) {
                 ProgramTelemetryQueryFacade.ReleaseInfo release = resolveRelease(userId, meta, releaseCache, releaseMiss);
@@ -665,54 +666,13 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
         return startAt != null && endAt != null && startAt.isBefore(endAt);
     }
 
-    private record VsnMeta(String md5, long sizeBytes) {
-    }
-
-    private VsnMeta parseVsnMeta(String vsn) {
-        if (!StringUtils.hasText(vsn)) {
-            return null;
-        }
-        String s = vsn.trim();
-        int lastSlash = Math.max(s.lastIndexOf('/'), s.lastIndexOf('\\'));
-        if (lastSlash >= 0 && lastSlash + 1 < s.length()) {
-            s = s.substring(lastSlash + 1);
-        }
-        if (s.endsWith(".vsn") || s.endsWith(".VSN")) {
-            s = s.substring(0, s.length() - 4);
-        }
-
-        int lastUnderscore = s.lastIndexOf('_');
-        if (lastUnderscore <= 0 || lastUnderscore >= s.length() - 1) {
-            return null;
-        }
-        int secondLastUnderscore = s.lastIndexOf('_', lastUnderscore - 1);
-        if (secondLastUnderscore <= 0 || secondLastUnderscore >= lastUnderscore - 1) {
-            return null;
-        }
-
-        String md5 = s.substring(secondLastUnderscore + 1, lastUnderscore).trim();
-        String sizeStr = s.substring(lastUnderscore + 1).trim();
-        if (!md5.matches("(?i)[0-9a-f]{32}")) {
-            return null;
-        }
-
-        long sizeBytes;
-        try {
-            sizeBytes = Long.parseLong(sizeStr);
-        } catch (NumberFormatException e) {
-            return null;
-        }
-
-        return new VsnMeta(md5.toUpperCase(), sizeBytes);
-    }
-
     private ProgramTelemetryQueryFacade.ReleaseInfo resolveRelease(
             UUID userId,
-            VsnMeta meta,
+            VsnFilenameUtils.VsnMeta meta,
             Map<String, ProgramTelemetryQueryFacade.ReleaseInfo> cache,
             Set<String> miss) {
 
-        String key = meta.md5() + ":" + meta.sizeBytes();
+        String key = meta.vsnMd5() + ":" + meta.vsnSizeBytes();
         if (cache.containsKey(key)) {
             return cache.get(key);
         }
@@ -721,7 +681,7 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
         }
 
         ProgramTelemetryQueryFacade.ReleaseInfo release = programTelemetryQueryFacade
-                .findReleaseByVsnMeta(userId, meta.md5(), meta.sizeBytes())
+                .findReleaseByVsnMeta(userId, meta.vsnMd5(), meta.vsnSizeBytes())
                 .orElse(null);
 
         if (release == null) {

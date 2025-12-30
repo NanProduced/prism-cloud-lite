@@ -34,8 +34,6 @@ public class MessageWriteApplicationService {
                                          String type,
                                          MessageStatus status,
                                          UUID userId,
-                                         String title,
-                                         String summary,
                                          Object payload,
                                          Long deviceId,
                                          String deviceNameSnapshot,
@@ -55,9 +53,6 @@ public class MessageWriteApplicationService {
         if (status == null) {
             throw new InfraException(ErrorCode.INVALID_REQUEST, "status is required");
         }
-        if (!StringUtils.hasText(title)) {
-            throw new InfraException(ErrorCode.INVALID_REQUEST, "title is required");
-        }
 
         OffsetDateTime now = OffsetDateTime.now(ZoneOffset.UTC);
         MessageEntity entity = MessageEntity.builder()
@@ -66,8 +61,6 @@ public class MessageWriteApplicationService {
             .kind(kind)
             .type(type.trim())
             .status(status)
-            .title(title.trim())
-            .summary(StringUtils.hasText(summary) ? summary.trim() : null)
             .payload(serializePayload(payload))
             .deviceId(deviceId)
             .deviceNameSnapshot(normalizeSnapshot(deviceNameSnapshot))
@@ -85,14 +78,12 @@ public class MessageWriteApplicationService {
     }
 
     public MessageEntity updateStatusAndPublish(UUID userId, UUID messageId, MessageStatus status, Object payloadPatch) {
-        return updateAndPublish(userId, messageId, status, null, null, payloadPatch);
+        return updateAndPublish(userId, messageId, status, payloadPatch);
     }
 
     public MessageEntity updateAndPublish(UUID userId,
                                          UUID messageId,
                                          MessageStatus status,
-                                         String title,
-                                         String summary,
                                          Object payloadPatch) {
         if (userId == null) {
             throw new InfraException(ErrorCode.NO_AUTHENTICATED_USER);
@@ -109,15 +100,6 @@ public class MessageWriteApplicationService {
 
         if (status != null) {
             entity.setStatus(status);
-        }
-
-        if (StringUtils.hasText(title)) {
-            entity.setTitle(title.trim());
-        }
-
-        if (summary != null) {
-            String normalizedSummary = StringUtils.hasText(summary) ? summary.trim() : null;
-            entity.setSummary(normalizedSummary);
         }
 
         if (payloadPatch != null) {
@@ -156,13 +138,13 @@ public class MessageWriteApplicationService {
             return;
         }
 
+        var payload = parsePayloadNode(entity.getPayload());
         MessageListItemResp item = MessageListItemResp.builder()
             .id(entity.getId())
             .kind(entity.getKind())
             .type(entity.getType())
             .status(entity.getStatus())
-            .title(entity.getTitle())
-            .summary(entity.getSummary())
+            .payload(payload)
             .deviceId(entity.getDeviceId())
             .deviceName(entity.getDeviceNameSnapshot())
             .programId(entity.getProgramId())
@@ -193,13 +175,13 @@ public class MessageWriteApplicationService {
             return;
         }
 
+        var payload = parsePayloadNode(entity.getPayload());
         MessageListItemResp item = MessageListItemResp.builder()
             .id(entity.getId())
             .kind(entity.getKind())
             .type(entity.getType())
             .status(entity.getStatus())
-            .title(entity.getTitle())
-            .summary(entity.getSummary())
+            .payload(payload)
             .deviceId(entity.getDeviceId())
             .deviceName(entity.getDeviceNameSnapshot())
             .programId(entity.getProgramId())
@@ -223,5 +205,16 @@ public class MessageWriteApplicationService {
             .build();
 
         rabbitMessagePublisher.publishCoreNotification(MessagingConstants.RoutingKeys.NOTIFY_MESSAGE_UPDATED, message);
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode parsePayloadNode(String payload) {
+        if (!StringUtils.hasText(payload)) {
+            return null;
+        }
+        try {
+            return JsonUtils.fromJson(payload);
+        } catch (Exception ignore) {
+            return null;
+        }
     }
 }

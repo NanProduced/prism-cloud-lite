@@ -13,8 +13,6 @@ public record MessageDetailResp(
     @Schema(description = "消息类别") MessageKind kind,
     @Schema(description = "消息类型") String type,
     @Schema(description = "状态") MessageStatus status,
-    @Schema(description = "标题") String title,
-    @Schema(description = "摘要") String summary,
     @Schema(description = "详情载荷（JSON）") JsonNode payload,
     @Schema(description = "关联设备ID") Long deviceId,
     @Schema(description = "关联设备名称（冗余字段，可为空）") String deviceName,

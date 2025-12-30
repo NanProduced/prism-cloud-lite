@@ -1,5 +1,6 @@
 package nan.produced.prism.core.message.api.dto;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -29,11 +30,8 @@ public class MessageListItemResp {
     @Schema(description = "消息状态")
     private MessageStatus status;
 
-    @Schema(description = "标题")
-    private String title;
-
-    @Schema(description = "摘要")
-    private String summary;
+    @Schema(description = "渲染载荷（JSON），前端按 type/status 自行 i18n 渲染")
+    private JsonNode payload;
 
     @Schema(description = "关联设备ID（可为空）")
     private Long deviceId;

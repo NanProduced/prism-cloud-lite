@@ -16,6 +16,7 @@ import nan.produced.prism.core.program.api.dto.CreateProgramReq;
 import nan.produced.prism.core.program.api.dto.ProgramDetailResp;
 import nan.produced.prism.core.program.api.dto.ProgramDraftResp;
 import nan.produced.prism.core.program.api.dto.ProgramListResp;
+import nan.produced.prism.core.program.api.dto.ProgramResolveByVsnResp;
 import nan.produced.prism.core.program.api.dto.ProgramAuditLogResp;
 import nan.produced.prism.core.program.api.dto.ProgramPublishReq;
 import nan.produced.prism.core.program.api.dto.ProgramPublishResp;
@@ -25,6 +26,7 @@ import nan.produced.prism.core.program.api.dto.SaveProgramDraftReq;
 import nan.produced.prism.core.program.api.dto.ProgramUnpublishReq;
 import nan.produced.prism.core.program.api.dto.ProgramUnpublishResp;
 import nan.produced.prism.core.program.application.service.ProgramApplicationService;
+import nan.produced.prism.core.program.application.service.ProgramVsnResolveApplicationService;
 import nan.produced.prism.core.security.api.CloudAuthContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -44,6 +46,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ProgramController {
 
     private final ProgramApplicationService programApplicationService;
+    private final ProgramVsnResolveApplicationService programVsnResolveApplicationService;
 
     @Operation(summary = "创建节目", description = "创建一个节目容器（平台侧概念：Program），后续可保存草稿与发布多个版本。")
     @ApiResponse(
@@ -70,6 +73,21 @@ public class ProgramController {
         UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<ProgramListResp> list = programApplicationService.listPrograms(userId);
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
+    }
+
+    @Operation(summary = "通过 VSN 文件名解析节目版本", description = "用于设备上报 VSN 文件名后，前端可据此定位唯一的节目版本并下钻。")
+    @ApiResponse(
+            responseCode = "200",
+            description = "成功返回解析结果",
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProgramResolveByVsnResp.class)))
+    @ApiResponse(responseCode = "400", description = "VSN 文件名格式不合法")
+    @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
+    @ApiResponse(responseCode = "404", description = "未找到对应的节目版本")
+    @GetMapping("/resolve-by-vsn")
+    public ResponseEntity<BffResponse<ProgramResolveByVsnResp>> resolveByVsn(@RequestParam("vsn") String vsn) {
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
+        ProgramResolveByVsnResp resp = programVsnResolveApplicationService.resolveByVsn(userId, vsn);
+        return ResponseEntity.ok(BffResponse.success(resp).withTraceId(TraceUtils.getTraceId()));
     }
 
     @Operation(summary = "获取节目详情", description = "返回节目基础信息 + drafts + versions + deployments（用于状态页/编辑器入口）。")

@@ -41,12 +41,6 @@ public class MessageEntity {
     @Column(name = "status", nullable = false, length = 32)
     private MessageStatus status;
 
-    @Column(name = "title", nullable = false, length = 256)
-    private String title;
-
-    @Column(name = "summary", length = 512)
-    private String summary;
-
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "payload", columnDefinition = "jsonb")
     private String payload;

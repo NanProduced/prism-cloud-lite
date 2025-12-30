@@ -158,11 +158,6 @@ public class ProgramPublishMessageTracker {
         long offlineTargets = Math.max(0, totalTargets - totalOnlineTargets);
         int version = (int) asLong(meta.get(FIELD_VERSION));
 
-        String title = StringUtils.hasText(programName)
-            ? String.format("节目《%s》v%d 已在在线设备下载完成", programName, version)
-            : String.format("节目 v%d 已在在线设备下载完成", version);
-        String summary = String.format("在线设备 %d 台已完成下载，离线设备 %d 台将在上线后继续下载", totalOnlineTargets, offlineTargets);
-
         Map<String, Object> payload = new HashMap<>();
         payload.put("operationType", "PROGRAM_PUBLISH");
         payload.put("publishOperationId", publishOperationId);
@@ -180,8 +175,6 @@ public class ProgramPublishMessageTracker {
             MESSAGE_TYPE_PROGRAM_PUBLISH_ONLINE_FINISHED,
             MessageStatus.SUCCESS,
             userId,
-            title,
-            summary,
             payload,
             null,
             null,
@@ -212,11 +205,6 @@ public class ProgramPublishMessageTracker {
         String programName = asString(meta.get(FIELD_PROGRAM_NAME));
         int version = (int) asLong(meta.get(FIELD_VERSION));
 
-        String title = StringUtils.hasText(programName)
-            ? String.format("节目《%s》v%d 发布成功", programName, version)
-            : String.format("节目 v%d 发布成功", version);
-        String summary = String.format("共 %d 台设备已下载完成", totalTargets);
-
         Map<String, Object> payload = new HashMap<>();
         payload.put("operationType", "PROGRAM_PUBLISH");
         payload.put("publishOperationId", publishOperationId);
@@ -231,8 +219,6 @@ public class ProgramPublishMessageTracker {
             MESSAGE_TYPE_PROGRAM_PUBLISH_FINISHED,
             MessageStatus.SUCCESS,
             userId,
-            title,
-            summary,
             payload,
             null,
             null,

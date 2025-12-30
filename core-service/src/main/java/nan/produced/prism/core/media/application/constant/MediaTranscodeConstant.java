@@ -143,26 +143,12 @@ public final class MediaTranscodeConstant {
 
         public static final String MESSAGE = "message";
 
+        public static final String CODE = "code";
+
         public static final String STAGE = "stage";
 
         public static final String FFMPEG_EXIT_CODE = "ffmpegExitCode";
 
         public static final String LOG_TAIL = "logTail";
-    }
-
-    @NoArgsConstructor(access = AccessLevel.PRIVATE)
-    public static final class SummaryText {
-
-        public static final String QUEUED = "排队中";
-
-        public static final String DOWNLOADING = "下载中…";
-
-        public static final String TRANSCODING = "转码中…";
-
-        public static final String UPLOADING = "上传中…";
-
-        public static final String FINALIZING = "写入素材库…";
-
-        public static final String SUCCESS = "转码完成";
     }
 }

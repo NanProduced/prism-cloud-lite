@@ -38,8 +38,6 @@ public interface MessageCenterFacade {
      */
     UUID createTaskMessage(UUID userId,
                            String type,
-                           String title,
-                           String summary,
                            Object payload,
                            String taskId);
 
@@ -51,8 +49,6 @@ public interface MessageCenterFacade {
     void updateTaskMessage(UUID userId,
                            UUID messageId,
                            String status,
-                           String title,
-                           String summary,
                            Object payload);
 
     void startBatchCommandTracking(UUID userId, String batchOperationId, Collection<BatchCommandItem> items);

@@ -158,20 +158,22 @@ public class BatchCommandMessageTracker {
 
         Map<Object, Object> meta = redisTemplate.opsForHash().entries(metaKey(batchOperationId));
         long total = asLong(meta.get(FIELD_TOTAL));
+        long accepted = asLong(meta.get(FIELD_ACCEPTED));
         long success = asLong(meta.get(FIELD_SUCCESS));
         long failed = asLong(meta.get(FIELD_FAILED));
+        long expired = asLong(meta.get(FIELD_EXPIRED));
         String actionTypes = asString(meta.get(FIELD_ACTION_TYPES));
 
         MessageStatus status = failed == 0 ? MessageStatus.SUCCESS : MessageStatus.FAILED;
-        String title = failed == 0 ? "批量指令已完成" : "批量指令已完成（部分失败）";
-        String summary = String.format("共 %d 条，成功 %d 条，失败 %d 条", total, success, failed);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("operationType", "DEVICE_COMMAND_BATCH");
         payload.put("batchOperationId", batchOperationId);
         payload.put("total", total);
+        payload.put("accepted", accepted);
         payload.put("success", success);
         payload.put("failed", failed);
+        payload.put("expired", expired);
         if (StringUtils.hasText(actionTypes)) {
             payload.put("actionTypes", List.of(actionTypes.split(",")));
         }
@@ -181,8 +183,6 @@ public class BatchCommandMessageTracker {
             MESSAGE_TYPE_BATCH_COMMAND_FINISHED,
             status,
             userId,
-            title,
-            summary,
             payload,
             null,
             null,
