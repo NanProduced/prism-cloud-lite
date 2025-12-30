@@ -2,6 +2,7 @@ package nan.produced.prism.core.telemetry.api.dto.playback;
 
 import java.time.Instant;
 import java.util.UUID;
+import nan.produced.prism.core.telemetry.api.dto.ResourceStatus;
 
 /**
  * 节目播放汇总项（按节目聚合）。
@@ -25,6 +26,8 @@ public record ProgramPlaySummaryItem(
         long playCount,
         long playSeconds,
         long deviceCount,
-        Instant lastPlayedAt
+        Instant lastPlayedAt,
+        ResourceStatus status,
+        Instant deletedAt
 ) {
 }

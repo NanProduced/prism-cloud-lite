@@ -4,6 +4,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
+import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
+import nan.produced.prism.core.device.domain.DeviceEntity;
+import nan.produced.prism.core.resource.application.service.ResourceTombstoneService;
+import nan.produced.prism.core.resource.domain.ResourceTombstoneEntity;
+import nan.produced.prism.core.resource.domain.ResourceTombstoneKey;
+import nan.produced.prism.core.resource.domain.ResourceType;
 import nan.produced.prism.core.telemetry.api.DeviceOnlineTimeFacade;
 import nan.produced.prism.core.telemetry.api.dto.ActiveDeviceCountBucket;
 import nan.produced.prism.core.telemetry.api.dto.DeviceConcurrencyBucket;
@@ -12,6 +18,7 @@ import nan.produced.prism.core.telemetry.api.dto.DeviceOnlineSessionItem;
 import nan.produced.prism.core.telemetry.api.dto.DeviceOnlineSessionStats;
 import nan.produced.prism.core.telemetry.api.dto.DeviceOnlineTimeBucket;
 import nan.produced.prism.core.telemetry.api.dto.DeviceOnlineTimeDeviceSummary;
+import nan.produced.prism.core.telemetry.api.dto.ResourceStatus;
 import nan.produced.prism.core.telemetry.api.dto.TimeBucketUnit;
 import nan.produced.prism.core.telemetry.application.port.outbound.DeviceOnlineSessionRepository;
 import org.springframework.stereotype.Service;
@@ -21,8 +28,11 @@ import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Slf4j
@@ -34,6 +44,8 @@ public class DeviceOnlineTimeApplicationService implements DeviceOnlineTimeFacad
     private static final int MAX_SESSION_LIST_LIMIT = 1000;
 
     private final DeviceOnlineSessionRepository deviceOnlineSessionRepository;
+    private final DeviceRepository deviceRepository;
+    private final ResourceTombstoneService resourceTombstoneService;
 
     @Override
     @Transactional
@@ -63,8 +75,59 @@ public class DeviceOnlineTimeApplicationService implements DeviceOnlineTimeFacad
         if (rows == null || rows.isEmpty()) {
             return Collections.emptyList();
         }
+
+        var deviceIds = new HashSet<Long>();
+        for (var r : rows) {
+            if (r != null && r.deviceId() != null) {
+                deviceIds.add(r.deviceId());
+            }
+        }
+
+        Map<Long, String> namesById = new HashMap<>();
+        List<DeviceEntity> devices = deviceRepository.findByUserIdAndDeviceIds(userId, deviceIds);
+        if (devices != null && !devices.isEmpty()) {
+            for (DeviceEntity d : devices) {
+                if (d == null || d.getDeviceId() == null) {
+                    continue;
+                }
+                namesById.put(d.getDeviceId(), d.getDeviceName());
+            }
+        }
+
+        var deviceIdStrings = new HashSet<String>();
+        for (Long id : deviceIds) {
+            if (id != null) {
+                deviceIdStrings.add(String.valueOf(id));
+            }
+        }
+        Map<ResourceTombstoneKey, ResourceTombstoneEntity> tombstones =
+                resourceTombstoneService.findByUserAndTypeAndRefIds(userId, ResourceType.DEVICE, deviceIdStrings);
+
         return rows.stream()
-                .map(r -> new DeviceOnlineTimeDeviceSummary(r.deviceId(), r.onlineSeconds()))
+                .map(r -> {
+                    String name = namesById.get(r.deviceId());
+                    ResourceTombstoneEntity t = tombstones.get(new ResourceTombstoneKey(
+                            userId, ResourceType.DEVICE, String.valueOf(r.deviceId()), ResourceTombstoneService.NO_VERSION));
+
+                    ResourceStatus status;
+                    if (namesById.containsKey(r.deviceId())) {
+                        status = ResourceStatus.ACTIVE;
+                    } else if (t != null) {
+                        status = ResourceStatus.DELETED;
+                    } else {
+                        status = ResourceStatus.UNKNOWN;
+                    }
+
+                    String displayName = name != null && !name.isBlank() ? name.trim() : (t != null ? t.getDisplayName() : null);
+                    Instant deletedAt = t != null && t.getDeletedAt() != null ? t.getDeletedAt().toInstant() : null;
+
+                    return new DeviceOnlineTimeDeviceSummary(
+                            r.deviceId(),
+                            r.onlineSeconds(),
+                            displayName,
+                            status,
+                            deletedAt);
+                })
                 .toList();
     }
 

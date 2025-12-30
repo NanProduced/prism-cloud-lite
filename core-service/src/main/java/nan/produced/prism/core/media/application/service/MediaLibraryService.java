@@ -18,6 +18,8 @@ import nan.produced.prism.core.media.application.port.outbound.MediaObjectUrlPor
 import nan.produced.prism.core.media.application.repository.FileEntityRepository;
 import nan.produced.prism.core.media.application.repository.MediaAssetRepository;
 import nan.produced.prism.core.media.application.repository.MediaFolderRepository;
+import nan.produced.prism.core.resource.application.service.ResourceTombstoneService;
+import nan.produced.prism.core.resource.domain.ResourceType;
 import nan.produced.prism.core.system.api.SubscriptionQuotaFacade;
 import nan.produced.prism.core.user.api.StorageFileType;
 import nan.produced.prism.core.user.api.StorageSourceType;
@@ -48,6 +50,7 @@ public class MediaLibraryService {
     private final SubscriptionQuotaFacade subscriptionQuotaFacade;
     private final MediaObjectUrlPort mediaObjectUrlPort;
     private final ObjectStoragePort objectStoragePort;
+    private final ResourceTombstoneService resourceTombstoneService;
 
     /**
      * 获取媒体库使用情况
@@ -357,6 +360,14 @@ public class MediaLibraryService {
         }
 
         String assetId = asset.getId();
+
+        // Best-effort tombstone, for telemetry queries after deletion (retain 60 days).
+        resourceTombstoneService.markDeleted(
+                userId,
+                ResourceType.MEDIA,
+                assetId,
+                ResourceTombstoneService.NO_VERSION,
+                asset.getTitle());
 
         String originalFileId = asset.getOriginalFile() != null ? asset.getOriginalFile().getFileId() : null;
         String coverFileId = asset.getCoverFile() != null ? asset.getCoverFile().getFileId() : null;

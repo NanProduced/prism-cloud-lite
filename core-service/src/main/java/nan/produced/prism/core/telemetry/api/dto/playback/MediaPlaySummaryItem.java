@@ -1,6 +1,7 @@
 package nan.produced.prism.core.telemetry.api.dto.playback;
 
 import java.time.Instant;
+import nan.produced.prism.core.telemetry.api.dto.ResourceStatus;
 
 /**
  * 素材播放汇总项（按素材聚合）。
@@ -20,6 +21,8 @@ public record MediaPlaySummaryItem(
         long playCount,
         long playSeconds,
         long deviceCount,
-        Instant lastPlayedAt
+        Instant lastPlayedAt,
+        ResourceStatus status,
+        Instant deletedAt
 ) {
 }

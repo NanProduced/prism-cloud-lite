@@ -15,12 +15,19 @@ import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.util.VsnFilenameUtils;
+import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
+import nan.produced.prism.core.device.domain.DeviceEntity;
 import nan.produced.prism.core.device.domain.report.media.MediaPlayTimesReport;
 import nan.produced.prism.core.device.domain.report.program.ProgramPlayTimesReport;
 import nan.produced.prism.core.media.application.domain.MediaAssetEntity;
 import nan.produced.prism.core.media.application.repository.MediaAssetRepository;
 import nan.produced.prism.core.program.application.port.inbound.ProgramTelemetryQueryFacade;
+import nan.produced.prism.core.resource.application.service.ResourceTombstoneService;
+import nan.produced.prism.core.resource.domain.ResourceTombstoneEntity;
+import nan.produced.prism.core.resource.domain.ResourceTombstoneKey;
+import nan.produced.prism.core.resource.domain.ResourceType;
 import nan.produced.prism.core.telemetry.api.PlaybackTelemetryFacade;
+import nan.produced.prism.core.telemetry.api.dto.ResourceStatus;
 import nan.produced.prism.core.telemetry.api.dto.TimeBucketUnit;
 import nan.produced.prism.core.telemetry.api.dto.playback.DevicePlaySummaryItem;
 import nan.produced.prism.core.telemetry.api.dto.playback.MediaPlaySummaryItem;
@@ -51,6 +58,11 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
 
     private final ProgramTelemetryQueryFacade programTelemetryQueryFacade;
     private final MediaAssetRepository mediaAssetRepository;
+    private final DeviceRepository deviceRepository;
+    private final ResourceTombstoneService resourceTombstoneService;
+
+    private record ResolvedRef(String displayName, ResourceStatus status, Instant deletedAt) {
+    }
 
     @Override
     @Transactional
@@ -340,13 +352,28 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
         if (rows == null || rows.isEmpty()) {
             return List.of();
         }
+
+        Set<Long> deviceIds = new HashSet<>();
+        for (var r : rows) {
+            if (r != null && r.deviceId() != null) {
+                deviceIds.add(r.deviceId());
+            }
+        }
+        Map<Long, ResolvedRef> deviceMeta = resolveDevices(userId, deviceIds);
+
         return rows.stream()
-                .map(r -> new DevicePlaySummaryItem(
-                        r.deviceId(),
-                        Math.max(0L, r.playCount()),
-                        Math.max(0L, r.playSeconds()),
-                        r.lastPlayedAt() != null ? r.lastPlayedAt().toInstant() : null
-                ))
+                .map(r -> {
+                    ResolvedRef meta = deviceMeta.get(r.deviceId());
+                    return new DevicePlaySummaryItem(
+                            r.deviceId(),
+                            Math.max(0L, r.playCount()),
+                            Math.max(0L, r.playSeconds()),
+                            r.lastPlayedAt() != null ? r.lastPlayedAt().toInstant() : null,
+                            meta != null ? meta.displayName() : null,
+                            meta != null ? meta.status() : ResourceStatus.UNKNOWN,
+                            meta != null ? meta.deletedAt() : null
+                    );
+                })
                 .toList();
     }
 
@@ -431,13 +458,28 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
         if (rows == null || rows.isEmpty()) {
             return List.of();
         }
+
+        Set<Long> deviceIds = new HashSet<>();
+        for (var r : rows) {
+            if (r != null && r.deviceId() != null) {
+                deviceIds.add(r.deviceId());
+            }
+        }
+        Map<Long, ResolvedRef> deviceMeta = resolveDevices(userId, deviceIds);
+
         return rows.stream()
-                .map(r -> new DevicePlaySummaryItem(
-                        r.deviceId(),
-                        Math.max(0L, r.playCount()),
-                        Math.max(0L, r.playSeconds()),
-                        r.lastPlayedAt() != null ? r.lastPlayedAt().toInstant() : null
-                ))
+                .map(r -> {
+                    ResolvedRef meta = deviceMeta.get(r.deviceId());
+                    return new DevicePlaySummaryItem(
+                            r.deviceId(),
+                            Math.max(0L, r.playCount()),
+                            Math.max(0L, r.playSeconds()),
+                            r.lastPlayedAt() != null ? r.lastPlayedAt().toInstant() : null,
+                            meta != null ? meta.displayName() : null,
+                            meta != null ? meta.status() : ResourceStatus.UNKNOWN,
+                            meta != null ? meta.deletedAt() : null
+                    );
+                })
                 .toList();
     }
 
@@ -539,13 +581,27 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
             return List.of();
         }
 
+        Set<Long> deviceIds = new HashSet<>();
+        for (var r : rows) {
+            if (r != null && r.deviceId() != null) {
+                deviceIds.add(r.deviceId());
+            }
+        }
+        Map<Long, ResolvedRef> deviceMeta = resolveDevices(userId, deviceIds);
+
         return rows.stream()
-                .map(r -> new DevicePlaySummaryItem(
-                        r.deviceId(),
-                        Math.max(0L, r.playCount()),
-                        Math.max(0L, r.playSeconds()),
-                        r.lastPlayedAt() != null ? r.lastPlayedAt().toInstant() : null
-                ))
+                .map(r -> {
+                    ResolvedRef meta = deviceMeta.get(r.deviceId());
+                    return new DevicePlaySummaryItem(
+                            r.deviceId(),
+                            Math.max(0L, r.playCount()),
+                            Math.max(0L, r.playSeconds()),
+                            r.lastPlayedAt() != null ? r.lastPlayedAt().toInstant() : null,
+                            meta != null ? meta.displayName() : null,
+                            meta != null ? meta.status() : ResourceStatus.UNKNOWN,
+                            meta != null ? meta.deletedAt() : null
+                    );
+                })
                 .toList();
     }
 
@@ -564,13 +620,47 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
         Map<UUID, String> namesById = new HashMap<>();
         namesById.putAll(programTelemetryQueryFacade.findProgramNamesByIds(userId, programIds));
 
+        Set<String> programIdStrings = new HashSet<>();
+        for (UUID id : programIds) {
+            if (id != null) {
+                programIdStrings.add(id.toString());
+            }
+        }
+        Map<ResourceTombstoneKey, ResourceTombstoneEntity> programTombstones =
+                resourceTombstoneService.findByUserAndTypeAndRefIds(userId, ResourceType.PROGRAM, programIdStrings);
+        Map<ResourceTombstoneKey, ResourceTombstoneEntity> releaseTombstones =
+                resourceTombstoneService.findByUserAndTypeAndRefIds(userId, ResourceType.PROGRAM_RELEASE, programIdStrings);
+
         return rows.stream()
                 .map(r -> {
                     String programName;
+                    ResourceStatus status;
+                    Instant deletedAt = null;
                     if (r.lan()) {
                         programName = firstNonBlank(r.programNameSnapshot(), r.programVsn(), r.lanProgramId());
+                        status = ResourceStatus.ACTIVE;
                     } else {
                         programName = firstNonBlank(namesById.get(r.programId()), r.programNameSnapshot(), r.programVsn());
+                        boolean active = r.programId() != null && namesById.containsKey(r.programId());
+                        if (active) {
+                            status = ResourceStatus.ACTIVE;
+                        } else {
+                            ResourceTombstoneEntity tombstone = null;
+                            String idStr = r.programId() != null ? r.programId().toString() : null;
+                            int ver = r.releaseVersion() != null ? Math.max(0, r.releaseVersion()) : ResourceTombstoneService.NO_VERSION;
+                            if (idStr != null) {
+                                tombstone = releaseTombstones.get(new ResourceTombstoneKey(userId, ResourceType.PROGRAM_RELEASE, idStr, ver));
+                                if (tombstone == null) {
+                                    tombstone = programTombstones.get(new ResourceTombstoneKey(userId, ResourceType.PROGRAM, idStr, ResourceTombstoneService.NO_VERSION));
+                                }
+                            }
+                            if (tombstone != null) {
+                                status = ResourceStatus.DELETED;
+                                deletedAt = tombstone.getDeletedAt() != null ? tombstone.getDeletedAt().toInstant() : null;
+                            } else {
+                                status = ResourceStatus.UNKNOWN;
+                            }
+                        }
                     }
                     return new ProgramPlaySummaryItem(
                             r.lan(),
@@ -581,7 +671,9 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
                             Math.max(0L, r.playCount()),
                             Math.max(0L, r.playSeconds()),
                             Math.max(0L, r.deviceCount()),
-                            r.lastPlayedAt() != null ? r.lastPlayedAt().toInstant() : null
+                            r.lastPlayedAt() != null ? r.lastPlayedAt().toInstant() : null,
+                            status,
+                            deletedAt
                     );
                 })
                 .toList();
@@ -611,17 +703,92 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
             }
         }
 
+        Map<ResourceTombstoneKey, ResourceTombstoneEntity> tombstones =
+                resourceTombstoneService.findByUserAndTypeAndRefIds(userId, ResourceType.MEDIA, mediaIds);
+
         return rows.stream()
-                .map(r -> new MediaPlaySummaryItem(
-                        r.mediaId(),
-                        titlesById.get(r.mediaId()),
-                        r.itemType(),
-                        Math.max(0L, r.playCount()),
-                        Math.max(0L, r.playSeconds()),
-                        Math.max(0L, r.deviceCount()),
-                        r.lastPlayedAt() != null ? r.lastPlayedAt().toInstant() : null
-                ))
+                .map(r -> {
+                    String title = titlesById.get(r.mediaId());
+                    ResourceTombstoneEntity t = r.mediaId() != null
+                            ? tombstones.get(new ResourceTombstoneKey(userId, ResourceType.MEDIA, r.mediaId(), ResourceTombstoneService.NO_VERSION))
+                            : null;
+
+                    ResourceStatus status;
+                    if (StringUtils.hasText(title)) {
+                        status = ResourceStatus.ACTIVE;
+                    } else if (t != null) {
+                        status = ResourceStatus.DELETED;
+                    } else {
+                        status = ResourceStatus.UNKNOWN;
+                    }
+
+                    String displayTitle = firstNonBlank(title, t != null ? t.getDisplayName() : null, r.mediaId());
+                    Instant deletedAt = t != null && t.getDeletedAt() != null ? t.getDeletedAt().toInstant() : null;
+
+                    return new MediaPlaySummaryItem(
+                            r.mediaId(),
+                            displayTitle,
+                            r.itemType(),
+                            Math.max(0L, r.playCount()),
+                            Math.max(0L, r.playSeconds()),
+                            Math.max(0L, r.deviceCount()),
+                            r.lastPlayedAt() != null ? r.lastPlayedAt().toInstant() : null,
+                            status,
+                            deletedAt
+                    );
+                })
                 .toList();
+    }
+
+    private Map<Long, ResolvedRef> resolveDevices(UUID userId, Set<Long> deviceIds) {
+        if (userId == null || deviceIds == null || deviceIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, String> namesById = new HashMap<>();
+        List<DeviceEntity> devices = deviceRepository.findByUserIdAndDeviceIds(userId, deviceIds);
+        if (devices != null && !devices.isEmpty()) {
+            for (DeviceEntity d : devices) {
+                if (d == null || d.getDeviceId() == null) {
+                    continue;
+                }
+                namesById.put(d.getDeviceId(), d.getDeviceName());
+            }
+        }
+
+        Set<String> deviceIdStrings = new HashSet<>();
+        for (Long id : deviceIds) {
+            if (id != null) {
+                deviceIdStrings.add(String.valueOf(id));
+            }
+        }
+        Map<ResourceTombstoneKey, ResourceTombstoneEntity> tombstones =
+                resourceTombstoneService.findByUserAndTypeAndRefIds(userId, ResourceType.DEVICE, deviceIdStrings);
+
+        Map<Long, ResolvedRef> result = new HashMap<>();
+        for (Long deviceId : deviceIds) {
+            if (deviceId == null) {
+                continue;
+            }
+            String name = namesById.get(deviceId);
+            ResourceTombstoneEntity t = tombstones.get(new ResourceTombstoneKey(
+                    userId, ResourceType.DEVICE, String.valueOf(deviceId), ResourceTombstoneService.NO_VERSION));
+
+            ResourceStatus status;
+            if (namesById.containsKey(deviceId)) {
+                status = ResourceStatus.ACTIVE;
+            } else if (t != null) {
+                status = ResourceStatus.DELETED;
+            } else {
+                status = ResourceStatus.UNKNOWN;
+            }
+
+            String displayName = firstNonBlank(name, t != null ? t.getDisplayName() : null);
+            Instant deletedAt = t != null && t.getDeletedAt() != null ? t.getDeletedAt().toInstant() : null;
+
+            result.put(deviceId, new ResolvedRef(displayName, status, deletedAt));
+        }
+        return result;
     }
 
     private void validateRange(UUID userId, Instant from, Instant to) {

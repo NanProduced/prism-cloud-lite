@@ -79,6 +79,8 @@ import nan.produced.prism.core.program.infrastructure.persistence.ProgramReposit
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramTemplateRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ScheduleContentsRuleRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ScheduleRepositoryJpa;
+import nan.produced.prism.core.resource.application.service.ResourceTombstoneService;
+import nan.produced.prism.core.resource.domain.ResourceType;
 import nan.produced.prism.core.message.api.MessageCenterFacade;
 import nan.produced.prism.core.security.api.CloudAuthContext;
 import nan.produced.prism.core.system.api.SubscriptionQuotaFacade;
@@ -123,6 +125,7 @@ public class ProgramApplicationService {
     private final UntrackedDeviceCommandFacade untrackedDeviceCommandRegistry;
     private final ScheduleContentsRuleRepositoryJpa scheduleContentsRuleRepositoryJpa;
     private final ScheduleRepositoryJpa scheduleRepositoryJpa;
+    private final ResourceTombstoneService resourceTombstoneService;
 
     @Value("${prism.media.s3.bucket}")
     private String s3Bucket;
@@ -290,6 +293,29 @@ public class ProgramApplicationService {
         }
 
         writeAudit(userId, programId, ProgramAuditAction.DELETE, null);
+
+        // Best-effort tombstone, for telemetry queries after deletion (retain 60 days).
+        resourceTombstoneService.markDeleted(
+                userId,
+                ResourceType.PROGRAM,
+                programId.toString(),
+                ResourceTombstoneService.NO_VERSION,
+                program.getName());
+        List<ProgramReleaseEntity> releases = programReleaseRepositoryJpa.findByProgramIdOrderByVersionDesc(programId);
+        if (releases != null && !releases.isEmpty()) {
+            for (ProgramReleaseEntity r : releases) {
+                if (r == null || r.getVersion() == null) {
+                    continue;
+                }
+                resourceTombstoneService.markDeleted(
+                        userId,
+                        ResourceType.PROGRAM_RELEASE,
+                        programId.toString(),
+                        r.getVersion(),
+                        program.getName());
+            }
+        }
+
         try {
             programRepositoryJpa.delete(program);
             // 强制触发约束检查，避免异常在事务提交阶段抛出导致无法返回结构化原因

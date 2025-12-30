@@ -6,6 +6,8 @@ import nan.produced.prism.core.common.exception.BizException;
 import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.device.application.port.outbound.DeviceRepository;
 import nan.produced.prism.core.device.domain.DeviceEntity;
+import nan.produced.prism.core.resource.application.service.ResourceTombstoneService;
+import nan.produced.prism.core.resource.domain.ResourceType;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +40,7 @@ public class DeviceRepositoryAdapter implements DeviceRepository {
      * Spring Data JPA 仓库，用于设备数据的 CRUD 操作
      */
     private final DeviceRepositoryJpa deviceRepositoryJpa;
+    private final ResourceTombstoneService resourceTombstoneService;
 
     /**
      * 创建新设备
@@ -214,6 +217,16 @@ public class DeviceRepositoryAdapter implements DeviceRepository {
      */
     public void deleteDevice(Long deviceId) {
         try {
+            DeviceEntity device = deviceRepositoryJpa.findById(deviceId).orElse(null);
+            UUID userId = device != null ? device.getUserId() : findUserIdByDeviceId(deviceId);
+            String deviceName = device != null ? device.getDeviceName() : null;
+            resourceTombstoneService.markDeleted(
+                    userId,
+                    ResourceType.DEVICE,
+                    String.valueOf(deviceId),
+                    ResourceTombstoneService.NO_VERSION,
+                    deviceName);
+
             deviceRepositoryJpa.deleteById(deviceId);
             log.info("DeviceRepositoryAdapter - 设备已删除: deviceId={}", deviceId);
         } catch (Exception e) {
