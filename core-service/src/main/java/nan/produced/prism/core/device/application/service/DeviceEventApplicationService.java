@@ -418,7 +418,7 @@ public class DeviceEventApplicationService implements DeviceEventUseCase {
             return;
         }
 
-        log.debug("处理下载进度: deviceId={}, traceId={}", deviceId, traceId);
+        log.debug("处理下载进度: deviceId={}, progress:{}, traceId={}", deviceId, progress, traceId);
         UUID userId = deviceRepository.findUserIdByDeviceId(deviceId);
         programDownloadProgressApplicationService.handleDownloadingProgress(deviceId, userId, progress, occurredAt, traceId);
     }

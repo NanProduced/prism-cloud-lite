@@ -197,13 +197,14 @@ public class DeviceOfflineCheckScheduler {
 
         Set<Long> onlineDevices = new HashSet<>();
         Set<Long> offlineDevices = new HashSet<>();
+        Set<Long> seenDeviceIds = new HashSet<>();
 
         long currentTime = System.currentTimeMillis();
         long offlineThreshold = deviceConfigPort.getDeviceOfflineThreshold();
 
         // 迭代限制和超时保护
-        int maxIterations = 50000;  // 最大扫描设备数
-        int iterationCount = 0;
+        int maxIterations = 50000;  // 最大扫描key数量
+        int scannedKeyCount = 0;
         long startTime = System.currentTimeMillis();
         long timeoutMs = 30000;  // 30秒超时
 
@@ -217,20 +218,21 @@ public class DeviceOfflineCheckScheduler {
                     .build();
 
             try (Cursor<String> cursor = redisTemplate.scan(scanOptions)) {
-                while (cursor.hasNext() && iterationCount < maxIterations) {
+                while (cursor.hasNext() && scannedKeyCount < maxIterations) {
                     // 超时检查
                     if (System.currentTimeMillis() - startTime > timeoutMs) {
-                        log.warn("DeviceStatusScheduler - 扫描超时, 已处理设备数: {}, 在线: {}, 离线: {}, 耗时: {}ms",
-                                iterationCount, onlineDevices.size(), offlineDevices.size(), timeoutMs);
+                        log.warn("DeviceStatusScheduler - 扫描超时, 已扫描key数: {}, 已识别设备数: {}, 在线: {}, 离线: {}, 耗时: {}ms",
+                                scannedKeyCount, seenDeviceIds.size(), onlineDevices.size(), offlineDevices.size(), timeoutMs);
                         break;
                     }
 
                     String statusKey = cursor.next();
-                    iterationCount++;
+                    scannedKeyCount++;
 
                     // 提取deviceId
                     Long deviceId = extractDeviceIdFromStatusKey(statusKey);
                     if (deviceId == null) continue;
+                    seenDeviceIds.add(deviceId);
 
                     // 检查设备状态并分类
                     try {
@@ -247,16 +249,19 @@ public class DeviceOfflineCheckScheduler {
 
                             if (isOnline) {
                                 onlineDevices.add(deviceId);
+                                offlineDevices.remove(deviceId);
                                 log.debug("DeviceStatusScheduler - 设备在线: deviceId={}, lastReportTime={}",
                                         deviceId, lastReportTime);
                             } else {
                                 offlineDevices.add(deviceId);
+                                onlineDevices.remove(deviceId);
                                 log.debug("DeviceStatusScheduler - 设备离线: deviceId={}, lastReportTime={}, status={}, 超时={}ms",
                                         deviceId, lastReportTime, status, currentTime - lastReportTime);
                             }
                         } else {
                             // 数据不完整，视为离线
                             offlineDevices.add(deviceId);
+                            onlineDevices.remove(deviceId);
                             log.debug("DeviceStatusScheduler - 设备数据不完整，标记离线: deviceId={}", deviceId);
                         }
 
@@ -264,19 +269,20 @@ public class DeviceOfflineCheckScheduler {
                         log.debug("DeviceStatusScheduler - 检查设备状态失败: deviceId={}", deviceId, e);
                         // 单个设备检查失败，视为离线处理
                         offlineDevices.add(deviceId);
+                        onlineDevices.remove(deviceId);
                     }
                 }
 
                 // 迭代限制警告
-                if (iterationCount >= maxIterations) {
-                    log.warn("DeviceStatusScheduler - 达到最大迭代次数限制: {}, 在线: {}, 离线: {}, 可能有未处理设备",
-                            maxIterations, onlineDevices.size(), offlineDevices.size());
+                if (scannedKeyCount >= maxIterations) {
+                    log.warn("DeviceStatusScheduler - 达到最大迭代次数限制: {}, 已扫描key数: {}, 已识别设备数: {}, 在线: {}, 离线: {}, 可能有未处理设备",
+                            maxIterations, scannedKeyCount, seenDeviceIds.size(), onlineDevices.size(), offlineDevices.size());
                 }
             }
 
             long elapsed = System.currentTimeMillis() - startTime;
-            log.info("DeviceStatusScheduler - 设备状态分类完成: 处理设备数={}, 在线={}, 离线={}, 耗时={}ms",
-                    iterationCount, onlineDevices.size(), offlineDevices.size(), elapsed);
+            log.info("DeviceStatusScheduler - 设备状态分类完成: 扫描key数={}, 识别设备数={}, 在线={}, 离线={}, 耗时={}ms",
+                    scannedKeyCount, seenDeviceIds.size(), onlineDevices.size(), offlineDevices.size(), elapsed);
 
             return Pair.of(onlineDevices, offlineDevices);
 

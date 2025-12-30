@@ -58,8 +58,6 @@ public class CloudAuthHeaderParser {
             byte[] decodedBytes = Base64.getUrlDecoder().decode(headerValue);
             String jsonString = new String(decodedBytes, StandardCharsets.UTF_8);
 
-            log.debug("Decoded CLOUD_AUTH JSON: {}", jsonString);
-
             // 2. 解析 JSON
             JsonNode jsonNode = objectMapper.readTree(jsonString);
 
