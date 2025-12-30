@@ -13,7 +13,7 @@ public final class ProgramScheduleConstant {
 
         public static final String AUTHOR_URL_EMPTY = "";
 
-        public static final int KARMA_DEFAULT = 0;
+        public static final int KARMA_DEFAULT = 1;
     }
 
     @NoArgsConstructor(access = AccessLevel.PRIVATE)
