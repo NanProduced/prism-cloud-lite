@@ -11,6 +11,7 @@ import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.oauth2.sdk.http.HTTPResponse;
 import com.nimbusds.openid.connect.sdk.BackChannelLogoutRequest;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.SneakyThrows;
@@ -21,6 +22,7 @@ import nan.produced.prism.auth.security.SecurityProps;
 import nan.produced.prism.auth.security.rememberme.RememberMeTokenService;
 import nan.produced.prism.auth.utils.JwkUtils;
 import org.springframework.boot.autoconfigure.security.oauth2.server.servlet.OAuth2AuthorizationServerProperties;
+import org.springframework.boot.autoconfigure.web.ServerProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.AbstractOAuth2Token;
@@ -62,6 +64,8 @@ public class BackChannelLogoutHandler implements AuthenticationSuccessHandler {
 
     private final OAuth2AuthorizationServerProperties authorizationServerProperties;
 
+    private final ServerProperties serverProperties;
+
     private final RSAKey rsaKey;
 
     private final JWSSigner jwsSigner;
@@ -79,12 +83,14 @@ public class BackChannelLogoutHandler implements AuthenticationSuccessHandler {
                                     OidcAuthorizationService oidcAuthorizationService,
                                     SecurityProps securityProps,
                                     RememberMeTokenService rememberMeTokenService,
-                                    OAuth2AuthorizationServerProperties authorizationServerProperties) {
+                                    OAuth2AuthorizationServerProperties authorizationServerProperties,
+                                    ServerProperties serverProperties) {
         this.registeredClientRepository = registeredClientRepository;
         this.oidcAuthorizationService = oidcAuthorizationService;
         this.securityProps = securityProps;
         this.rememberMeTokenService = rememberMeTokenService;
         this.authorizationServerProperties = authorizationServerProperties;
+        this.serverProperties = serverProperties;
 
         rsaKey = JwkUtils.convertRsaKey(securityProps);
         jwsSigner = new RSASSASigner(rsaKey);
@@ -207,6 +213,47 @@ public class BackChannelLogoutHandler implements AuthenticationSuccessHandler {
         SecurityContextLogoutHandler handler = new SecurityContextLogoutHandler();
         handler.setInvalidateHttpSession(false);
         handler.logout(request, response, authentication);
+
+        // We intentionally do NOT invalidate the HttpSession (Spring Session + Redis can throw in commit).
+        // But we still want the browser to drop the session cookie so future /authorize won't reuse the same session id.
+        clearSessionCookie(request, response);
+    }
+
+    private void clearSessionCookie(HttpServletRequest request, HttpServletResponse response) {
+        String cookieName = null;
+        if (serverProperties != null
+                && serverProperties.getServlet() != null
+                && serverProperties.getServlet().getSession() != null
+                && serverProperties.getServlet().getSession().getCookie() != null) {
+            cookieName = serverProperties.getServlet().getSession().getCookie().getName();
+        }
+        if (!StringUtils.hasText(cookieName)) {
+            cookieName = "JSESSIONID";
+        }
+
+        String contextPath = request != null ? request.getContextPath() : null;
+        boolean secure = request != null && request.isSecure();
+
+        // Session cookie path might be "/auth" or "/auth/" depending on container; clear both to be safe.
+        String basePath = StringUtils.hasText(contextPath) ? contextPath : "/";
+        expireCookie(response, cookieName, basePath, secure);
+        if (StringUtils.hasText(basePath) && !basePath.endsWith("/")) {
+            expireCookie(response, cookieName, basePath + "/", secure);
+        }
+        // Some containers use "/" as path; also cover that to avoid "logout but cookie still present".
+        expireCookie(response, cookieName, "/", secure);
+    }
+
+    private void expireCookie(HttpServletResponse response, String name, String path, boolean secure) {
+        if (response == null || !StringUtils.hasText(name)) {
+            return;
+        }
+        Cookie cookie = new Cookie(name, "");
+        cookie.setPath(StringUtils.hasText(path) ? path : "/");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(secure);
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
     }
 
     @SneakyThrows

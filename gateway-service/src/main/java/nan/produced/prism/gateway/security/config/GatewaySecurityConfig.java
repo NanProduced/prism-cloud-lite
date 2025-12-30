@@ -5,7 +5,12 @@ import lombok.RequiredArgsConstructor;
 import nan.produced.prism.gateway.security.authentication.RefreshTokenErrorMapClientManager;
 import nan.produced.prism.gateway.security.filter.RemoveJwtFilter;
 import nan.produced.prism.gateway.security.handler.SaveRequestOAuth2AuthorizationRequestResolver;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.web.ServerProperties;
 import org.springframework.boot.autoconfigure.security.servlet.PathRequest;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -32,6 +37,7 @@ import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Configuration
@@ -50,7 +56,19 @@ public class GatewaySecurityConfig {
                                                  OidcClientInitiatedLogoutSuccessHandler oidcClientInitiatedLogoutSuccessHandler,
                                                  OAuth2AuthorizationRequestResolver saveRequestOAuth2AuthorizationRequestResolver,
                                                  SecurityContextRepository securityContextRepository,
+                                                 ServerProperties serverProperties,
                                                  @Qualifier("corsConfigurationSource") CorsConfigurationSource corsConfigurationSource) throws Exception {
+        String sessionCookieName = serverProperties != null
+                && serverProperties.getServlet() != null
+                && serverProperties.getServlet().getSession() != null
+                && serverProperties.getServlet().getSession().getCookie() != null
+                ? serverProperties.getServlet().getSession().getCookie().getName()
+                : null;
+        if (!StringUtils.hasText(sessionCookieName)) {
+            sessionCookieName = "JSESSIONID";
+        }
+
+        String finalSessionCookieName = sessionCookieName;
         return http
                 .securityMatcher(
                         "/oauth2/authorization/**",
@@ -74,17 +92,54 @@ public class GatewaySecurityConfig {
                         .logoutRequestMatcher(request ->
                                 request.getRequestURI().equals(gatewaySecurityProps.getOauth2().getClient().getLogoutUri()) &&
                                         HttpMethod.GET.name().equals(request.getMethod()))
+                        // Ensure browser drops the session cookie; otherwise login can appear "sticky" after logout.
+                        .deleteCookies(finalSessionCookieName, "JSESSIONID")
                         .logoutSuccessHandler((request, response, authentication) -> {
+                            // Best-effort: also clear auth-service cookies from the browser, even if OP logout fails
+                            // (e.g. missing id_token_hint). This prevents a leftover PRISM_AUTH_SESSION from silently
+                            // authenticating /oauth2/authorize on the next login.
+                            boolean secure = request != null && request.isSecure();
+                            expireCookie(response, "PRISM_AUTH_SESSION", "/auth", secure);
+                            expireCookie(response, "PRISM_AUTH_SESSION", "/auth/", secure);
+                            expireCookie(response, "prism-remember-me", "/", secure);
                             try {
                                 oidcClientInitiatedLogoutSuccessHandler.onLogoutSuccess(request, response, authentication);
                             } catch (Exception ex) {
-                                log.warn("OIDC logout failed, fallback redirect to {}", gatewaySecurityProps.getOauth2().getClient().getLogoutRedirectUri(), ex);
-                                response.sendRedirect(gatewaySecurityProps.getOauth2().getClient().getLogoutRedirectUri());
+                                String opLogoutUrl = buildAuthorizationServerLogoutUrl(gatewaySecurityProps);
+                                log.warn("OIDC logout failed, fallback redirect to OP logout endpoint: {}", opLogoutUrl, ex);
+                                response.sendRedirect(opLogoutUrl);
                             }
                         }))
                 .oidcLogout(logout -> logout.backChannel(Customizer.withDefaults()))
                 .oauth2Client(Customizer.withDefaults())
                 .build();
+    }
+
+    private static String buildAuthorizationServerLogoutUrl(GatewaySecurityProps props) {
+        if (props == null || props.getOauth2() == null || props.getOauth2().getAuthorizationServer() == null) {
+            return "/logout-status";
+        }
+        String endpoint = props.getOauth2().getAuthorizationServer().getLogoutEndpoint();
+        String redirect = props.getOauth2().getClient() != null ? props.getOauth2().getClient().getLogoutRedirectUri() : null;
+        if (!StringUtils.hasText(endpoint)) {
+            return StringUtils.hasText(redirect) ? redirect : "/logout-status";
+        }
+        if (!StringUtils.hasText(redirect)) {
+            return endpoint;
+        }
+        return endpoint + "?post_logout_redirect_uri=" + URLEncoder.encode(redirect, StandardCharsets.UTF_8);
+    }
+
+    private static void expireCookie(HttpServletResponse response, String name, String path, boolean secure) {
+        if (response == null || !StringUtils.hasText(name)) {
+            return;
+        }
+        Cookie cookie = new Cookie(name, "");
+        cookie.setPath(StringUtils.hasText(path) ? path : "/");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(secure);
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
     }
 
     @Bean
