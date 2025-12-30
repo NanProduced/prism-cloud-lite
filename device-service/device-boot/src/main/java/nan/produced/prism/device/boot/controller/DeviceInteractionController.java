@@ -29,6 +29,7 @@ import nan.produced.prism.device.infrastructure.internal.core.dto.DeviceProgramD
 import nan.produced.prism.device.infrastructure.storage.s3.DeviceScreenshotS3Uploader;
 import nan.produced.prism.device.infrastructure.security.DevicePrincipal;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -52,7 +53,8 @@ public class DeviceInteractionController implements DeviceInteractionApi {
     private final CoreProgramDistributionService coreProgramDistributionService;
     private final CoreScheduleDistributionService coreScheduleDistributionService;
 
-    private static final DateTimeFormatter WP_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+    @Value("${prism.base-url}")
+    private String baseUrl;
 
     /**
      * 上报终端信息，设备上报led_status到服务器。
@@ -126,7 +128,6 @@ public class DeviceInteractionController implements DeviceInteractionApi {
     public List<DeviceApiProgram> getPrograms(String clt_type) {
         DevicePrincipal devicePrincipal = (DevicePrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Long deviceId = devicePrincipal.getDeviceId();
-        String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
 
         List<DeviceProgramDTO> programs = coreProgramDistributionService.listDevicePrograms(deviceId, baseUrl);
         return deviceProgramConverter.toDeviceApiProgram( programs);
