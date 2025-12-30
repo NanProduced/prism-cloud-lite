@@ -23,6 +23,7 @@ public interface DeviceDetailConverter {
     @Mapping(target = "networkType", source = "networkType")
     @Mapping(target = "networkStrength", ignore = true)
     @Mapping(target = "lastScreenshotUrl", ignore = true)
+    @Mapping(target = "lastScreenshotUploadedAt", ignore = true)
     @Mapping(target = "tags", ignore = true)
     @Mapping(target = "customFieldValues", ignore = true)
     @Mapping(target = "deviceProperties", source = "properties")
@@ -47,6 +48,7 @@ public interface DeviceDetailConverter {
 
         // TODO: 设备截图业务尚未实现，先返回 null
         resp.setLastScreenshotUrl(null);
+        resp.setLastScreenshotUploadedAt(null);
     }
 
     private static Integer extract4gStrength(DeviceProperties properties) {
@@ -64,4 +66,3 @@ public interface DeviceDetailConverter {
         return null;
     }
 }
-

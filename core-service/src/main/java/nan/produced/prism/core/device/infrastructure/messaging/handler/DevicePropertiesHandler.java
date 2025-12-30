@@ -122,6 +122,12 @@ public class DevicePropertiesHandler implements DevicePropertiesPort {
             existingDevice.setBrightness(Math.round(brightnessAndColorTemp.getBrightness() * 100f / 255f));
         }
 
+        // powerstatus（0-休眠，1-唤醒）
+        DeviceProperties.PowerStatus powerStatus = properties.getPowerstatus();
+        if (powerStatus != null) {
+            existingDevice.setPowerStatus(powerStatus.getPowerstatus());
+        }
+
         // 合并、替换Properties
         if (existingDevice.getProperties() == null) {
             existingDevice.setProperties(new DeviceProperties());

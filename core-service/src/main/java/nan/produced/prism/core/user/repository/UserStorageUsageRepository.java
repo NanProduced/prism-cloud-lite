@@ -31,6 +31,8 @@ public interface UserStorageUsageRepository extends JpaRepository<UserStorageUsa
 
     List<UserStorageUsageEntity> findByUserIdAndSourceType(UUID userId, StorageSourceType sourceType);
 
+    List<UserStorageUsageEntity> findByUserId(UUID userId);
+
     /**
      * 增加存储使用量（原子操作）
      *

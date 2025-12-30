@@ -1,5 +1,6 @@
 package nan.produced.prism.core.device.application.service;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -73,6 +74,7 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
 
         DeviceDetailResp resp = deviceDetailConverter.toDetailResp(deviceEntity);
         resp.setLastScreenshotUrl(loadLastScreenshotUrl(deviceId));
+        resp.setLastScreenshotUploadedAt(loadLastScreenshotUploadedAt(deviceId));
 
         // tags
         List<TagVO> tagVOS = deviceTagRepository.findByDeviceId(deviceId, userId).stream()
@@ -133,7 +135,9 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
 
         Map<Long, List<TagVO>> tagsByDevice = loadTags(userId, deviceIds);
         Map<Long, Map<String, Object>> customFieldValuesByDevice = loadCustomFieldValues(userId, deviceIds);
-        Map<Long, String> lastScreenshotUrlByDevice = loadLastScreenshotUrls(deviceIds);
+        Map<Long, DeviceScreenshotEntity> latestScreenshotByDevice = loadLatestScreenshots(deviceIds);
+        Map<Long, String> lastScreenshotUrlByDevice = toScreenshotUrlMap(latestScreenshotByDevice);
+        Map<Long, Instant> lastScreenshotUploadedAtByDevice = toScreenshotUploadedAtMap(latestScreenshotByDevice);
 
         return devices.stream()
                 .map(device -> {
@@ -141,12 +145,13 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
                     vo.setTags(tagsByDevice.getOrDefault(device.getDeviceId(), List.of()));
                     vo.setCustomFieldValues(customFieldValuesByDevice.getOrDefault(device.getDeviceId(), Map.of()));
                     vo.setLastScreenshotUrl(lastScreenshotUrlByDevice.get(device.getDeviceId()));
+                    vo.setLastScreenshotUploadedAt(lastScreenshotUploadedAtByDevice.get(device.getDeviceId()));
                     return vo;
                 })
                 .toList();
     }
 
-    private Map<Long, String> loadLastScreenshotUrls(List<Long> deviceIds) {
+    private Map<Long, DeviceScreenshotEntity> loadLatestScreenshots(List<Long> deviceIds) {
         if (deviceIds == null || deviceIds.isEmpty()) {
             return Map.of();
         }
@@ -156,12 +161,46 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
             return Map.of();
         }
 
-        Map<Long, String> result = new HashMap<>();
+        Map<Long, DeviceScreenshotEntity> result = new HashMap<>();
         for (DeviceScreenshotEntity entity : latest) {
             if (entity == null || entity.getDeviceId() == null || !StringUtils.hasText(entity.getS3Key())) {
                 continue;
             }
-            result.put(entity.getDeviceId(), mediaObjectUrlPort.toPublicUrl(entity.getS3Key()));
+            result.put(entity.getDeviceId(), entity);
+        }
+        return result;
+    }
+
+    private Map<Long, String> toScreenshotUrlMap(Map<Long, DeviceScreenshotEntity> latestByDevice) {
+        if (latestByDevice == null || latestByDevice.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> result = new HashMap<>();
+        for (Map.Entry<Long, DeviceScreenshotEntity> entry : latestByDevice.entrySet()) {
+            Long deviceId = entry.getKey();
+            DeviceScreenshotEntity entity = entry.getValue();
+            if (deviceId == null || entity == null || !StringUtils.hasText(entity.getS3Key())) {
+                continue;
+            }
+            result.put(deviceId, mediaObjectUrlPort.toPublicUrl(entity.getS3Key()));
+        }
+        return result;
+    }
+
+    private Map<Long, Instant> toScreenshotUploadedAtMap(Map<Long, DeviceScreenshotEntity> latestByDevice) {
+        if (latestByDevice == null || latestByDevice.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, Instant> result = new HashMap<>();
+        for (Map.Entry<Long, DeviceScreenshotEntity> entry : latestByDevice.entrySet()) {
+            Long deviceId = entry.getKey();
+            DeviceScreenshotEntity entity = entry.getValue();
+            if (deviceId == null || entity == null) {
+                continue;
+            }
+            if (entity.getUploadedAt() != null) {
+                result.put(deviceId, entity.getUploadedAt());
+            }
         }
         return result;
     }
@@ -174,6 +213,15 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
                 .map(DeviceScreenshotEntity::getS3Key)
                 .filter(StringUtils::hasText)
                 .map(mediaObjectUrlPort::toPublicUrl)
+                .orElse(null);
+    }
+
+    private Instant loadLastScreenshotUploadedAt(Long deviceId) {
+        if (deviceId == null) {
+            return null;
+        }
+        return deviceScreenshotRepository.findLatestByDeviceId(deviceId)
+                .map(DeviceScreenshotEntity::getUploadedAt)
                 .orElse(null);
     }
 

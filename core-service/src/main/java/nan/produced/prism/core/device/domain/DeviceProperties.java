@@ -194,7 +194,7 @@ public class DeviceProperties {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class PowerStatus {
         /**
-         * 电源状态（0-关闭，1-开启）
+         * 电源状态（0-休眠，1-唤醒）
          */
         private int powerstatus;
 

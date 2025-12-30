@@ -6,6 +6,7 @@ import nan.produced.prism.core.device.domain.DeviceNetworkType;
 import nan.produced.prism.core.device.domain.DeviceProperties;
 import nan.produced.prism.core.device.domain.dto.TagVO;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -115,10 +116,22 @@ public class DeviceDetailResp {
     private Long freeStorage;
 
     /**
+     * 省电模式状态（0-休眠，1-唤醒）
+     */
+    @Schema(description = "省电模式状态：0-休眠，1-唤醒；null 表示未知/未上报", example = "1")
+    private Integer powerStatus;
+
+    /**
      * 设备截图 - s3预览地址
      */
     @Schema(description = "设备截图预览地址（CDN，返回最新截图）")
     private String lastScreenshotUrl;
+
+    /**
+     * 最新截图上报时间
+     */
+    @Schema(description = "最新截图上报时间（UTC）", example = "2025-12-13T02:37:19Z")
+    private Instant lastScreenshotUploadedAt;
 
     /**
      * 该设备绑定的标签

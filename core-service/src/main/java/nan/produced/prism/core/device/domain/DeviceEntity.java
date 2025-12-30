@@ -75,6 +75,13 @@ public class DeviceEntity {
     @Column(name = "free_storage", length = 64)
     private Long freeStorage;
 
+    /**
+     * 省电模式状态（0-休眠，1-唤醒）
+     * <p>该状态与 onlineStatus 无关：设备可在线但处于休眠。</p>
+     */
+    @Column(name = "power_status")
+    private Integer powerStatus;
+
     /* ====== 设备属性JSON字段 ====== */
 
     @JdbcTypeCode(SqlTypes.JSON)

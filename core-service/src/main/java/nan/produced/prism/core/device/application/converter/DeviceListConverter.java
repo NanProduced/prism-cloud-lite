@@ -25,6 +25,7 @@ public interface DeviceListConverter {
     @Mapping(target = "networkType", source = "networkType")
     @Mapping(target = "networkStrength", ignore = true)
     @Mapping(target = "lastScreenshotUrl", ignore = true)
+    @Mapping(target = "lastScreenshotUploadedAt", ignore = true)
     @Mapping(target = "tags", ignore = true)
     @Mapping(target = "customFieldValues", ignore = true)
     DeviceListVO toListVO(DeviceEntity entity);
@@ -48,6 +49,7 @@ public interface DeviceListConverter {
 
         // TODO: 设备截图业务尚未实现，先返回 null
         vo.setLastScreenshotUrl(null);
+        vo.setLastScreenshotUploadedAt(null);
     }
 
     private static Integer extract4gStrength(DeviceProperties properties) {

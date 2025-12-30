@@ -6,6 +6,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Types;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -346,7 +347,8 @@ public class DeviceOnlineSessionRepositoryAdapter implements DeviceOnlineSession
 
         MapSqlParameterSource params = baseRangeParams(userId, from, to)
                 .addValue("deviceId", deviceId)
-                .addValue("cursor", cursor)
+                // When cursor is null, PostgreSQL can't infer its type from ":cursor IS NULL"; set an explicit JDBC type.
+                .addValue("cursor", cursor, Types.TIMESTAMP_WITH_TIMEZONE)
                 .addValue("limit", limit);
 
         return jdbcTemplate.query(SQL_LIST_SESSIONS_FOR_DEVICE, params, (rs, rowNum) ->

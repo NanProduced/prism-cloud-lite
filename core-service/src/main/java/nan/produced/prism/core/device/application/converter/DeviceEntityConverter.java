@@ -33,6 +33,7 @@ public interface DeviceEntityConverter {
     @Mapping(target = "resolution", ignore = true)
     @Mapping(target = "totalStorage", ignore = true)
     @Mapping(target = "freeStorage", ignore = true)
+    @Mapping(target = "powerStatus", ignore = true)
     @Mapping(target = "properties", ignore = true)
     DeviceEntity toNewEntity(CreateDeviceDTO dto, Long deviceId, OffsetDateTime now);
 }
