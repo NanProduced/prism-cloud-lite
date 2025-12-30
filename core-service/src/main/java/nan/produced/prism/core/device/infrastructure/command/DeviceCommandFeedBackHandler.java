@@ -7,6 +7,7 @@ import nan.produced.prism.core.common.messaging.MessagingConstants;
 import nan.produced.prism.core.common.messaging.RabbitMessagePublisher;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCommandFeedBackPort;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCommandLogRepository;
+import nan.produced.prism.core.device.application.service.UntrackedDeviceCommandRegistry;
 import nan.produced.prism.core.device.domain.DeviceProperties;
 import nan.produced.prism.core.device.domain.command.DeviceActionTrackingLevel;
 import nan.produced.prism.core.device.domain.command.DeviceActionType;
@@ -16,6 +17,7 @@ import nan.produced.prism.core.device.infrastructure.persistence.DeviceRepositor
 import nan.produced.prism.core.message.api.MessageCenterFacade;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,12 +39,24 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
 
     private final DeviceRepositoryJpa deviceRepositoryJpa;
 
+    private final UntrackedDeviceCommandRegistry untrackedDeviceCommandRegistry;
+
     private static final String COMMAND_LISTENER_KEY = "command:listener:%d:%s";
 
     @Override
     public void handleCommandConfirm(String commandId, Long deviceId, Integer queueId) {
         DeviceCommandLog commandLog = deviceCommandLogRepository.findByOperationId(commandId);
         if (commandLog ==  null) {
+            String untrackedMark = untrackedDeviceCommandRegistry.findTypeByCommandId(commandId);
+            if (!StringUtils.hasText(untrackedMark) && deviceId != null && queueId != null) {
+                untrackedMark = untrackedDeviceCommandRegistry.findValueByQueue(deviceId, queueId);
+            }
+            if (StringUtils.hasText(untrackedMark)) {
+                log.debug("DeviceCommandFeedBackHandler - 忽略未追踪指令回执, mark={}, commandId={}, deviceId={}, queueId={}",
+                        untrackedMark, commandId, deviceId, queueId);
+                return;
+            }
+
             log.warn("DeviceCommandFeedBackHandler - 找不到指令日志(异常指令), commandId={}, queueId={}", commandId, queueId);
             return;
         }
@@ -137,6 +151,12 @@ public class DeviceCommandFeedBackHandler implements DeviceCommandFeedBackPort {
     public void handleCommandExpired(Long deviceId, Integer queueId) {
         DeviceCommandLog commandLog = deviceCommandLogRepository.findByDeviceIdAndQueueId(deviceId, queueId);
         if (commandLog == null) {
+            String untrackedMark = untrackedDeviceCommandRegistry.findValueByQueue(deviceId, queueId);
+            if (StringUtils.hasText(untrackedMark)) {
+                log.debug("DeviceCommandFeedBackHandler - 忽略未追踪指令过期回执, mark={}, deviceId={}, queueId={}",
+                        untrackedMark, deviceId, queueId);
+                return;
+            }
             log.warn("DeviceCommandFeedBackHandler - 找不到指令日志(异常指令), deviceId={}, queueId={}", deviceId, queueId);
             return;
         }

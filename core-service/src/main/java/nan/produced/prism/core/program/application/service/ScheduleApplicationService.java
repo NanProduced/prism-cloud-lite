@@ -25,6 +25,7 @@ import nan.produced.prism.core.common.exception.InfraException;
 import nan.produced.prism.core.common.response.ApiResponse;
 import nan.produced.prism.core.common.util.IdGenerator;
 import nan.produced.prism.core.common.util.JsonUtils;
+import nan.produced.prism.core.device.application.service.UntrackedDeviceCommandRegistry;
 import nan.produced.prism.core.device.domain.command.DeviceActionBase;
 import nan.produced.prism.core.device.domain.command.DeviceActionType;
 import nan.produced.prism.core.integration.device.client.DeviceInternalClient;
@@ -81,6 +82,8 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class ScheduleApplicationService {
 
+    private static final String UNTRACKED_COMMAND_TYPE_SCHEDULE_TRIGGER = "SCHEDULE_TRIGGER";
+
     private final ScheduleRepositoryJpa scheduleRepositoryJpa;
     private final ScheduleContentsRuleRepositoryJpa scheduleContentsRuleRepositoryJpa;
     private final ScheduleCommandRuleRepositoryJpa scheduleCommandRuleRepositoryJpa;
@@ -93,6 +96,7 @@ public class ScheduleApplicationService {
     private final ScheduleAuditLogRepositoryJpa scheduleAuditLogRepositoryJpa;
     private final DeviceInternalClient deviceInternalClient;
     private final ScheduleDeviceDistributionService scheduleDeviceDistributionService;
+    private final UntrackedDeviceCommandRegistry untrackedDeviceCommandRegistry;
 
     @Transactional(readOnly = true)
     public List<ScheduleListResp> listSchedules(UUID userId) {
@@ -552,6 +556,7 @@ public class ScheduleApplicationService {
             }
 
             String commandId = UUID.randomUUID().toString();
+            untrackedDeviceCommandRegistry.markByCommandId(commandId, UNTRACKED_COMMAND_TYPE_SCHEDULE_TRIGGER);
             DeviceCommandReq command = buildScheduleTriggerCommand(deviceId, commandId);
             commands.add(command);
 
@@ -569,6 +574,7 @@ public class ScheduleApplicationService {
             DeviceCommandResp resp = callDeviceService(commands);
             accepted = resp.getAccepted();
             applyDeviceCommandResults(resp, resultByCommandId);
+            markUntrackedScheduleTriggerQueues(results);
         }
 
         List<Long> acceptedDeviceIds = results.stream()
@@ -591,6 +597,25 @@ public class ScheduleApplicationService {
                 .accepted(accepted)
                 .results(results)
                 .build();
+    }
+
+    private void markUntrackedScheduleTriggerQueues(List<SchedulePushResultResp> results) {
+        if (results == null || results.isEmpty()) {
+            return;
+        }
+        for (SchedulePushResultResp r : results) {
+            if (r == null || !r.isAccepted() || r.getDeviceId() == null || r.getQueuedId() == null) {
+                continue;
+            }
+            if (!StringUtils.hasText(r.getCommandId())) {
+                continue;
+            }
+            untrackedDeviceCommandRegistry.markByQueue(
+                    r.getDeviceId(),
+                    r.getQueuedId(),
+                    r.getCommandId(),
+                    UNTRACKED_COMMAND_TYPE_SCHEDULE_TRIGGER);
+        }
     }
 
     @Transactional(readOnly = true)

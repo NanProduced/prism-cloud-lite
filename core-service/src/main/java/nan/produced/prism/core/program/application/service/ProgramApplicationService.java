@@ -33,6 +33,7 @@ import nan.produced.prism.core.common.util.IdGenerator;
 import nan.produced.prism.core.common.util.FileNameUtils;
 import nan.produced.prism.core.common.util.JsonUtils;
 import nan.produced.prism.core.common.util.ObjectKeyUtils;
+import nan.produced.prism.core.device.application.service.UntrackedDeviceCommandRegistry;
 import nan.produced.prism.core.device.api.DeviceStatusFacade;
 import nan.produced.prism.core.integration.device.client.DeviceInternalClient;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandReq;
@@ -93,6 +94,8 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 @RequiredArgsConstructor
 public class ProgramApplicationService {
 
+    private static final String UNTRACKED_COMMAND_TYPE_PROGRAM_DIRTY = "PROGRAM_DIRTY";
+
     private final ProgramRepositoryJpa programRepositoryJpa;
     private final ProgramDraftRepositoryJpa programDraftRepositoryJpa;
     private final ProgramReleaseRepositoryJpa programReleaseRepositoryJpa;
@@ -111,6 +114,7 @@ public class ProgramApplicationService {
     private final MessageCenterFacade messageCenterFacade;
     private final ProgramQuotaSignalPublisher programQuotaSignalPublisher;
     private final UserQuotaFacade userQuotaFacade;
+    private final UntrackedDeviceCommandRegistry untrackedDeviceCommandRegistry;
 
     @Value("${prism.media.s3.bucket}")
     private String s3Bucket;
@@ -496,6 +500,7 @@ public class ProgramApplicationService {
             programAssignmentRepositoryJpa.save(assignment);
 
             String commandId = UUID.randomUUID().toString();
+            untrackedDeviceCommandRegistry.markByCommandId(commandId, UNTRACKED_COMMAND_TYPE_PROGRAM_DIRTY);
             DeviceCommandReq command = buildProgramDirtyCommand(deviceId, commandId);
             commands.add(command);
 
@@ -525,6 +530,7 @@ public class ProgramApplicationService {
         if (!commands.isEmpty()) {
             DeviceCommandResp resp = callDeviceService(commands);
             applyDeviceCommandResults(resp, resultByCommandId);
+            markUntrackedProgramDirtyQueues(results);
         }
 
         Map<String, Object> details = new LinkedHashMap<>();
@@ -600,6 +606,7 @@ public class ProgramApplicationService {
             removed++;
 
             String commandId = UUID.randomUUID().toString();
+            untrackedDeviceCommandRegistry.markByCommandId(commandId, UNTRACKED_COMMAND_TYPE_PROGRAM_DIRTY);
             DeviceCommandReq command = buildProgramDirtyCommand(deviceId, commandId);
             commands.add(command);
 
@@ -617,6 +624,7 @@ public class ProgramApplicationService {
         if (!commands.isEmpty()) {
             DeviceCommandResp resp = callDeviceService(commands);
             applyDeviceCommandResults(resp, resultByCommandId);
+            markUntrackedProgramDirtyQueues(results);
         }
 
         program.setUpdatedAt(now);
@@ -744,6 +752,25 @@ public class ProgramApplicationService {
             r.setAccepted(cr.isAccepted());
             r.setQueuedId(cr.getQueuedId());
             r.setErrorMessage(cr.getErrorMessage());
+        }
+    }
+
+    private void markUntrackedProgramDirtyQueues(List<ProgramPublishDeviceResultResp> results) {
+        if (results == null || results.isEmpty()) {
+            return;
+        }
+        for (ProgramPublishDeviceResultResp r : results) {
+            if (r == null || !r.isAccepted() || r.getDeviceId() == null || r.getQueuedId() == null) {
+                continue;
+            }
+            if (!StringUtils.hasText(r.getCommandId())) {
+                continue;
+            }
+            untrackedDeviceCommandRegistry.markByQueue(
+                    r.getDeviceId(),
+                    r.getQueuedId(),
+                    r.getCommandId(),
+                    UNTRACKED_COMMAND_TYPE_PROGRAM_DIRTY);
         }
     }
 
