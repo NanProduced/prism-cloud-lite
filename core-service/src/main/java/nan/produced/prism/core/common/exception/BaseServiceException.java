@@ -11,12 +11,14 @@ public class BaseServiceException extends RuntimeException {
     private final String code;
     private final HttpStatus httpStatus;
     private final Object[] args;
+    private final Object details;
 
     public BaseServiceException(ErrorCode errorCode) {
         super(errorCode.getMessage());
         this.code = errorCode.getCode();
         this.httpStatus = errorCode.getHttpStatus();
         this.args = new Object[0];
+        this.details = null;
     }
 
     public BaseServiceException(ErrorCode errorCode, String message) {
@@ -24,6 +26,7 @@ public class BaseServiceException extends RuntimeException {
         this.code = errorCode.getCode();
         this.httpStatus = errorCode.getHttpStatus();
         this.args = new Object[0];
+        this.details = null;
     }
 
     public BaseServiceException(ErrorCode errorCode, Throwable cause) {
@@ -31,6 +34,7 @@ public class BaseServiceException extends RuntimeException {
         this.code = errorCode.getCode();
         this.httpStatus = errorCode.getHttpStatus();
         this.args = new Object[0];
+        this.details = null;
     }
 
     public BaseServiceException(ErrorCode errorCode, String message, Throwable cause) {
@@ -38,6 +42,7 @@ public class BaseServiceException extends RuntimeException {
         this.code = errorCode.getCode();
         this.httpStatus = errorCode.getHttpStatus();
         this.args = new Object[0];
+        this.details = null;
     }
 
     public BaseServiceException(ErrorCode errorCode, Object... args) {
@@ -45,6 +50,23 @@ public class BaseServiceException extends RuntimeException {
         this.code = errorCode.getCode();
         this.httpStatus = errorCode.getHttpStatus();
         this.args = args;
+        this.details = null;
+    }
+
+    public BaseServiceException(ErrorCode errorCode, String message, Object details) {
+        super(message);
+        this.code = errorCode.getCode();
+        this.httpStatus = errorCode.getHttpStatus();
+        this.args = new Object[0];
+        this.details = details;
+    }
+
+    public BaseServiceException(ErrorCode errorCode, String message, Object details, Throwable cause) {
+        super(message, cause);
+        this.code = errorCode.getCode();
+        this.httpStatus = errorCode.getHttpStatus();
+        this.args = new Object[0];
+        this.details = details;
     }
 
     public String getCode() {
@@ -57,5 +79,9 @@ public class BaseServiceException extends RuntimeException {
 
     public Object[] getArgs() {
         return args;
+    }
+
+    public Object getDetails() {
+        return details;
     }
 }

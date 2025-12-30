@@ -23,9 +23,10 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.core.common.exception.ErrorCode;
+import nan.produced.prism.core.program.api.dto.ProgramDeleteBlockedDetails;
 import nan.produced.prism.core.common.config.StoragePathProperties;
 import nan.produced.prism.core.common.exception.BizException;
-import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.common.exception.InfraException;
 import nan.produced.prism.core.common.response.ApiResponse;
 import nan.produced.prism.core.common.util.ContentTypeUtils;
@@ -68,6 +69,7 @@ import nan.produced.prism.core.program.domain.ProgramDeploymentEntity;
 import nan.produced.prism.core.program.domain.ProgramDraftEntity;
 import nan.produced.prism.core.program.domain.ProgramEntity;
 import nan.produced.prism.core.program.domain.ProgramReleaseEntity;
+import nan.produced.prism.core.program.domain.schedule.ScheduleEntity;
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramAssignmentRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramAuditLogRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramDeploymentRepositoryJpa;
@@ -75,10 +77,13 @@ import nan.produced.prism.core.program.infrastructure.persistence.ProgramDraftRe
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramReleaseRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramRepositoryJpa;
 import nan.produced.prism.core.program.infrastructure.persistence.ProgramTemplateRepositoryJpa;
+import nan.produced.prism.core.program.infrastructure.persistence.ScheduleContentsRuleRepositoryJpa;
+import nan.produced.prism.core.program.infrastructure.persistence.ScheduleRepositoryJpa;
 import nan.produced.prism.core.message.api.MessageCenterFacade;
 import nan.produced.prism.core.security.api.CloudAuthContext;
 import nan.produced.prism.core.system.api.SubscriptionQuotaFacade;
 import nan.produced.prism.core.user.api.UserQuotaFacade;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -95,6 +100,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 public class ProgramApplicationService {
 
     private static final String UNTRACKED_COMMAND_TYPE_PROGRAM_DIRTY = "PROGRAM_DIRTY";
+    private static final int DELETE_BLOCKER_SAMPLE_SIZE = 20;
 
     private final ProgramRepositoryJpa programRepositoryJpa;
     private final ProgramDraftRepositoryJpa programDraftRepositoryJpa;
@@ -115,6 +121,8 @@ public class ProgramApplicationService {
     private final ProgramQuotaSignalPublisher programQuotaSignalPublisher;
     private final UserQuotaFacade userQuotaFacade;
     private final UntrackedDeviceCommandRegistry untrackedDeviceCommandRegistry;
+    private final ScheduleContentsRuleRepositoryJpa scheduleContentsRuleRepositoryJpa;
+    private final ScheduleRepositoryJpa scheduleRepositoryJpa;
 
     @Value("${prism.media.s3.bucket}")
     private String s3Bucket;
@@ -275,9 +283,143 @@ public class ProgramApplicationService {
     @Transactional
     public void deleteProgram(UUID userId, UUID programId) {
         ProgramEntity program = findOwnedProgram(userId, programId);
+
+        ProgramDeleteBlockedDetails blockedDetails = checkProgramDeleteBlocked(userId, programId);
+        if (blockedDetails != null) {
+            throw new BizException(ErrorCode.PROGRAM_DELETE_BLOCKED, "program delete blocked", blockedDetails);
+        }
+
         writeAudit(userId, programId, ProgramAuditAction.DELETE, null);
-        programRepositoryJpa.delete(program);
+        try {
+            programRepositoryJpa.delete(program);
+            // 强制触发约束检查，避免异常在事务提交阶段抛出导致无法返回结构化原因
+            programRepositoryJpa.flush();
+        } catch (DataIntegrityViolationException e) {
+            ProgramDeleteBlockedDetails details = checkProgramDeleteBlocked(userId, programId);
+            if (details == null) {
+                details = ProgramDeleteBlockedDetails.builder().programId(programId).build();
+            }
+            throw new BizException(
+                    ErrorCode.PROGRAM_DELETE_BLOCKED,
+                    "program delete blocked by constraint",
+                    details,
+                    e);
+        }
+
         onProgramsChangedBestEffort(userId, resolveTierFromContext());
+    }
+
+    private ProgramDeleteBlockedDetails checkProgramDeleteBlocked(UUID userId, UUID programId) {
+        if (userId == null || programId == null) {
+            return null;
+        }
+
+        // 1) schedule 引用（release_program_id -> pcc_program_release.device_program_id）
+        List<ProgramReleaseEntity> releases = programReleaseRepositoryJpa.findByProgramIdOrderByVersionDesc(programId);
+        List<Integer> releaseProgramIds = releases == null
+                ? List.of()
+                : releases.stream()
+                        .map(ProgramReleaseEntity::getDeviceProgramId)
+                        .filter(Objects::nonNull)
+                        .distinct()
+                        .toList();
+
+        List<UUID> scheduleIds = List.of();
+        if (!releaseProgramIds.isEmpty()) {
+            scheduleIds = scheduleContentsRuleRepositoryJpa.findDistinctScheduleIdsByReleaseProgramIdIn(releaseProgramIds);
+        }
+
+        ProgramDeleteBlockedDetails.ScheduleRef scheduleRef = null;
+        if (scheduleIds != null && !scheduleIds.isEmpty()) {
+            Map<UUID, ScheduleEntity> scheduleById = new HashMap<>();
+            for (ScheduleEntity s : scheduleRepositoryJpa.findAllById(scheduleIds)) {
+                if (s == null || s.getScheduleId() == null || !userId.equals(s.getUserId())) {
+                    continue;
+                }
+                scheduleById.put(s.getScheduleId(), s);
+            }
+
+            List<UUID> uniq = scheduleIds.stream().filter(Objects::nonNull).distinct().toList();
+            List<ProgramDeleteBlockedDetails.ScheduleItem> items = uniq.stream()
+                    .limit(DELETE_BLOCKER_SAMPLE_SIZE)
+                    .map(id -> {
+                        ScheduleEntity s = scheduleById.get(id);
+                        return ProgramDeleteBlockedDetails.ScheduleItem.builder()
+                                .scheduleId(id)
+                                .name(s != null ? s.getName() : null)
+                                .enabled(s != null ? s.getEnabled() : null)
+                                .build();
+                    })
+                    .toList();
+
+            scheduleRef = ProgramDeleteBlockedDetails.ScheduleRef.builder()
+                    .count(uniq.size())
+                    .items(items)
+                    .build();
+        }
+
+        // 2) direct publish assignment 引用（仍在分发）
+        List<ProgramAssignmentEntity> assignments = programAssignmentRepositoryJpa.findByProgramIdOrderByAssignedAtDesc(programId);
+        int assignmentCount = 0;
+        List<Long> assignmentDeviceIds = List.of();
+        if (assignments != null && !assignments.isEmpty()) {
+            List<Long> distinctIds = assignments.stream()
+                    .filter(a -> a != null && a.getDeviceId() != null && userId.equals(a.getUserId()))
+                    .map(ProgramAssignmentEntity::getDeviceId)
+                    .distinct()
+                    .toList();
+            assignmentCount = distinctIds.size();
+            assignmentDeviceIds = distinctIds.stream().limit(DELETE_BLOCKER_SAMPLE_SIZE).toList();
+        }
+
+        ProgramDeleteBlockedDetails.AssignmentRef assignmentRef = null;
+        if (assignmentCount > 0) {
+            assignmentRef = ProgramDeleteBlockedDetails.AssignmentRef.builder()
+                    .count(assignmentCount)
+                    .deviceIds(assignmentDeviceIds)
+                    .build();
+        }
+
+        // 3) deployment 引用（设备仍持有/下载中）
+        var deployments = programDeploymentRepositoryJpa.findByProgramIdOrderByAssignedAtDesc(programId);
+        ProgramDeleteBlockedDetails.DeploymentRef deploymentRef = null;
+        if (deployments != null && !deployments.isEmpty()) {
+            List<ProgramDeleteBlockedDetails.DeploymentItem> items = deployments.stream()
+                    .filter(d -> d != null && d.getDeviceId() != null && Objects.equals(userId, d.getUserId()))
+                    .map(d -> ProgramDeleteBlockedDetails.DeploymentItem.builder()
+                            .deviceId(d.getDeviceId())
+                            .status(d.getStatus() != null ? d.getStatus().name() : null)
+                            .releaseProgramId(d.getReleaseProgramId())
+                            .releaseVersion(d.getReleaseVersion())
+                            .build())
+                    .distinct()
+                    .limit(DELETE_BLOCKER_SAMPLE_SIZE)
+                    .toList();
+
+            int count = (int) deployments.stream()
+                    .filter(d -> d != null && d.getDeviceId() != null && Objects.equals(userId, d.getUserId()))
+                    .map(d -> d.getDeviceId().toString())
+                    .distinct()
+                    .count();
+
+            if (count > 0) {
+                deploymentRef = ProgramDeleteBlockedDetails.DeploymentRef.builder()
+                        .count(count)
+                        .items(items)
+                        .build();
+            }
+        }
+
+        if (scheduleRef == null && assignmentRef == null && deploymentRef == null) {
+            return null;
+        }
+
+        return ProgramDeleteBlockedDetails.builder()
+                .programId(programId)
+                .scheduleRef(scheduleRef)
+                .assignmentRef(assignmentRef)
+                .deploymentRef(deploymentRef)
+                .build();
     }
 
     private void ensureProgramLimit(UUID userId, String tier) {
@@ -897,6 +1039,7 @@ public class ProgramApplicationService {
 
         fillFileSources(root, materialById);
         removeInternalFields(root);
+        removeNullFields(root);
 
         String frozenVsnJson;
         try {
@@ -1160,6 +1303,51 @@ public class ProgramApplicationService {
             ArrayNode arr = (ArrayNode) node;
             for (JsonNode child : arr) {
                 removeInternalFields(child);
+            }
+        }
+    }
+
+    /**
+     * VSN JSON 清理：删除 null / "null" / 空字符串等无效字段，避免渲染出设备端不兼容的 XML 节点。
+     * <p>例如：BgFile=null 时，设备可能会将其视为“有背景图但路径为空”，进而解析失败。</p>
+     */
+    private void removeNullFields(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return;
+        }
+
+        if (node.isObject()) {
+            ObjectNode obj = (ObjectNode) node;
+            java.util.List<String> keys = new java.util.ArrayList<>();
+            obj.fieldNames().forEachRemaining(keys::add);
+
+            for (String key : keys) {
+                if (key == null) {
+                    continue;
+                }
+                JsonNode child = obj.get(key);
+                if (child == null || child.isNull()) {
+                    obj.remove(key);
+                    continue;
+                }
+                if (child.isTextual()) {
+                    String text = child.asText();
+                    boolean isNullLiteral = "null".equalsIgnoreCase(text);
+                    boolean isBlank = !StringUtils.hasText(text);
+                    if (isNullLiteral || ("BgFile".equals(key) && isBlank)) {
+                        obj.remove(key);
+                        continue;
+                    }
+                }
+                removeNullFields(child);
+            }
+            return;
+        }
+
+        if (node.isArray()) {
+            ArrayNode arr = (ArrayNode) node;
+            for (JsonNode child : arr) {
+                removeNullFields(child);
             }
         }
     }

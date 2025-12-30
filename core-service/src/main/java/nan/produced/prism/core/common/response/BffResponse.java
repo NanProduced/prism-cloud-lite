@@ -35,7 +35,8 @@ import nan.produced.prism.core.common.exception.ErrorCode;
  *     "code": "CORE-2401",
  *     "message": "未授权访问",
  *     "displayMessage": "请提供有效的认证信息",
- *     "retryable": false
+ *     "retryable": false,
+ *     "details": {}
  *   },
  *   "traceId": "0af7651916cd43dd8448eb211c80319c"
  * }
@@ -78,6 +79,7 @@ public class BffResponse<T> {
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class ErrorDetail {
 
         /**
@@ -104,6 +106,12 @@ public class BffResponse<T> {
          * - false: 业务冲突或权限错误，重试无意义（如用户已存在）
          */
         private boolean retryable;
+
+        /**
+         * 可选：结构化错误详情（用于前端精确引导/渲染）。
+         * <p>例如：删除被引用阻断时返回引用列表/计数等。</p>
+         */
+        private Object details;
     }
 
     // ==================== 静态工厂方法 ====================
@@ -149,8 +157,20 @@ public class BffResponse<T> {
             errorCode.getCode(),
             errorCode.getMessage(),
             displayMessage,
-            errorCode.isRetryable()
+            errorCode.isRetryable(),
+            null
         ));
+        return response;
+    }
+
+    /**
+     * 创建错误响应（自定义displayMessage + 结构化 details）
+     */
+    public static <T> BffResponse<T> error(ErrorCode errorCode, String displayMessage, Object details) {
+        BffResponse<T> response = error(errorCode, displayMessage);
+        if (response.getError() != null) {
+            response.getError().setDetails(details);
+        }
         return response;
     }
 

@@ -18,6 +18,14 @@ public class BizException extends BaseServiceException {
         super(errorCode, message, cause);
     }
 
+    public BizException(ErrorCode errorCode, String message, Object details) {
+        super(errorCode, message, details);
+    }
+
+    public BizException(ErrorCode errorCode, String message, Object details, Throwable cause) {
+        super(errorCode, message, details, cause);
+    }
+
     public BizException(ErrorCode errorCode, Object... args) {
         super(errorCode, args);
     }

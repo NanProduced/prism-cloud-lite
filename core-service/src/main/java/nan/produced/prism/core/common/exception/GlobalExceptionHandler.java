@@ -89,11 +89,14 @@ public class GlobalExceptionHandler {
         // 通过错误码查询对应的ErrorCode枚举以获取displayMessage和retryable信息
         ErrorCode errorCode = findErrorCode(e.getCode());
 
-        BffResponse<Void> response = BffResponse.<Void>error(
-                errorCode != null ? errorCode : ErrorCode.INTERNAL_SERVER_ERROR,
-                errorCode != null ? errorCode.getDisplayMessage() : "系统错误，请稍后重试"
-            )
-            .withTraceId(TraceUtils.getTraceId());
+        ErrorCode resolved = errorCode != null ? errorCode : ErrorCode.INTERNAL_SERVER_ERROR;
+        String displayMessage = errorCode != null ? errorCode.getDisplayMessage() : "系统错误，请稍后重试";
+        Object details = e.getDetails();
+
+        BffResponse<Void> response = details != null
+                ? BffResponse.<Void>error(resolved, displayMessage, details)
+                : BffResponse.<Void>error(resolved, displayMessage);
+        response.withTraceId(TraceUtils.getTraceId());
 
         return ResponseEntity
             .status(e.getHttpStatus())

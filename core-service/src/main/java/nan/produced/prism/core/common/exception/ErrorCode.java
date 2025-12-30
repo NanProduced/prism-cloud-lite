@@ -90,6 +90,7 @@ public enum ErrorCode {
     PROGRAM_VSN_JSON_INVALID("CORE-2805", "VSN JSON 不合法", "节目内容不合法，请检查后重试", HttpStatus.BAD_REQUEST, false),
     PROGRAM_MATERIAL_INVALID("CORE-2806", "节目引用素材不合法", "节目引用的素材信息不完整，请重新上传或重试", HttpStatus.BAD_REQUEST, false),
     PROGRAM_LIMIT_EXCEEDED("CORE-2807", "节目数量已达上限", "已达到当前套餐的节目上限，请升级套餐", HttpStatus.BAD_REQUEST, false),
+    PROGRAM_DELETE_BLOCKED("CORE-2808", "节目不允许删除", "该节目仍被设备/排程引用，请先解除引用后再删除", HttpStatus.BAD_REQUEST, false),
 
     // ============ 排程相关 (CORE-29xx) ============
     SCHEDULE_NOT_FOUND("CORE-2900", "排程不存在", "排程不存在或无权访问", HttpStatus.NOT_FOUND, false),
