@@ -221,7 +221,7 @@ public class DeviceOnlineSessionRepositoryAdapter implements DeviceOnlineSession
             WHERE user_id = :userId
               AND device_id = :deviceId
               AND period && tstzrange(:from, :to, '[)')
-              AND (:cursor IS NULL OR online_at < :cursor)
+              AND (:cursor::timestamptz IS NULL OR online_at < :cursor::timestamptz)
             ORDER BY online_at DESC, id DESC
             LIMIT :limit
             """;
@@ -347,7 +347,7 @@ public class DeviceOnlineSessionRepositoryAdapter implements DeviceOnlineSession
 
         MapSqlParameterSource params = baseRangeParams(userId, from, to)
                 .addValue("deviceId", deviceId)
-                // When cursor is null, PostgreSQL can't infer its type from ":cursor IS NULL"; set an explicit JDBC type.
+                // Cursor can be null; keep an explicit JDBC type to avoid driver-specific type inference issues.
                 .addValue("cursor", cursor, Types.TIMESTAMP_WITH_TIMEZONE)
                 .addValue("limit", limit);
 

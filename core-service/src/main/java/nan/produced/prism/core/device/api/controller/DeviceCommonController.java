@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import nan.produced.prism.core.common.response.BffResponse;
 import nan.produced.prism.core.common.util.TraceUtils;
 import nan.produced.prism.core.device.api.converter.DeviceConverter;
+import nan.produced.prism.core.device.api.dto.BatchDeviceQueryReq;
 import nan.produced.prism.core.device.api.dto.CreateDeviceReq;
 import nan.produced.prism.core.device.api.dto.CreateDeviceResp;
 import nan.produced.prism.core.device.api.dto.DeviceDetailResp;
@@ -81,6 +82,25 @@ public class DeviceCommonController {
     public ResponseEntity<BffResponse<List<DeviceListVO>>> listDevices() {
         UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<DeviceListVO> list = deviceSearchUseCase.listAllUsersDevices(userId);
+        return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
+    }
+
+    @Operation(
+            summary = "按设备 ID 批量查询设备列表",
+            description = """
+                    用于“下钻/详情聚合”场景：前端已持有一组 deviceId，需要一次性补齐设备概览信息。
+
+                    仅返回“存在且属于当前用户”的设备；不存在/无权访问的 deviceId 将被忽略。
+                    """)
+    @ApiResponse(
+            responseCode = "200",
+            description = "成功返回设备列表",
+            content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = DeviceListVO.class))))
+    @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
+    @PostMapping("/by-ids")
+    public ResponseEntity<BffResponse<List<DeviceListVO>>> listDevicesByIds(@RequestBody @Validated BatchDeviceQueryReq req) {
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
+        List<DeviceListVO> list = deviceSearchUseCase.listUsersDevicesByIds(userId, req.getDeviceIds());
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
     }
 

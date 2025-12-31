@@ -62,6 +62,41 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
 
     @Override
     @Transactional(readOnly = true)
+    public List<DeviceListVO> listUsersDevicesByIds(UUID userId, List<Long> deviceIds) {
+        if (userId == null || deviceIds == null || deviceIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> distinctIds = deviceIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (distinctIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<DeviceEntity> devices = deviceRepository.findByUserIdAndDeviceIds(userId, distinctIds);
+        if (devices == null || devices.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, DeviceEntity> deviceById = new HashMap<>();
+        for (DeviceEntity device : devices) {
+            if (device != null && device.getDeviceId() != null) {
+                deviceById.put(device.getDeviceId(), device);
+            }
+        }
+
+        List<DeviceEntity> ordered = distinctIds.stream()
+                .map(deviceById::get)
+                .filter(Objects::nonNull)
+                .toList();
+
+        return assembleDeviceList(userId, ordered);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public DeviceDetailResp getDeviceDetail(UUID userId, Long deviceId) {
         if (userId == null || deviceId == null) {
             throw new BizException(ErrorCode.DEVICE_NOT_FOUND_IN_CORE);

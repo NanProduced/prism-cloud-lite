@@ -169,11 +169,58 @@ public class ProgramApplicationService {
         }
 
         List<ProgramEntity> programs = programRepositoryJpa.findByUserIdOrderByUpdatedAtDesc(userId);
+        return toProgramListResps(programs);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProgramListResp> listProgramsByIds(UUID userId, List<UUID> programIds) {
+        if (userId == null) {
+            throw new BizException(ErrorCode.NO_AUTHENTICATED_USER);
+        }
+        if (programIds == null || programIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> distinctIds = programIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (distinctIds.isEmpty()) {
+            return List.of();
+        }
+
+        List<ProgramEntity> programs = programRepositoryJpa.findByUserIdAndIdIn(userId, distinctIds);
         if (programs == null || programs.isEmpty()) {
             return List.of();
         }
 
-        List<UUID> programIds = programs.stream().map(ProgramEntity::getId).toList();
+        Map<UUID, ProgramEntity> programById = new HashMap<>();
+        for (ProgramEntity program : programs) {
+            if (program != null && program.getId() != null) {
+                programById.put(program.getId(), program);
+            }
+        }
+
+        List<ProgramEntity> ordered = distinctIds.stream()
+                .map(programById::get)
+                .filter(Objects::nonNull)
+                .toList();
+
+        return toProgramListResps(ordered);
+    }
+
+    private List<ProgramListResp> toProgramListResps(List<ProgramEntity> programs) {
+        if (programs == null || programs.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> programIds = programs.stream()
+                .map(ProgramEntity::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (programIds.isEmpty()) {
+            return List.of();
+        }
 
         Map<UUID, ProgramReleaseEntity> latestReleaseByProgramId = pickLatestReleaseByProgramId(
                 programReleaseRepositoryJpa.findByProgramIdInOrderByProgramIdAscVersionDesc(programIds));

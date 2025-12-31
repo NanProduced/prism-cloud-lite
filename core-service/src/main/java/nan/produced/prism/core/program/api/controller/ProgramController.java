@@ -1,6 +1,7 @@
 package nan.produced.prism.core.program.api.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -12,6 +13,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.core.common.response.BffResponse;
 import nan.produced.prism.core.common.util.TraceUtils;
+import nan.produced.prism.core.program.api.dto.BatchProgramQueryReq;
 import nan.produced.prism.core.program.api.dto.CreateProgramReq;
 import nan.produced.prism.core.program.api.dto.ProgramDetailResp;
 import nan.produced.prism.core.program.api.dto.ProgramDraftResp;
@@ -72,6 +74,25 @@ public class ProgramController {
     public ResponseEntity<BffResponse<List<ProgramListResp>>> listPrograms() {
         UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         List<ProgramListResp> list = programApplicationService.listPrograms(userId);
+        return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
+    }
+
+    @Operation(
+            summary = "按节目 ID 批量查询节目列表",
+            description = """
+                    用于“下钻/详情聚合”场景：前端已持有一组 programId，需要一次性补齐节目列表信息（同 `GET /api/v1/programs` 的条目结构）。
+
+                    仅返回“存在且属于当前用户”的节目；不存在/无权访问的 programId 将被忽略。
+                    """)
+    @ApiResponse(
+            responseCode = "200",
+            description = "成功返回节目列表",
+            content = @Content(mediaType = "application/json", array = @ArraySchema(schema = @Schema(implementation = ProgramListResp.class))))
+    @ApiResponse(responseCode = "401", description = "CLOUD_AUTH 头缺失或无效")
+    @PostMapping("/by-ids")
+    public ResponseEntity<BffResponse<List<ProgramListResp>>> listProgramsByIds(@RequestBody @Valid BatchProgramQueryReq req) {
+        UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
+        List<ProgramListResp> list = programApplicationService.listProgramsByIds(userId, req.getProgramIds());
         return ResponseEntity.ok(BffResponse.success(list).withTraceId(TraceUtils.getTraceId()));
     }
 

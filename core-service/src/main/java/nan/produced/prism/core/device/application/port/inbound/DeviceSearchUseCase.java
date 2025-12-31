@@ -22,6 +22,15 @@ public interface DeviceSearchUseCase {
     List<DeviceListVO> listAllUsersDevices(UUID userId);
 
     /**
+     * 批量查询用户的设备列表（按 ID 过滤，不分页）。
+     *
+     * @param userId    用户ID
+     * @param deviceIds 设备ID列表
+     * @return 设备列表（仅返回存在且属于该用户的设备）
+     */
+    List<DeviceListVO> listUsersDevicesByIds(UUID userId, List<Long> deviceIds);
+
+    /**
      * 查询设备详情
      * @param userId 用户ID
      * @param deviceId 设备ID
