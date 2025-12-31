@@ -102,6 +102,8 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 public class ProgramApplicationService {
 
     private static final String UNTRACKED_COMMAND_TYPE_PROGRAM_DIRTY = "PROGRAM_DIRTY";
+    private static final String UNTRACKED_COMMAND_TYPE_PROGRAM_DELETE = "PROGRAM_DELETE";
+    private static final String DEVICE_COMMAND_RAW_DELETE_VSN = "{\"command\":\"\"}";
     private static final int DELETE_BLOCKER_SAMPLE_SIZE = 20;
 
     private final ProgramRepositoryJpa programRepositoryJpa;
@@ -752,6 +754,7 @@ public class ProgramApplicationService {
 
         List<DeviceCommandReq> commands = new java.util.ArrayList<>();
         Map<String, ProgramPublishDeviceResultResp> resultByCommandId = new HashMap<>();
+        Map<String, Long> deleteDeviceIdByCommandId = new HashMap<>();
         List<ProgramPublishDeviceResultResp> results = new java.util.ArrayList<>();
 
         int removed = 0;
@@ -775,6 +778,24 @@ public class ProgramApplicationService {
             programAssignmentRepositoryJpa.delete(existing);
             removed++;
 
+            String vsnName = resolveVsnFilename(existing.getReleaseProgramId());
+            if (StringUtils.hasText(vsnName)) {
+                for (String source : List.of("internet", "lan")) {
+                    String deleteCommandId = UUID.randomUUID().toString();
+                    if (untrackedDeviceCommandRegistry != null) {
+                        untrackedDeviceCommandRegistry.markByCommandId(deleteCommandId, UNTRACKED_COMMAND_TYPE_PROGRAM_DELETE);
+                    }
+                    commands.add(buildDeleteVsnCommand(deviceId, deleteCommandId, source, vsnName));
+                    deleteDeviceIdByCommandId.put(deleteCommandId, deviceId);
+                }
+            } else {
+                log.warn(
+                        "Unpublish delete skipped: failed to resolve vsnName, programId={}, deviceId={}, releaseProgramId={}",
+                        programId,
+                        deviceId,
+                        existing.getReleaseProgramId());
+            }
+
             String commandId = UUID.randomUUID().toString();
             if (untrackedDeviceCommandRegistry != null) {
                 untrackedDeviceCommandRegistry.markByCommandId(commandId, UNTRACKED_COMMAND_TYPE_PROGRAM_DIRTY);
@@ -797,6 +818,7 @@ public class ProgramApplicationService {
             DeviceCommandResp resp = callDeviceService(commands);
             applyDeviceCommandResults(resp, resultByCommandId);
             markUntrackedProgramDirtyQueues(results);
+            markUntrackedDeleteQueues(resp, deleteDeviceIdByCommandId);
         }
 
         program.setUpdatedAt(now);
@@ -907,6 +929,16 @@ public class ProgramApplicationService {
                 .build();
     }
 
+    private DeviceCommandReq buildDeleteVsnCommand(long deviceId, String commandId, String source, String vsnName) {
+        return DeviceCommandReq.builder()
+                .deviceId(deviceId)
+                .commandId(commandId)
+                .authorUrl("api/vsns/sources/" + source + "/vsns/" + vsnName)
+                .karma(3)
+                .content(DeviceCommandReq.Content.builder().raw(DEVICE_COMMAND_RAW_DELETE_VSN).build())
+                .build();
+    }
+
     private void applyDeviceCommandResults(
             DeviceCommandResp resp,
             Map<String, ProgramPublishDeviceResultResp> resultByCommandId) {
@@ -944,6 +976,54 @@ public class ProgramApplicationService {
                     r.getCommandId(),
                     UNTRACKED_COMMAND_TYPE_PROGRAM_DIRTY);
         }
+    }
+
+    private void markUntrackedDeleteQueues(DeviceCommandResp resp, Map<String, Long> deleteDeviceIdByCommandId) {
+        if (untrackedDeviceCommandRegistry == null
+                || resp == null
+                || resp.getResults() == null
+                || deleteDeviceIdByCommandId == null
+                || deleteDeviceIdByCommandId.isEmpty()) {
+            return;
+        }
+        for (DeviceCommandResp.CommandResult cr : resp.getResults()) {
+            if (cr == null || !cr.isAccepted() || cr.getQueuedId() == null || !StringUtils.hasText(cr.getCommandId())) {
+                continue;
+            }
+            Long deviceId = deleteDeviceIdByCommandId.get(cr.getCommandId());
+            if (deviceId == null) {
+                continue;
+            }
+            untrackedDeviceCommandRegistry.markByQueue(
+                    deviceId,
+                    cr.getQueuedId(),
+                    cr.getCommandId(),
+                    UNTRACKED_COMMAND_TYPE_PROGRAM_DELETE);
+        }
+    }
+
+    private String resolveVsnFilename(Integer releaseProgramId) {
+        if (releaseProgramId == null) {
+            return null;
+        }
+        ProgramReleaseEntity release = programReleaseRepositoryJpa.findById(releaseProgramId).orElse(null);
+        return buildVsnFilename(release);
+    }
+
+    private String buildVsnFilename(ProgramReleaseEntity release) {
+        if (release == null) {
+            return null;
+        }
+        if (!StringUtils.hasText(release.getDeviceTitleSnapshot())
+                || !StringUtils.hasText(release.getVsnMd5())
+                || release.getVsnSizeBytes() == null
+                || release.getVsnSizeBytes() <= 0) {
+            return null;
+        }
+        return release.getDeviceTitleSnapshot()
+                + "_" + release.getVsnMd5().trim().toLowerCase(Locale.ROOT)
+                + "_" + release.getVsnSizeBytes()
+                + ".vsn";
     }
 
     private DeviceCommandResp callDeviceService(List<DeviceCommandReq> commands) {

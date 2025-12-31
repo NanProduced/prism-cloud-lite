@@ -1,10 +1,15 @@
 package nan.produced.prism.core.device.application.converter;
 
 import nan.produced.prism.core.common.util.JsonUtils;
+import nan.produced.prism.core.common.util.VsnFilenameUtils;
+import nan.produced.prism.core.common.exception.BizException;
+import nan.produced.prism.core.common.exception.ErrorCode;
 import nan.produced.prism.core.device.api.dto.DeviceActionDispatchResp;
 import nan.produced.prism.core.device.api.dto.DeviceActionDispatchStatus;
 import nan.produced.prism.core.device.domain.command.DeviceActionBase;
 import nan.produced.prism.core.device.domain.command.DeviceActionBodyBase;
+import nan.produced.prism.core.device.domain.command.DeviceActionType;
+import nan.produced.prism.core.device.domain.command.action.DeleteDeviceVsnAction;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandReq;
 import nan.produced.prism.core.integration.device.dto.command.DeviceCommandResp;
 import org.mapstruct.Mapper;
@@ -16,7 +21,7 @@ public interface DeviceActionDispatchConverter {
 
     @Mapping(target = "deviceId", source = "deviceId")
     @Mapping(target = "commandId", source = "commandId")
-    @Mapping(target = "authorUrl", source = "action.type.url")
+    @Mapping(target = "authorUrl", expression = "java(resolveAuthorUrl(action))")
     @Mapping(target = "karma", expression = "java(action.getType().getKarma())")
     @Mapping(target = "ttlMinutes", source = "action.ttlMinutes")
     @Mapping(target = "content", expression = "java(toContent(action.getBody()))")
@@ -59,5 +64,29 @@ public interface DeviceActionDispatchConverter {
         }
         return result.getErrorMessage();
     }
-}
 
+    default String resolveAuthorUrl(DeviceActionBase action) {
+        if (action == null || action.getType() == null) {
+            return null;
+        }
+        if (action.getType() == DeviceActionType.DELETE_DEVICE_VSN && action instanceof DeleteDeviceVsnAction delete) {
+            String source = delete.getSource() != null ? delete.getSource().trim().toLowerCase() : "";
+            if (!"internet".equals(source) && !"lan".equals(source)) {
+                throw new BizException(ErrorCode.INVALID_REQUEST, "invalid source: " + delete.getSource());
+            }
+
+            String rawName = delete.getVsnName() != null ? delete.getVsnName().trim() : "";
+            int lastSlash = Math.max(rawName.lastIndexOf('/'), rawName.lastIndexOf('\\'));
+            String vsnName = lastSlash >= 0 && lastSlash + 1 < rawName.length() ? rawName.substring(lastSlash + 1) : rawName;
+            if (!vsnName.toLowerCase().endsWith(".vsn")) {
+                throw new BizException(ErrorCode.INVALID_REQUEST, "invalid vsnName (missing .vsn): " + delete.getVsnName());
+            }
+            if (VsnFilenameUtils.parseVsnMeta(vsnName) == null) {
+                throw new BizException(ErrorCode.INVALID_REQUEST, "invalid vsnName: " + delete.getVsnName());
+            }
+
+            return "api/vsns/sources/" + source + "/vsns/" + vsnName;
+        }
+        return action.getType().getUrl();
+    }
+}

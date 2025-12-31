@@ -57,8 +57,11 @@ public enum DeviceActionType {
     @Schema(description = "传感器上报时间设置（POST api/setreporttime）")
     SET_SENSOR_REPORT_TIME("api/setreporttime", DeviceCommandMethod.POST, DeviceActionTrackingLevel.UPDATE_ONLY),
 
-    @Schema(description = "清除设备上的节目，即清除设备上当前已下载的节目（POST api/clrprgms）")
-    CLEAR_DEVICE_PROGRAM("api/clrprgms", DeviceCommandMethod.POST, DeviceActionTrackingLevel.UPDATE_ONLY);
+    @Schema(description = "删除设备上的指定节目（DELETE api/vsns/sources/{source}/vsns/{vsnName}，其中 source=internet|lan）")
+    DELETE_DEVICE_VSN("api/vsns/sources", DeviceCommandMethod.DELETE, DeviceActionTrackingLevel.UPDATE_ONLY),
+
+    @Schema(description = "清除设备上的节目，即清除设备上当前已下载的节目（DELETE api/clrprgms）")
+    CLEAR_DEVICE_PROGRAM("api/clrprgms", DeviceCommandMethod.DELETE, DeviceActionTrackingLevel.UPDATE_ONLY);
 
     /**
      * 对应DeviceCommand.authorUrl
