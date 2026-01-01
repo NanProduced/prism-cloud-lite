@@ -31,3 +31,32 @@ assistant:
     chunk:
       max-chars: ${ASSISTANT_RAG_CHUNK_MAX_CHARS:3200}
       overlap-chars: ${ASSISTANT_RAG_CHUNK_OVERLAP_CHARS:200}
+
+  chat:
+    engine: ${ASSISTANT_CHAT_ENGINE:raw} # raw|spring-ai
+    prompt:
+      system-template: ${ASSISTANT_CHAT_SYSTEM_TEMPLATE:classpath:assistant/prompts/system.md}
+    tools:
+      max-rounds: ${ASSISTANT_CHAT_TOOLS_MAX_ROUNDS:3}
+      max-calls-per-round: ${ASSISTANT_CHAT_TOOLS_MAX_CALLS_PER_ROUND:5}
+    rag:
+      enabled: ${ASSISTANT_CHAT_RAG_ENABLED:true}
+      top-k: ${ASSISTANT_CHAT_RAG_TOP_K:8}
+      max-context-chars: ${ASSISTANT_CHAT_RAG_MAX_CONTEXT_CHARS:12000}
+      prefer-lang: ${ASSISTANT_CHAT_RAG_PREFER_LANG:auto} # auto|zh|en
+    llm:
+      base-url: ${ASSISTANT_CHAT_LLM_BASE_URL:http://127.0.0.1:8000}
+      model: ${ASSISTANT_CHAT_LLM_MODEL:Qwen/Qwen3-8B}
+      api-key: ${ASSISTANT_CHAT_LLM_API_KEY:}
+      temperature: ${ASSISTANT_CHAT_LLM_TEMPERATURE:0.2}
+    providers:
+      openai:
+        base-url: ${ASSISTANT_CHAT_OPENAI_BASE_URL:https://api.openai.com}
+        default-model: ${ASSISTANT_CHAT_OPENAI_MODEL:gpt-4o-mini}
+      gemini:
+        # NOTE: Gemini BYOK is provider-dependent; keep empty until confirmed.
+        base-url: ${ASSISTANT_CHAT_GEMINI_BASE_URL:}
+        default-model: ${ASSISTANT_CHAT_GEMINI_MODEL:gemini-1.5-flash}
+
+  credentials:
+    master-key: ${PRISM_AI_CREDENTIALS_MASTER_KEY:} # base64-encoded 32-byte key for AES-GCM

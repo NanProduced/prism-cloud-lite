@@ -102,6 +102,10 @@ public enum ErrorCode {
     SCHEDULE_RULE_INVALID("CORE-2903", "排程规则不合法", "排程规则不合法，请检查后重试", HttpStatus.BAD_REQUEST, false),
     SCHEDULE_CONTENTS_PRIORITY_DUPLICATE("CORE-2904", "排程节目规则 priority 重复", "priority 不允许重复，请调整后重试", HttpStatus.BAD_REQUEST, false),
 
+    // ============ AI 助手相关 (CORE-30xx) ============
+    AI_CREDENTIALS_NOT_CONFIGURED("CORE-3000", "AI 凭证主密钥未配置", "AI 凭证功能尚未启用，请联系管理员配置", HttpStatus.SERVICE_UNAVAILABLE, false),
+    AI_PROVIDER_INVALID("CORE-3001", "AI Provider 不合法", "AI 模型配置不合法，请检查输入", HttpStatus.BAD_REQUEST, false),
+
     // ============ 系统异常 (SYS-5xxx) ============
     INTERNAL_SERVER_ERROR("SYS-5000", "系统内部错误", "服务器内部错误，请稍后重试", HttpStatus.INTERNAL_SERVER_ERROR, true),
     EXTERNAL_SERVICE_ERROR("SYS-5001", "外部服务调用失败", "依赖服务暂时不可用，请稍后重试", HttpStatus.BAD_GATEWAY, true);

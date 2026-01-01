@@ -9,6 +9,7 @@ import jakarta.annotation.PostConstruct;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import java.util.Objects;
 
 @Repository
 @RequiredArgsConstructor
@@ -165,6 +166,57 @@ public class RagDocsRepository {
             throw new IllegalStateException("pgvector type not found (expected assistant.vector/public.vector/vector)");
         }
         this.vectorTypeForCast = resolved;
+    }
+
+    public record RagChunkHit(
+            String docKey,
+            String lang,
+            String slug,
+            String title,
+            String headingPath,
+            String chunkText,
+            double distance
+    ) {
+    }
+
+    public List<RagChunkHit> searchTopChunks(String queryVectorLiteral, String lang, int topK) {
+        Objects.requireNonNull(queryVectorLiteral, "queryVectorLiteral");
+        if (lang == null || lang.isBlank() || topK <= 0) {
+            return List.of();
+        }
+
+        String sql = """
+                SELECT
+                  d.doc_key,
+                  d.lang,
+                  d.slug,
+                  d.title,
+                  c.heading_path,
+                  c.chunk_text,
+                  (c.embedding <=> CAST(:queryVector AS %s)) AS distance
+                FROM assistant.rag_chunk c
+                JOIN assistant.rag_document d ON d.id = c.doc_id
+                WHERE d.lang = :lang
+                  AND d.audience = 'user'
+                  AND d.status = 'stable'
+                ORDER BY c.embedding <=> CAST(:queryVector AS %s)
+                LIMIT :topK
+                """.formatted(vectorTypeForCast, vectorTypeForCast);
+
+        MapSqlParameterSource p = new MapSqlParameterSource()
+                .addValue("queryVector", queryVectorLiteral)
+                .addValue("lang", lang)
+                .addValue("topK", topK);
+
+        return jdbcTemplate.query(sql, p, (rs, rowNum) -> new RagChunkHit(
+                rs.getString("doc_key"),
+                rs.getString("lang"),
+                rs.getString("slug"),
+                rs.getString("title"),
+                rs.getString("heading_path"),
+                rs.getString("chunk_text"),
+                rs.getDouble("distance")
+        ));
     }
 
     public record ChunkRow(
