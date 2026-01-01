@@ -1,0 +1,191 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------< nan.produced:core-service >----------------------
+[INFO] Building core-service 1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.5.0:run (default-cli) > test-compile @ core-service >>>
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ core-service ---
+[INFO] Copying 16 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ core-service ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ core-service ---
+[INFO] skip non existing resourceDirectory C:\Users\nanpr\javaProject\prism-cloud-lite\core-service\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ core-service ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] <<< spring-boot:3.5.0:run (default-cli) < test-compile @ core-service <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.5.0:run (default-cli) @ core-service ---
+[INFO] Attaching agents: []
+SLF4J(W): Class path contains multiple SLF4J providers.
+SLF4J(W): Found provider [ch.qos.logback.classic.spi.LogbackServiceProvider@1b604f19]
+SLF4J(W): Found provider [org.slf4j.reload4j.Reload4jServiceProvider@7823a2f9]
+SLF4J(W): See https://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J(I): Actual provider is of type [ch.qos.logback.classic.spi.LogbackServiceProvider@1b604f19]
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.5.0)
+
+2026-01-01T14:17:08.133Z  INFO 37056 --- [core-service] [           main] n.p.prism.core.CoreServiceApplication    : Starting CoreServiceApplication using Java 21.0.9 with PID 37056 (C:\Users\nanpr\javaProject\prism-cloud-lite\core-service\target\classes started by nanpr in C:\Users\nanpr\javaProject\prism-cloud-lite\core-service)
+2026-01-01T14:17:08.134Z DEBUG 37056 --- [core-service] [           main] n.p.prism.core.CoreServiceApplication    : Running with Spring Boot v3.5.0, Spring v6.2.7
+2026-01-01T14:17:08.134Z  INFO 37056 --- [core-service] [           main] n.p.prism.core.CoreServiceApplication    : The following 1 profile is active: "dev"
+2026-01-01T14:17:09.125Z  INFO 37056 --- [core-service] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-01-01T14:17:09.125Z  INFO 37056 --- [core-service] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-01-01T14:17:09.317Z  INFO 37056 --- [core-service] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 185 ms. Found 32 JPA repository interfaces.
+2026-01-01T14:17:09.328Z  INFO 37056 --- [core-service] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-01-01T14:17:09.328Z  INFO 37056 --- [core-service] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-01-01T14:17:09.370Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.device.infrastructure.persistence.DeviceCommandLogRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.370Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.device.infrastructure.persistence.DeviceCustomFieldDefRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.370Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.device.infrastructure.persistence.DeviceCustomFieldValueRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.370Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.device.infrastructure.persistence.DeviceLogRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.370Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.device.infrastructure.persistence.DeviceRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.370Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.device.infrastructure.persistence.DeviceScreenshotRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.371Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.device.infrastructure.persistence.DeviceTagMapRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.371Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.device.infrastructure.persistence.DeviceTagRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.371Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.export.infrastructure.persistence.ExportFileRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.371Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.media.infrastructure.persistence.FileEntityRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.372Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.media.infrastructure.persistence.MediaAssetRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.372Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.media.infrastructure.persistence.MediaFolderRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.372Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.message.infrastructure.persistence.MessageRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.372Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.program.infrastructure.persistence.DeviceBasicRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.372Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.program.infrastructure.persistence.ProgramAssignmentRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.372Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.program.infrastructure.persistence.ProgramAuditLogRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.373Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.program.infrastructure.persistence.ProgramDeploymentRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.373Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.program.infrastructure.persistence.ProgramDraftRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.373Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.program.infrastructure.persistence.ProgramReleaseRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.373Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.program.infrastructure.persistence.ProgramRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.373Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.program.infrastructure.persistence.ProgramTemplateRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.373Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.program.infrastructure.persistence.ScheduleAuditLogRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.373Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.program.infrastructure.persistence.ScheduleCommandRuleRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.373Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.program.infrastructure.persistence.ScheduleContentsRuleRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.374Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.program.infrastructure.persistence.ScheduleDeviceBindingRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.374Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.program.infrastructure.persistence.ScheduleRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.374Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.resource.infrastructure.persistence.ResourceTombstoneRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.374Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.system.infrastructure.persistence.PlatformConfigRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.374Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.telemetry.infrastructure.persistence.DeviceLocationOverrideRepositoryJpa; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.374Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.user.repository.UserProfileRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.374Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.user.repository.UserQuotaUsageRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.374Z  INFO 37056 --- [core-service] [           main] .RepositoryConfigurationExtensionSupport : Spring Data Redis - Could not safely identify store assignment for repository candidate interface nan.produced.prism.core.user.repository.UserStorageUsageRepository; If you want this repository to be a Redis repository, consider annotating your entities with one of these annotations: org.springframework.data.redis.core.RedisHash (preferred), or consider extending one of the following types with your repository: org.springframework.data.keyvalue.repository.KeyValueRepository
+2026-01-01T14:17:09.374Z  INFO 37056 --- [core-service] [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 40 ms. Found 0 Redis repository interfaces.
+2026-01-01T14:17:09.556Z  INFO 37056 --- [core-service] [           main] o.s.cloud.context.scope.GenericScope     : BeanFactory id=2feb8f7d-d852-39a5-ac5b-ce2c8fdb1fe4
+2026-01-01T14:17:09.913Z  INFO 37056 --- [core-service] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8083 (http)
+2026-01-01T14:17:09.925Z  INFO 37056 --- [core-service] [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-01-01T14:17:09.926Z  INFO 37056 --- [core-service] [           main] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.41]
+2026-01-01T14:17:09.988Z  INFO 37056 --- [core-service] [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-01-01T14:17:09.988Z  INFO 37056 --- [core-service] [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 1815 ms
+2026-01-01T14:17:10.183Z DEBUG 37056 --- [core-service] [           main] n.p.prism.core.common.web.TraceIdFilter  : Filter 'traceIdFilter' configured for use
+2026-01-01T14:17:10.184Z DEBUG 37056 --- [core-service] [           main] .InternalServiceSignatureValidatorFilter : Filter 'internalServiceSignatureValidatorFilter' configured for use
+2026-01-01T14:17:10.329Z  INFO 37056 --- [core-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-01-01T14:17:10.512Z  INFO 37056 --- [core-service] [           main] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@3331800f
+2026-01-01T14:17:10.513Z  INFO 37056 --- [core-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-01-01T14:17:10.533Z  INFO 37056 --- [core-service] [           main] org.flywaydb.core.FlywayExecutor         : Database: jdbc:postgresql://localhost:5432/prism-core (PostgreSQL 16.11)
+2026-01-01T14:17:10.580Z  INFO 37056 --- [core-service] [           main] o.f.core.internal.command.DbValidate     : Successfully validated 12 migrations (execution time 00:00.028s)
+2026-01-01T14:17:10.620Z  INFO 37056 --- [core-service] [           main] o.f.core.internal.command.DbMigrate      : Current version of schema "public": 12
+2026-01-01T14:17:10.622Z  INFO 37056 --- [core-service] [           main] o.f.core.internal.command.DbMigrate      : Schema "public" is up to date. No migration necessary.
+2026-01-01T14:17:10.715Z  INFO 37056 --- [core-service] [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-01-01T14:17:10.750Z  INFO 37056 --- [core-service] [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.15.Final
+2026-01-01T14:17:10.770Z  INFO 37056 --- [core-service] [           main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-01-01T14:17:10.960Z  INFO 37056 --- [core-service] [           main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-01-01T14:17:10.996Z  WARN 37056 --- [core-service] [           main] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-01-01T14:17:11.004Z  INFO 37056 --- [core-service] [           main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 16.11
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-01-01T14:17:11.934Z  INFO 37056 --- [core-service] [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-01-01T14:17:11.978Z  INFO 37056 --- [core-service] [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-01-01T14:17:12.388Z  INFO 37056 --- [core-service] [           main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-01-01T14:17:13.275Z  WARN 37056 --- [core-service] [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-01-01T14:17:13.305Z  INFO 37056 --- [core-service] [           main] o.s.c.openfeign.FeignClientFactoryBean   : For 'device-service' URL not provided. Will try picking an instance via load-balancing.
+2026-01-01T14:17:14.713Z  INFO 37056 --- [core-service] [           main] o.s.c.openfeign.FeignClientFactoryBean   : For 'auth-service' URL not provided. Will try picking an instance via load-balancing.
+2026-01-01T14:17:14.733Z  INFO 37056 --- [core-service] [           main] o.s.c.openfeign.FeignClientFactoryBean   : For 'auth-service' URL not provided. Will try picking an instance via load-balancing.
+2026-01-01T14:17:14.751Z  INFO 37056 --- [core-service] [           main] o.s.c.openfeign.FeignClientFactoryBean   : For 'auth-service' URL not provided. Will try picking an instance via load-balancing.
+2026-01-01T14:17:14.765Z  INFO 37056 --- [core-service] [           main] o.s.c.openfeign.FeignClientFactoryBean   : For 'auth-service' URL not provided. Will try picking an instance via load-balancing.
+2026-01-01T14:17:14.769Z  INFO 37056 --- [core-service] [           main] n.p.p.c.c.config.ExecutorConfiguration   : 设备事件线程池初始化完成: corePoolSize=16, maxPoolSize=64, queueCapacity=2000 (CPU核心数: 32)
+2026-01-01T14:17:14.772Z  INFO 37056 --- [core-service] [           main] n.p.p.c.c.config.ExecutorConfiguration   : 通知推送线程池初始化完成: corePoolSize=8, maxPoolSize=32, queueCapacity=1000
+2026-01-01T14:17:14.773Z  INFO 37056 --- [core-service] [           main] n.p.p.c.c.config.ExecutorConfiguration   : 后台任务线程池初始化完成: corePoolSize=16, maxPoolSize=32, queueCapacity=1000
+2026-01-01T14:17:15.262Z  INFO 37056 --- [core-service] [           main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 2 endpoints beneath base path '/actuator'
+2026-01-01T14:17:15.408Z  INFO 37056 --- [core-service] [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8083 (http) with context path '/'
+2026-01-01T14:17:15.414Z  INFO 37056 --- [core-service] [           main] o.s.a.r.c.CachingConnectionFactory       : Attempting to connect to: [localhost:5672]
+2026-01-01T14:17:15.441Z  INFO 37056 --- [core-service] [           main] o.s.a.r.c.CachingConnectionFactory       : Created new connection: rabbitConnectionFactory#6d3e720e:0/SimpleConnection@16593c1d [delegate=amqp://prism@127.0.0.1:5672/prism-cloud-lite, localPort=55168]
+2026-01-01T14:17:15.522Z  INFO 37056 --- [core-service] [           main] n.p.prism.core.CoreServiceApplication    : Started CoreServiceApplication in 7.71 seconds (process running for 8.105)
+2026-01-01T14:17:15.526Z  INFO 37056 --- [core-service] [           main] p.c.a.a.i.DocsRagIngestApplicationRunner : [assistant.rag.ingest] start: roots=[../docs/help, ../docs/help-en], version=smoke
+2026-01-01T14:17:16.530Z  INFO 37056 --- [core-service] [           main] .s.b.a.l.ConditionEvaluationReportLogger : 
+
+Error starting ApplicationContext. To display the condition evaluation report re-run your application with 'debug' enabled.
+2026-01-01T14:17:16.541Z ERROR 37056 --- [core-service] [           main] o.s.boot.SpringApplication               : Application run failed
+
+java.time.format.DateTimeParseException: Text 'Thu Jan 01 00:00:00 UTC 2026' could not be parsed at index 0
+	at java.base/java.time.format.DateTimeFormatter.parseResolved0(DateTimeFormatter.java:2108) ~[na:na]
+	at java.base/java.time.format.DateTimeFormatter.parse(DateTimeFormatter.java:2010) ~[na:na]
+	at java.base/java.time.LocalDate.parse(LocalDate.java:435) ~[na:na]
+	at java.base/java.time.LocalDate.parse(LocalDate.java:420) ~[na:na]
+	at nan.produced.prism.core.assistant.application.ingest.DocsRagIngestService.parseLocalDateOrNull(DocsRagIngestService.java:135) ~[classes/:na]
+	at nan.produced.prism.core.assistant.application.ingest.DocsRagIngestService.ingestHelpDocs(DocsRagIngestService.java:81) ~[classes/:na]
+	at nan.produced.prism.core.assistant.application.ingest.DocsRagIngestApplicationRunner.run(DocsRagIngestApplicationRunner.java:27) ~[classes/:na]
+	at org.springframework.boot.SpringApplication.lambda$callRunner$4(SpringApplication.java:785) ~[spring-boot-3.5.0.jar:3.5.0]
+	at org.springframework.util.function.ThrowingConsumer$1.acceptWithException(ThrowingConsumer.java:82) ~[spring-core-6.2.7.jar:6.2.7]
+	at org.springframework.util.function.ThrowingConsumer.accept(ThrowingConsumer.java:60) ~[spring-core-6.2.7.jar:6.2.7]
+	at org.springframework.util.function.ThrowingConsumer$1.accept(ThrowingConsumer.java:86) ~[spring-core-6.2.7.jar:6.2.7]
+	at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:797) ~[spring-boot-3.5.0.jar:3.5.0]
+	at org.springframework.boot.SpringApplication.callRunner(SpringApplication.java:785) ~[spring-boot-3.5.0.jar:3.5.0]
+	at org.springframework.boot.SpringApplication.lambda$callRunners$3(SpringApplication.java:773) ~[spring-boot-3.5.0.jar:3.5.0]
+	at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.accept(ForEachOps.java:184) ~[na:na]
+	at java.base/java.util.stream.SortedOps$SizedRefSortingSink.end(SortedOps.java:357) ~[na:na]
+	at java.base/java.util.stream.AbstractPipeline.copyInto(AbstractPipeline.java:510) ~[na:na]
+	at java.base/java.util.stream.AbstractPipeline.wrapAndCopyInto(AbstractPipeline.java:499) ~[na:na]
+	at java.base/java.util.stream.ForEachOps$ForEachOp.evaluateSequential(ForEachOps.java:151) ~[na:na]
+	at java.base/java.util.stream.ForEachOps$ForEachOp$OfRef.evaluateSequential(ForEachOps.java:174) ~[na:na]
+	at java.base/java.util.stream.AbstractPipeline.evaluate(AbstractPipeline.java:234) ~[na:na]
+	at java.base/java.util.stream.ReferencePipeline.forEach(ReferencePipeline.java:596) ~[na:na]
+	at org.springframework.boot.SpringApplication.callRunners(SpringApplication.java:773) ~[spring-boot-3.5.0.jar:3.5.0]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:325) ~[spring-boot-3.5.0.jar:3.5.0]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1362) ~[spring-boot-3.5.0.jar:3.5.0]
+	at org.springframework.boot.SpringApplication.run(SpringApplication.java:1351) ~[spring-boot-3.5.0.jar:3.5.0]
+	at nan.produced.prism.core.CoreServiceApplication.main(CoreServiceApplication.java:24) ~[classes/:na]
+
+2026-01-01T14:17:16.547Z  INFO 37056 --- [core-service] [rabbit-simple-5] o.s.a.r.l.SimpleMessageListenerContainer : Waiting for workers to finish.
+2026-01-01T14:17:16.548Z  INFO 37056 --- [core-service] [rabbit-simple-6] o.s.a.r.l.SimpleMessageListenerContainer : Waiting for workers to finish.
+2026-01-01T14:17:16.549Z  INFO 37056 --- [core-service] [rabbit-simple-7] o.s.a.r.l.SimpleMessageListenerContainer : Waiting for workers to finish.
+2026-01-01T14:17:16.550Z  INFO 37056 --- [core-service] [rabbit-simple-8] o.s.a.r.l.SimpleMessageListenerContainer : Waiting for workers to finish.
+2026-01-01T14:17:16.551Z  INFO 37056 --- [core-service] [rabbit-simple-9] o.s.a.r.l.SimpleMessageListenerContainer : Waiting for workers to finish.
+2026-01-01T14:17:17.504Z  INFO 37056 --- [core-service] [rabbit-simple-5] o.s.a.r.l.SimpleMessageListenerContainer : Successfully waited for workers to finish.
+2026-01-01T14:17:17.520Z  INFO 37056 --- [core-service] [rabbit-simple-6] o.s.a.r.l.SimpleMessageListenerContainer : Successfully waited for workers to finish.
+2026-01-01T14:17:17.520Z  INFO 37056 --- [core-service] [rabbit-simple-7] o.s.a.r.l.SimpleMessageListenerContainer : Successfully waited for workers to finish.
+2026-01-01T14:17:17.520Z  INFO 37056 --- [core-service] [rabbit-simple-8] o.s.a.r.l.SimpleMessageListenerContainer : Successfully waited for workers to finish.
+2026-01-01T14:17:17.535Z  INFO 37056 --- [core-service] [rabbit-simple-9] o.s.a.r.l.SimpleMessageListenerContainer : Successfully waited for workers to finish.
+2026-01-01T14:17:17.536Z  INFO 37056 --- [core-service] [           main] o.s.b.w.e.tomcat.GracefulShutdown        : Commencing graceful shutdown. Waiting for active requests to complete
+2026-01-01T14:17:17.541Z  INFO 37056 --- [core-service] [tomcat-shutdown] o.s.b.w.e.tomcat.GracefulShutdown        : Graceful shutdown complete
+2026-01-01T14:17:17.599Z  INFO 37056 --- [core-service] [           main] .s.m.e.c.DefaultEventPublicationRegistry : No publications outstanding!
+2026-01-01T14:17:17.613Z  INFO 37056 --- [core-service] [           main] j.LocalContainerEntityManagerFactoryBean : Closing JPA EntityManagerFactory for persistence unit 'default'
+2026-01-01T14:17:17.615Z  INFO 37056 --- [core-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown initiated...
+2026-01-01T14:17:17.616Z  INFO 37056 --- [core-service] [           main] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Shutdown completed.
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  13.563 s
+[INFO] Finished at: 2026-01-01T22:17:18+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.5.0:run (default-cli) on project core-service: Process terminated with exit code: 1 -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoExecutionException

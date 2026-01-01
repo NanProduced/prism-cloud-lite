@@ -10,3 +10,24 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
+
+assistant:
+  rag:
+    embedding:
+      base-url: ${ASSISTANT_RAG_EMBEDDING_BASE_URL:http://127.0.0.1:7997}
+      model: ${ASSISTANT_RAG_EMBEDDING_MODEL:BAAI/bge-m3}
+      dimension: ${ASSISTANT_RAG_EMBEDDING_DIMENSION:1024}
+      batch-size: ${ASSISTANT_RAG_EMBEDDING_BATCH_SIZE:16}
+    ingest:
+      enabled: ${ASSISTANT_RAG_INGEST_ENABLED:false}
+      exit-after-run: ${ASSISTANT_RAG_INGEST_EXIT_AFTER_RUN:true}
+      doc-version: ${ASSISTANT_RAG_DOC_VERSION:dev}
+      help-roots:
+        - ${ASSISTANT_RAG_HELP_ROOT_ZH:../docs/help}
+        - ${ASSISTANT_RAG_HELP_ROOT_EN:../docs/help-en}
+      require-audience: ${ASSISTANT_RAG_REQUIRE_AUDIENCE:user}
+      require-status: ${ASSISTANT_RAG_REQUIRE_STATUS:stable}
+      max-docs: ${ASSISTANT_RAG_MAX_DOCS:0}
+    chunk:
+      max-chars: ${ASSISTANT_RAG_CHUNK_MAX_CHARS:3200}
+      overlap-chars: ${ASSISTANT_RAG_CHUNK_OVERLAP_CHARS:200}
