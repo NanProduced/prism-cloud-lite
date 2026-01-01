@@ -17,6 +17,7 @@ import nan.produced.prism.core.device.api.dto.FilterDeviceReq;
 import nan.produced.prism.core.device.application.converter.DeviceDetailConverter;
 import nan.produced.prism.core.device.application.converter.DeviceTagConverter;
 import nan.produced.prism.core.device.application.port.inbound.DeviceSearchUseCase;
+import nan.produced.prism.core.device.application.port.inbound.DeviceSearchItem;
 import nan.produced.prism.core.device.application.converter.DeviceListConverter;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCustomFieldDefRepository;
 import nan.produced.prism.core.device.application.port.outbound.DeviceCustomFieldValueRepository;
@@ -31,6 +32,7 @@ import nan.produced.prism.core.device.domain.dto.DeviceListVO;
 import nan.produced.prism.core.device.domain.dto.TagVO;
 import nan.produced.prism.core.device.domain.tags.DeviceTagMapEntity;
 import nan.produced.prism.core.device.domain.screenshot.DeviceScreenshotEntity;
+import nan.produced.prism.core.device.infrastructure.persistence.DeviceRepositoryJpa;
 import nan.produced.prism.core.media.application.port.outbound.MediaObjectUrlPort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,6 +44,7 @@ import org.springframework.util.StringUtils;
 public class DeviceSearchApplicationService implements DeviceSearchUseCase {
 
     private final DeviceRepository deviceRepository;
+    private final DeviceRepositoryJpa deviceRepositoryJpa;
     private final DeviceTagRepository deviceTagRepository;
     private final DeviceCustomFieldDefRepository customFieldDefRepository;
     private final DeviceCustomFieldValueRepository customFieldValueRepository;
@@ -153,6 +156,65 @@ public class DeviceSearchApplicationService implements DeviceSearchUseCase {
                 .toList();
 
         return assembleDeviceList(userId, filtered);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DeviceSearchItem> searchDevices(UUID userId, String keyword, Integer limit) {
+        if (userId == null) {
+            return List.of();
+        }
+        if (!StringUtils.hasText(keyword)) {
+            return List.of();
+        }
+
+        int safeLimit = (limit == null || limit <= 0) ? 5 : Math.min(limit, 10);
+        List<DeviceEntity> devices = deviceRepositoryJpa.searchForUnifiedSearch(userId, keyword.trim(), safeLimit);
+        if (devices == null || devices.isEmpty()) {
+            return List.of();
+        }
+
+        return devices.stream()
+                .map(this::toSearchItem)
+                .toList();
+    }
+
+    private DeviceSearchItem toSearchItem(DeviceEntity device) {
+        if (device == null) {
+            return null;
+        }
+
+        String serialNo = null;
+        String ip = null;
+        try {
+            var props = device.getProperties();
+            if (props != null && props.getInfo() != null && props.getInfo().getInfo() != null) {
+                serialNo = normalize(props.getInfo().getInfo().getSerialno());
+            }
+            if (props != null && props.getIfStatus() != null && props.getIfStatus().getTypes() != null) {
+                for (var net : props.getIfStatus().getTypes()) {
+                    if (net == null) {
+                        continue;
+                    }
+                    if (net.getConnected() == 1 && net.getIps() != null) {
+                        ip = normalize(net.getIps().getIp());
+                        if (StringUtils.hasText(ip)) {
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (Exception ignore) {
+        }
+
+        return new DeviceSearchItem(
+                device.getDeviceId(),
+                normalize(device.getDeviceName()),
+                serialNo,
+                ip,
+                device.getOnlineStatus(),
+                normalize(device.getModel())
+        );
     }
 
     private List<DeviceListVO> assembleDeviceList(UUID userId, List<DeviceEntity> devices) {

@@ -9,8 +9,10 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.*;
+import software.amazon.awssdk.core.sync.RequestBody;
 
 import java.time.Duration;
+import java.nio.file.Path;
 import java.util.Map;
 import org.springframework.util.StringUtils;
 
@@ -166,6 +168,54 @@ public class S3ObjectStorageAdapter implements ObjectStoragePort {
         } catch (Exception ex) {
             log.warn("S3 deleteObject failed (ignored): key={}", key, ex);
         }
+    }
+
+    @Override
+    public void putObject(String key, Path file, String contentType) {
+        if (!StringUtils.hasText(key) || file == null) {
+            throw new IllegalArgumentException("key/file is required");
+        }
+        var builder = PutObjectRequest.builder()
+                .bucket(s3Properties.getBucket())
+                .key(key.trim());
+        if (StringUtils.hasText(contentType)) {
+            builder.contentType(contentType.trim());
+        }
+        s3Client.putObject(builder.build(), RequestBody.fromFile(file));
+    }
+
+    @Override
+    public String generatePresignedGetUrl(String key,
+                                          Duration expiration,
+                                          String responseContentType,
+                                          String downloadFileName) {
+        if (!StringUtils.hasText(key)) {
+            throw new IllegalArgumentException("key is blank");
+        }
+        if (expiration == null || expiration.isNegative() || expiration.isZero()) {
+            throw new IllegalArgumentException("expiration must be positive");
+        }
+
+        var getBuilder = GetObjectRequest.builder()
+                .bucket(s3Properties.getBucket())
+                .key(key.trim());
+
+        if (StringUtils.hasText(responseContentType)) {
+            getBuilder.responseContentType(responseContentType.trim());
+        }
+        if (StringUtils.hasText(downloadFileName)) {
+            String safeName = downloadFileName.trim().replace("\"", "");
+            getBuilder.responseContentDisposition("attachment; filename=\"" + safeName + "\"");
+        } else {
+            getBuilder.responseContentDisposition("attachment");
+        }
+
+        var presignRequest = GetObjectPresignRequest.builder()
+                .signatureDuration(expiration)
+                .getObjectRequest(getBuilder.build())
+                .build();
+
+        return s3Presigner.presignGetObject(presignRequest).url().toString();
     }
 
     private StorageClass parseStorageClass(String value) {

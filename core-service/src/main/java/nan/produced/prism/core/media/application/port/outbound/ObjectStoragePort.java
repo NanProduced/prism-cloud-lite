@@ -1,6 +1,7 @@
 package nan.produced.prism.core.media.application.port.outbound;
 
 import java.time.Duration;
+import java.nio.file.Path;
 import java.util.Map;
 
 /**
@@ -85,4 +86,27 @@ public interface ObjectStoragePort {
      * @param key S3 对象 Key
      */
     void deleteObject(String key);
+
+    /**
+     * 服务端直传对象（用于 worker 场景，如转码产物/导出文件上传）。
+     *
+     * @param key         S3 对象 Key
+     * @param file        本地文件路径
+     * @param contentType Content-Type（可为空）
+     */
+    void putObject(String key, Path file, String contentType);
+
+    /**
+     * 生成预签名 GET URL（用于下载）。
+     *
+     * @param key                  S3 对象 Key
+     * @param expiration           URL 有效期
+     * @param responseContentType  下载响应 Content-Type（可为空）
+     * @param downloadFileName     下载文件名（用于 Content-Disposition；可为空）
+     * @return 预签名 URL
+     */
+    String generatePresignedGetUrl(String key,
+                                   Duration expiration,
+                                   String responseContentType,
+                                   String downloadFileName);
 }

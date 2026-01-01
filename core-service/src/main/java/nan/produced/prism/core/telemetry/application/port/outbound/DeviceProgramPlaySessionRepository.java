@@ -56,6 +56,27 @@ public interface DeviceProgramPlaySessionRepository {
     ) {
     }
 
+    record SessionRow(
+            Long id,
+            Long deviceId,
+            String deviceName,
+            boolean lan,
+            String lanProgramId,
+            UUID programId,
+            Integer releaseVersion,
+            String programVsn,
+            String programNameSnapshot,
+            String vsnMd5,
+            Long vsnSizeBytes,
+            OffsetDateTime startAt,
+            OffsetDateTime endAt,
+            OffsetDateTime effectiveStartAt,
+            OffsetDateTime effectiveEndAt,
+            long playSecondsInRange,
+            OffsetDateTime createdAt
+    ) {
+    }
+
     int insertIgnoreBatch(List<InsertRow> rows);
 
     TotalsRow totals(UUID userId, OffsetDateTime from, OffsetDateTime to);
@@ -97,5 +118,23 @@ public interface DeviceProgramPlaySessionRepository {
             String tz,
             String truncUnit,
             String stepInterval);
-}
 
+    List<SessionRow> listSessionsForPlatform(
+            UUID userId,
+            UUID programId,
+            int releaseVersion,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            OffsetDateTime cursorStartAt,
+            Long cursorId,
+            int limit);
+
+    List<SessionRow> listSessionsForLan(
+            UUID userId,
+            String lanProgramId,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            OffsetDateTime cursorStartAt,
+            Long cursorId,
+            int limit);
+}

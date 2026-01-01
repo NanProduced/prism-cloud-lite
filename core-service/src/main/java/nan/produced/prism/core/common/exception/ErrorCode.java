@@ -35,6 +35,9 @@ public enum ErrorCode {
     DEVICE_LOG_NOT_FOUND("CORE-2010", "设备日志不存在", "日志不存在或无权访问", HttpStatus.NOT_FOUND, false),
     MESSAGE_NOT_FOUND("CORE-2011", "消息不存在", "消息不存在或无权访问", HttpStatus.NOT_FOUND, false),
     DEVICE_COMMAND_LOG_NOT_FOUND("CORE-2012", "设备指令日志不存在", "日志不存在或无权访问", HttpStatus.NOT_FOUND, false),
+    EXPORT_FILE_NOT_FOUND("CORE-2013", "导出文件不存在", "导出文件不存在或无权访问", HttpStatus.NOT_FOUND, false),
+    EXPORT_PRO_REQUIRED("CORE-2014", "需要 Pro 订阅", "该导出格式/功能需要 Pro 订阅，请升级套餐后使用", HttpStatus.FORBIDDEN, false),
+    EXPORT_NOT_READY("CORE-2015", "导出尚未完成", "导出任务尚未完成，请稍后再试", HttpStatus.BAD_REQUEST, false),
 
     // ============ 设备标签相关 (CORE-21xx) ============
     DEVICE_TAG_NOT_FOUND("CORE-2100", "设备标签不存在", "指定的标签不存在或无权访问", HttpStatus.NOT_FOUND, false),

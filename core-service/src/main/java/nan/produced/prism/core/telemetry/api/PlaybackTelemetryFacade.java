@@ -1,17 +1,20 @@
 package nan.produced.prism.core.telemetry.api;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 import nan.produced.prism.core.device.domain.report.media.MediaPlayTimesReport;
 import nan.produced.prism.core.device.domain.report.program.ProgramPlayTimesReport;
 import nan.produced.prism.core.telemetry.api.dto.TimeBucketUnit;
 import nan.produced.prism.core.telemetry.api.dto.playback.DevicePlaySummaryItem;
+import nan.produced.prism.core.telemetry.api.dto.playback.MediaPlaySessionItem;
 import nan.produced.prism.core.telemetry.api.dto.playback.MediaPlaySummaryItem;
 import nan.produced.prism.core.telemetry.api.dto.playback.PlaybackBucket;
 import nan.produced.prism.core.telemetry.api.dto.playback.PlaybackOverviewResponse;
 import nan.produced.prism.core.telemetry.api.dto.playback.PlaybackSort;
 import nan.produced.prism.core.telemetry.api.dto.playback.ProgramPlaySummaryItem;
+import nan.produced.prism.core.telemetry.api.dto.playback.ProgramPlaySessionItem;
 
 /**
  * 播放统计（节目/素材）Telemetry 能力。
@@ -80,5 +83,41 @@ public interface PlaybackTelemetryFacade {
             Instant to,
             Integer limit,
             PlaybackSort sort);
-}
 
+    /**
+     * 播放记录明细（节目，LAN）- 用于导出。
+     */
+    List<ProgramPlaySessionItem> listProgramPlaySessionsForLan(
+            UUID userId,
+            String lanProgramId,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            OffsetDateTime cursorStartAt,
+            Long cursorId,
+            int limit);
+
+    /**
+     * 播放记录明细（节目，平台节目）- 用于导出。
+     */
+    List<ProgramPlaySessionItem> listProgramPlaySessionsForPlatform(
+            UUID userId,
+            UUID programId,
+            int releaseVersion,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            OffsetDateTime cursorStartAt,
+            Long cursorId,
+            int limit);
+
+    /**
+     * 播放记录明细（素材）- 用于导出。
+     */
+    List<MediaPlaySessionItem> listMediaPlaySessions(
+            UUID userId,
+            String mediaId,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            OffsetDateTime cursorStartAt,
+            Long cursorId,
+            int limit);
+}

@@ -60,6 +60,33 @@ public interface DeviceMediaPlaySessionRepository {
     ) {
     }
 
+    record SessionRow(
+            Long id,
+            Long deviceId,
+            String deviceName,
+            String mediaId,
+            String itemType,
+            String resOriginName,
+            String resMd5Name,
+            boolean lan,
+            UUID programId,
+            Integer releaseVersion,
+            String programVsn,
+            String programNameSnapshot,
+            String pageName,
+            Integer pageIndex,
+            String regionName,
+            Integer regionIndex,
+            OffsetDateTime startAt,
+            OffsetDateTime endAt,
+            OffsetDateTime effectiveStartAt,
+            OffsetDateTime effectiveEndAt,
+            long playSecondsInRange,
+            Long reportedDuration,
+            OffsetDateTime createdAt
+    ) {
+    }
+
     int insertIgnoreBatch(List<InsertRow> rows);
 
     TotalsRow totals(UUID userId, OffsetDateTime from, OffsetDateTime to);
@@ -82,5 +109,13 @@ public interface DeviceMediaPlaySessionRepository {
             String tz,
             String truncUnit,
             String stepInterval);
-}
 
+    List<SessionRow> listSessions(
+            UUID userId,
+            String mediaId,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            OffsetDateTime cursorStartAt,
+            Long cursorId,
+            int limit);
+}

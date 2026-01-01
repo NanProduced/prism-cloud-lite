@@ -86,6 +86,17 @@ public class RabbitMqConfiguration {
     }
 
     /**
+     * 创建导出任务队列（独立于 core-task-worker-q）
+     */
+    @Bean
+    public Queue coreExportWorkerQueue() {
+        return QueueBuilder
+                .durable(MessagingConstants.Queues.EXPORT_WORKER)
+                .withArgument("x-max-priority", 10)
+                .build();
+    }
+
+    /**
      * 创建spa通知队列
      * @return 通知队列
      */
@@ -144,12 +155,16 @@ public class RabbitMqConfiguration {
     @Bean
     public Declarables coreNotificationBindings(@Qualifier("coreNotificationsExchange") TopicExchange coreNotificationsExchange,
                                                 @Qualifier("coreTaskWorkerQueue") Queue coreTaskWorkerQueue,
+                                                @Qualifier("coreExportWorkerQueue") Queue coreExportWorkerQueue,
                                                 @Qualifier("coreNotifyQueue") Queue coreNotifyQueue,
                                                 @Qualifier("coreRealtimeQueue") Queue coreRealtimeQueue) {
         return new Declarables(
             BindingBuilder.bind(coreTaskWorkerQueue)
                 .to(coreNotificationsExchange)
                 .with(MessagingConstants.RoutingKeys.TASK_PENDING),
+            BindingBuilder.bind(coreExportWorkerQueue)
+                .to(coreNotificationsExchange)
+                .with(MessagingConstants.RoutingKeys.TASK_EXPORT_PENDING),
             BindingBuilder.bind(coreNotifyQueue)
                 .to(coreNotificationsExchange)
                 .with(MessagingConstants.RoutingKeys.TASK_RESULT),

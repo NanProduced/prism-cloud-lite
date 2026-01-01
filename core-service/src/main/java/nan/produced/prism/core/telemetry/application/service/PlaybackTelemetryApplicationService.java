@@ -30,11 +30,13 @@ import nan.produced.prism.core.telemetry.api.PlaybackTelemetryFacade;
 import nan.produced.prism.core.telemetry.api.dto.ResourceStatus;
 import nan.produced.prism.core.telemetry.api.dto.TimeBucketUnit;
 import nan.produced.prism.core.telemetry.api.dto.playback.DevicePlaySummaryItem;
+import nan.produced.prism.core.telemetry.api.dto.playback.MediaPlaySessionItem;
 import nan.produced.prism.core.telemetry.api.dto.playback.MediaPlaySummaryItem;
 import nan.produced.prism.core.telemetry.api.dto.playback.PlaybackBucket;
 import nan.produced.prism.core.telemetry.api.dto.playback.PlaybackOverviewResponse;
 import nan.produced.prism.core.telemetry.api.dto.playback.PlaybackSort;
 import nan.produced.prism.core.telemetry.api.dto.playback.PlaybackTotals;
+import nan.produced.prism.core.telemetry.api.dto.playback.ProgramPlaySessionItem;
 import nan.produced.prism.core.telemetry.api.dto.playback.ProgramPlaySummaryItem;
 import nan.produced.prism.core.telemetry.application.port.outbound.DeviceMediaPlaySessionRepository;
 import nan.produced.prism.core.telemetry.application.port.outbound.DeviceProgramPlaySessionRepository;
@@ -602,6 +604,190 @@ public class PlaybackTelemetryApplicationService implements PlaybackTelemetryFac
                             meta != null ? meta.deletedAt() : null
                     );
                 })
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProgramPlaySessionItem> listProgramPlaySessionsForLan(
+            UUID userId,
+            String lanProgramId,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            OffsetDateTime cursorStartAt,
+            Long cursorId,
+            int limit) {
+
+        if (userId == null) {
+            throw new BizException(ErrorCode.NO_AUTHENTICATED_USER);
+        }
+        if (!StringUtils.hasText(lanProgramId)) {
+            throw new BizException(ErrorCode.INVALID_REQUEST, "lanProgramId 不能为空");
+        }
+        if (from == null || to == null || !from.isBefore(to)) {
+            throw new BizException(ErrorCode.INVALID_REQUEST, "from/to 不合法");
+        }
+
+        int safeLimit = Math.min(Math.max(1, limit), MAX_LIST_LIMIT);
+
+        List<DeviceProgramPlaySessionRepository.SessionRow> rows = deviceProgramPlaySessionRepository.listSessionsForLan(
+                userId,
+                lanProgramId.trim(),
+                from,
+                to,
+                cursorStartAt,
+                cursorId,
+                safeLimit
+        );
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+
+        return rows.stream()
+                .map(r -> new ProgramPlaySessionItem(
+                        r.id(),
+                        r.deviceId(),
+                        r.deviceName(),
+                        r.lan(),
+                        r.lanProgramId(),
+                        r.programId(),
+                        r.releaseVersion(),
+                        r.programVsn(),
+                        r.programNameSnapshot(),
+                        r.startAt(),
+                        r.endAt(),
+                        r.effectiveStartAt(),
+                        r.effectiveEndAt(),
+                        r.playSecondsInRange(),
+                        r.createdAt()
+                ))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProgramPlaySessionItem> listProgramPlaySessionsForPlatform(
+            UUID userId,
+            UUID programId,
+            int releaseVersion,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            OffsetDateTime cursorStartAt,
+            Long cursorId,
+            int limit) {
+
+        if (userId == null) {
+            throw new BizException(ErrorCode.NO_AUTHENTICATED_USER);
+        }
+        if (programId == null) {
+            throw new BizException(ErrorCode.INVALID_REQUEST, "programId 不能为空");
+        }
+        if (releaseVersion <= 0) {
+            throw new BizException(ErrorCode.INVALID_REQUEST, "releaseVersion 不合法");
+        }
+        if (from == null || to == null || !from.isBefore(to)) {
+            throw new BizException(ErrorCode.INVALID_REQUEST, "from/to 不合法");
+        }
+
+        int safeLimit = Math.min(Math.max(1, limit), MAX_LIST_LIMIT);
+
+        List<DeviceProgramPlaySessionRepository.SessionRow> rows = deviceProgramPlaySessionRepository.listSessionsForPlatform(
+                userId,
+                programId,
+                releaseVersion,
+                from,
+                to,
+                cursorStartAt,
+                cursorId,
+                safeLimit
+        );
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+
+        return rows.stream()
+                .map(r -> new ProgramPlaySessionItem(
+                        r.id(),
+                        r.deviceId(),
+                        r.deviceName(),
+                        r.lan(),
+                        r.lanProgramId(),
+                        r.programId(),
+                        r.releaseVersion(),
+                        r.programVsn(),
+                        r.programNameSnapshot(),
+                        r.startAt(),
+                        r.endAt(),
+                        r.effectiveStartAt(),
+                        r.effectiveEndAt(),
+                        r.playSecondsInRange(),
+                        r.createdAt()
+                ))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MediaPlaySessionItem> listMediaPlaySessions(
+            UUID userId,
+            String mediaId,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            OffsetDateTime cursorStartAt,
+            Long cursorId,
+            int limit) {
+
+        if (userId == null) {
+            throw new BizException(ErrorCode.NO_AUTHENTICATED_USER);
+        }
+        if (!StringUtils.hasText(mediaId)) {
+            throw new BizException(ErrorCode.INVALID_REQUEST, "mediaId 不能为空");
+        }
+        if (from == null || to == null || !from.isBefore(to)) {
+            throw new BizException(ErrorCode.INVALID_REQUEST, "from/to 不合法");
+        }
+
+        int safeLimit = Math.min(Math.max(1, limit), MAX_LIST_LIMIT);
+
+        List<DeviceMediaPlaySessionRepository.SessionRow> rows = deviceMediaPlaySessionRepository.listSessions(
+                userId,
+                mediaId.trim(),
+                from,
+                to,
+                cursorStartAt,
+                cursorId,
+                safeLimit
+        );
+        if (rows == null || rows.isEmpty()) {
+            return List.of();
+        }
+
+        return rows.stream()
+                .map(r -> new MediaPlaySessionItem(
+                        r.id(),
+                        r.deviceId(),
+                        r.deviceName(),
+                        r.mediaId(),
+                        r.itemType(),
+                        r.resOriginName(),
+                        r.resMd5Name(),
+                        r.lan(),
+                        r.programId(),
+                        r.releaseVersion(),
+                        r.programVsn(),
+                        r.programNameSnapshot(),
+                        r.pageName(),
+                        r.pageIndex(),
+                        r.regionName(),
+                        r.regionIndex(),
+                        r.startAt(),
+                        r.endAt(),
+                        r.effectiveStartAt(),
+                        r.effectiveEndAt(),
+                        r.playSecondsInRange(),
+                        r.reportedDuration(),
+                        r.createdAt()
+                ))
                 .toList();
     }
 

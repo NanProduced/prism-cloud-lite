@@ -62,6 +62,38 @@ public interface DeviceRepositoryJpa extends JpaRepository<DeviceEntity, Long> {
                                                      @Param("keyword") String keyword,
                                                      Pageable pageable);
 
+    /**
+     * 统一搜索（全局搜索）使用：尽量覆盖 deviceName/description/model/version，以及 properties(JSONB) 中的 serialno/ip 等信息。
+     *
+     * <p>说明：Lite 用户设备量通常有限，此处使用 properties::text 作为兜底匹配可接受；后续可按需要补充专用索引。</p>
+     */
+    @Query(value = """
+            SELECT *
+              FROM pcc_device d
+             WHERE d.user_id = :userId
+               AND (
+                    LOWER(d.device_name) LIKE CONCAT('%', LOWER(:keyword), '%')
+                 OR LOWER(COALESCE(d.description, '')) LIKE CONCAT('%', LOWER(:keyword), '%')
+                 OR LOWER(COALESCE(d.model, '')) LIKE CONCAT('%', LOWER(:keyword), '%')
+                 OR LOWER(COALESCE(d.version, '')) LIKE CONCAT('%', LOWER(:keyword), '%')
+                 OR (d.properties IS NOT NULL AND LOWER(CAST(d.properties AS TEXT)) LIKE CONCAT('%', LOWER(:keyword), '%'))
+               )
+            ORDER BY
+                CASE
+                  WHEN LOWER(d.device_name) = LOWER(:keyword) THEN 0
+                  WHEN LOWER(d.device_name) LIKE CONCAT(LOWER(:keyword), '%') THEN 1
+                  WHEN LOWER(d.device_name) LIKE CONCAT('%', LOWER(:keyword), '%') THEN 2
+                  ELSE 3
+                END,
+                d.last_report_time DESC NULLS LAST,
+                d.device_id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<DeviceEntity> searchForUnifiedSearch(
+            @Param("userId") UUID userId,
+            @Param("keyword") String keyword,
+            @Param("limit") int limit);
+
     @Query("SELECT d.userId FROM DeviceEntity d WHERE d.deviceId = :deviceId")
     Optional<UUID> findUserIdByDeviceId(@Param("deviceId") Long deviceId);
 

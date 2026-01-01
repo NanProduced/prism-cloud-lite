@@ -168,6 +168,65 @@ public class DeviceProgramPlaySessionRepositoryAdapter implements DeviceProgramP
             ORDER BY b.bucket_start_utc
             """;
 
+    private static final String SQL_LIST_SESSIONS_PLATFORM = """
+            SELECT
+              s.id,
+              s.device_id,
+              d.device_name,
+              s.is_lan,
+              s.lan_program_id,
+              s.program_id,
+              s.release_version,
+              s.program_vsn,
+              s.program_name_snapshot,
+              s.vsn_md5,
+              s.vsn_size_bytes,
+              s.start_at,
+              s.end_at,
+              GREATEST(s.start_at, :from) AS effective_start_at,
+              LEAST(s.end_at, :to) AS effective_end_at,
+              GREATEST(0, CAST(EXTRACT(EPOCH FROM (LEAST(s.end_at, :to) - GREATEST(s.start_at, :from))) AS BIGINT)) AS play_seconds_in_range,
+              s.created_at
+            FROM pcc_device_program_play_session s
+            LEFT JOIN pcc_device d
+              ON d.user_id = s.user_id
+             AND d.device_id = s.device_id
+            WHERE s.user_id = :userId
+              AND s.is_lan = FALSE
+              AND s.program_id = :programId
+              AND s.release_version = :releaseVersion
+              AND s.period && tstzrange(:from, :to, '[)')
+            """;
+
+    private static final String SQL_LIST_SESSIONS_LAN = """
+            SELECT
+              s.id,
+              s.device_id,
+              d.device_name,
+              s.is_lan,
+              s.lan_program_id,
+              s.program_id,
+              s.release_version,
+              s.program_vsn,
+              s.program_name_snapshot,
+              s.vsn_md5,
+              s.vsn_size_bytes,
+              s.start_at,
+              s.end_at,
+              GREATEST(s.start_at, :from) AS effective_start_at,
+              LEAST(s.end_at, :to) AS effective_end_at,
+              GREATEST(0, CAST(EXTRACT(EPOCH FROM (LEAST(s.end_at, :to) - GREATEST(s.start_at, :from))) AS BIGINT)) AS play_seconds_in_range,
+              s.created_at
+            FROM pcc_device_program_play_session s
+            LEFT JOIN pcc_device d
+              ON d.user_id = s.user_id
+             AND d.device_id = s.device_id
+            WHERE s.user_id = :userId
+              AND s.is_lan = TRUE
+              AND s.lan_program_id = :lanProgramId
+              AND s.period && tstzrange(:from, :to, '[)')
+            """;
+
     @Override
     public int insertIgnoreBatch(List<InsertRow> rows) {
         if (rows == null || rows.isEmpty()) {
@@ -352,5 +411,93 @@ public class DeviceProgramPlaySessionRepositoryAdapter implements DeviceProgramP
                 .addValue("tz", tz)
                 .addValue("truncUnit", truncUnit)
                 .addValue("stepInterval", stepInterval);
+    }
+
+    @Override
+    public List<SessionRow> listSessionsForPlatform(
+            UUID userId,
+            UUID programId,
+            int releaseVersion,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            OffsetDateTime cursorStartAt,
+            Long cursorId,
+            int limit) {
+
+        MapSqlParameterSource params = baseRangeParams(userId, from, to)
+                .addValue("programId", programId)
+                .addValue("releaseVersion", releaseVersion)
+                .addValue("limit", Math.max(1, limit));
+
+        StringBuilder sql = new StringBuilder(SQL_LIST_SESSIONS_PLATFORM);
+        if (cursorStartAt != null && cursorId != null) {
+            sql.append(" AND (s.start_at < :cursorStartAt OR (s.start_at = :cursorStartAt AND s.id < :cursorId))");
+            params.addValue("cursorStartAt", cursorStartAt);
+            params.addValue("cursorId", cursorId);
+        }
+        sql.append(" ORDER BY s.start_at DESC, s.id DESC LIMIT :limit");
+
+        return jdbcTemplate.query(sql.toString(), params, (rs, rowNum) -> new SessionRow(
+                rs.getLong("id"),
+                rs.getLong("device_id"),
+                rs.getString("device_name"),
+                rs.getBoolean("is_lan"),
+                rs.getString("lan_program_id"),
+                rs.getObject("program_id", UUID.class),
+                rs.getObject("release_version", Integer.class),
+                rs.getString("program_vsn"),
+                rs.getString("program_name_snapshot"),
+                rs.getString("vsn_md5"),
+                rs.getObject("vsn_size_bytes", Long.class),
+                rs.getObject("start_at", OffsetDateTime.class),
+                rs.getObject("end_at", OffsetDateTime.class),
+                rs.getObject("effective_start_at", OffsetDateTime.class),
+                rs.getObject("effective_end_at", OffsetDateTime.class),
+                Math.max(0L, rs.getLong("play_seconds_in_range")),
+                rs.getObject("created_at", OffsetDateTime.class)
+        ));
+    }
+
+    @Override
+    public List<SessionRow> listSessionsForLan(
+            UUID userId,
+            String lanProgramId,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            OffsetDateTime cursorStartAt,
+            Long cursorId,
+            int limit) {
+
+        MapSqlParameterSource params = baseRangeParams(userId, from, to)
+                .addValue("lanProgramId", lanProgramId)
+                .addValue("limit", Math.max(1, limit));
+
+        StringBuilder sql = new StringBuilder(SQL_LIST_SESSIONS_LAN);
+        if (cursorStartAt != null && cursorId != null) {
+            sql.append(" AND (s.start_at < :cursorStartAt OR (s.start_at = :cursorStartAt AND s.id < :cursorId))");
+            params.addValue("cursorStartAt", cursorStartAt);
+            params.addValue("cursorId", cursorId);
+        }
+        sql.append(" ORDER BY s.start_at DESC, s.id DESC LIMIT :limit");
+
+        return jdbcTemplate.query(sql.toString(), params, (rs, rowNum) -> new SessionRow(
+                rs.getLong("id"),
+                rs.getLong("device_id"),
+                rs.getString("device_name"),
+                rs.getBoolean("is_lan"),
+                rs.getString("lan_program_id"),
+                rs.getObject("program_id", UUID.class),
+                rs.getObject("release_version", Integer.class),
+                rs.getString("program_vsn"),
+                rs.getString("program_name_snapshot"),
+                rs.getString("vsn_md5"),
+                rs.getObject("vsn_size_bytes", Long.class),
+                rs.getObject("start_at", OffsetDateTime.class),
+                rs.getObject("end_at", OffsetDateTime.class),
+                rs.getObject("effective_start_at", OffsetDateTime.class),
+                rs.getObject("effective_end_at", OffsetDateTime.class),
+                Math.max(0L, rs.getLong("play_seconds_in_range")),
+                rs.getObject("created_at", OffsetDateTime.class)
+        ));
     }
 }

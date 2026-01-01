@@ -37,6 +37,8 @@ public final class MessagingConstants {
         public static final String DEVICE_REPORT = "core-device-report-q";
         // 业务异步任务推送/执行结果队列
         public static final String TASK_WORKER = "core-task-worker-q";
+        // 导出任务执行队列（独立于 TASK_WORKER，避免不同任务类型互相反序列化失败）
+        public static final String EXPORT_WORKER = "core-export-worker-q";
         // 前端spa通知队列
         public static final String COMMON_NOTIFY = "core-notify-q";
         // 面向前端的高频实时数据队列（传感器/GPS 等，仅用于 SSE，不落库到消息中心）
@@ -58,6 +60,8 @@ public final class MessagingConstants {
         public static final String REPORT_ALL = "report.*";
         // 业务异步任务推送路由键
         public static final String TASK_PENDING = "task.pending";
+        // 导出任务推送路由键（独立 queue）
+        public static final String TASK_EXPORT_PENDING = "task.export.pending";
         // 业务异步任务执行结果路由键
         public static final String TASK_RESULT = "task.result";
         // 前端spa通知路由键

@@ -48,4 +48,11 @@ public interface DeviceSearchUseCase {
      * @return 筛选后的设备列表（不分页）
      */
     List<DeviceListVO> filterDevices(UUID userId, FilterDeviceReq req);
+
+    /**
+     * 统一搜索（全局搜索）使用：按关键字快速检索设备。
+     *
+     * <p>用于 Command Palette 风格的全局搜索，返回轻量字段集合。</p>
+     */
+    List<DeviceSearchItem> searchDevices(UUID userId, String keyword, Integer limit);
 }

@@ -139,6 +139,40 @@ public class DeviceMediaPlaySessionRepositoryAdapter implements DeviceMediaPlayS
             ORDER BY b.bucket_start_utc
             """;
 
+    private static final String SQL_LIST_SESSIONS = """
+            SELECT
+              s.id,
+              s.device_id,
+              d.device_name,
+              s.media_id,
+              s.item_type,
+              s.res_origin_name,
+              s.res_md5_name,
+              s.is_lan,
+              s.program_id,
+              s.release_version,
+              s.program_vsn,
+              s.program_name_snapshot,
+              s.page_name,
+              s.page_index,
+              s.region_name,
+              s.region_index,
+              s.start_at,
+              s.end_at,
+              GREATEST(s.start_at, :from) AS effective_start_at,
+              LEAST(s.end_at, :to) AS effective_end_at,
+              GREATEST(0, CAST(EXTRACT(EPOCH FROM (LEAST(s.end_at, :to) - GREATEST(s.start_at, :from))) AS BIGINT)) AS play_seconds_in_range,
+              s.reported_duration,
+              s.created_at
+            FROM pcc_device_media_play_session s
+            LEFT JOIN pcc_device d
+              ON d.user_id = s.user_id
+             AND d.device_id = s.device_id
+            WHERE s.user_id = :userId
+              AND s.media_id = :mediaId
+              AND s.period && tstzrange(:from, :to, '[)')
+            """;
+
     @Override
     public int insertIgnoreBatch(List<InsertRow> rows) {
         if (rows == null || rows.isEmpty()) {
@@ -272,5 +306,54 @@ public class DeviceMediaPlaySessionRepositoryAdapter implements DeviceMediaPlayS
                 .addValue("tz", tz)
                 .addValue("truncUnit", truncUnit)
                 .addValue("stepInterval", stepInterval);
+    }
+
+    @Override
+    public List<SessionRow> listSessions(
+            UUID userId,
+            String mediaId,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            OffsetDateTime cursorStartAt,
+            Long cursorId,
+            int limit) {
+
+        MapSqlParameterSource params = baseRangeParams(userId, from, to)
+                .addValue("mediaId", mediaId)
+                .addValue("limit", Math.max(1, limit));
+
+        StringBuilder sql = new StringBuilder(SQL_LIST_SESSIONS);
+        if (cursorStartAt != null && cursorId != null) {
+            sql.append(" AND (s.start_at < :cursorStartAt OR (s.start_at = :cursorStartAt AND s.id < :cursorId))");
+            params.addValue("cursorStartAt", cursorStartAt);
+            params.addValue("cursorId", cursorId);
+        }
+        sql.append(" ORDER BY s.start_at DESC, s.id DESC LIMIT :limit");
+
+        return jdbcTemplate.query(sql.toString(), params, (rs, rowNum) -> new SessionRow(
+                rs.getLong("id"),
+                rs.getLong("device_id"),
+                rs.getString("device_name"),
+                rs.getString("media_id"),
+                rs.getString("item_type"),
+                rs.getString("res_origin_name"),
+                rs.getString("res_md5_name"),
+                rs.getBoolean("is_lan"),
+                rs.getObject("program_id", UUID.class),
+                rs.getObject("release_version", Integer.class),
+                rs.getString("program_vsn"),
+                rs.getString("program_name_snapshot"),
+                rs.getString("page_name"),
+                rs.getObject("page_index", Integer.class),
+                rs.getString("region_name"),
+                rs.getObject("region_index", Integer.class),
+                rs.getObject("start_at", OffsetDateTime.class),
+                rs.getObject("end_at", OffsetDateTime.class),
+                rs.getObject("effective_start_at", OffsetDateTime.class),
+                rs.getObject("effective_end_at", OffsetDateTime.class),
+                Math.max(0L, rs.getLong("play_seconds_in_range")),
+                rs.getObject("reported_duration", Long.class),
+                rs.getObject("created_at", OffsetDateTime.class)
+        ));
     }
 }
