@@ -15,13 +15,19 @@ public class RawAssistantChatLlmClient implements AssistantChatLlmClient {
     }
 
     @Override
-    public StreamResult stream(UUID userId, List<Message> messages, ToolEventListener toolEvents, Consumer<String> onDelta) {
-        OpenAiChatCompletionsClient.ChatResult result = rawClient.complete(messages);
+    public StreamResult stream(UUID userId, List<Message> messages, StreamOptions options, ToolEventListener toolEvents, Consumer<String> onDelta) {
+        Integer maxCompletionTokens = options != null && options.maxCompletionTokens() > 0 ? options.maxCompletionTokens() : null;
+        OpenAiChatCompletionsClient.ChatResult result = rawClient.complete(messages, maxCompletionTokens);
         String answer = result != null ? result.content() : null;
         if (answer != null && !answer.isBlank()) {
             onDelta.accept(answer);
         }
         String finishReason = result != null ? result.finishReason() : null;
-        return new StreamResult(finishReason);
+        return new StreamResult(
+                finishReason,
+                result != null ? result.promptTokens() : null,
+                result != null ? result.completionTokens() : null,
+                result != null ? result.totalTokens() : null
+        );
     }
 }

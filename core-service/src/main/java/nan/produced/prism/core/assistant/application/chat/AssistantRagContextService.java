@@ -31,16 +31,22 @@ public class AssistantRagContextService {
     }
 
     public RagContext buildContext(String userText) {
-        String preferLang = normalizePreferLang(properties.rag().preferLang(), userText);
+        return buildContext(userText, properties.rag().topK(), properties.rag().maxContextChars(), properties.rag().preferLang());
+    }
+
+    public RagContext buildContext(String userText, int topK, int maxContextChars, String preferLangSetting) {
+        int effectiveTopK = Math.max(1, topK);
+        int effectiveMaxChars = Math.max(1, maxContextChars);
+        String preferLang = normalizePreferLang(preferLangSetting, userText);
 
         float[] embedding = embeddingClient.embedAll(List.of(userText)).get(0);
         String queryVector = VectorLiterals.toPgVectorLiteral(embedding);
 
         List<RagDocsRepository.RagChunkHit> hits = new ArrayList<>();
-        hits.addAll(ragDocsRepository.searchTopChunks(queryVector, preferLang, properties.rag().topK()));
+        hits.addAll(ragDocsRepository.searchTopChunks(queryVector, preferLang, effectiveTopK));
         if (hits.isEmpty()) {
             String fallback = "zh".equals(preferLang) ? "en" : "zh";
-            hits.addAll(ragDocsRepository.searchTopChunks(queryVector, fallback, properties.rag().topK()));
+            hits.addAll(ragDocsRepository.searchTopChunks(queryVector, fallback, effectiveTopK));
         }
 
         if (hits.isEmpty()) {
@@ -49,7 +55,7 @@ public class AssistantRagContextService {
 
         // Keep sources stable + deduplicated by doc slug.
         Map<String, RagSource> sourcesBySlug = new LinkedHashMap<>();
-        StringBuilder context = new StringBuilder(Math.min(properties.rag().maxContextChars(), 16_000));
+        StringBuilder context = new StringBuilder(Math.min(effectiveMaxChars, 16_000));
 
         for (RagDocsRepository.RagChunkHit hit : hits) {
             String slug = hit.slug();
@@ -59,7 +65,7 @@ public class AssistantRagContextService {
                     hit.title()
             ));
 
-            if (context.length() >= properties.rag().maxContextChars()) {
+            if (context.length() >= effectiveMaxChars) {
                 break;
             }
 
@@ -71,7 +77,11 @@ public class AssistantRagContextService {
             context.append(hit.chunkText()).append("\n");
         }
 
-        return new RagContext(context.toString().trim(), List.copyOf(sourcesBySlug.values()));
+        String text = context.toString().trim();
+        if (text.length() > effectiveMaxChars) {
+            text = text.substring(0, effectiveMaxChars);
+        }
+        return new RagContext(text, List.copyOf(sourcesBySlug.values()));
     }
 
     private static String normalizePreferLang(String preferLang, String userText) {
@@ -95,4 +105,3 @@ public class AssistantRagContextService {
         return false;
     }
 }
-

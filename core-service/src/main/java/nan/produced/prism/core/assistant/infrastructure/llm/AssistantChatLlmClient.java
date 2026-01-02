@@ -8,7 +8,20 @@ import java.util.function.Consumer;
 
 public interface AssistantChatLlmClient {
 
-    record StreamResult(String finishReason) {
+    record StreamOptions(
+            int maxToolRounds,
+            int maxCallsPerRound,
+            int maxToolResultChars,
+            int maxCompletionTokens
+    ) {
+    }
+
+    record StreamResult(
+            String finishReason,
+            Integer promptTokens,
+            Integer completionTokens,
+            Integer totalTokens
+    ) {
     }
 
     interface ToolEventListener {
@@ -19,5 +32,5 @@ public interface AssistantChatLlmClient {
         void onToolOutputError(String toolCallId, String errorText);
     }
 
-    StreamResult stream(UUID userId, List<Message> messages, ToolEventListener toolEvents, Consumer<String> onDelta);
+    StreamResult stream(UUID userId, List<Message> messages, StreamOptions options, ToolEventListener toolEvents, Consumer<String> onDelta);
 }

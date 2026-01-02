@@ -58,5 +58,18 @@ assistant:
         base-url: ${ASSISTANT_CHAT_GEMINI_BASE_URL:}
         default-model: ${ASSISTANT_CHAT_GEMINI_MODEL:gemini-1.5-flash}
 
+    # Daily token budgets for local-vllm only (BYOK providers are not charged).
+    token-budget:
+      enabled: ${ASSISTANT_CHAT_TOKEN_BUDGET_ENABLED:true}
+      reset-zone: ${ASSISTANT_CHAT_TOKEN_BUDGET_RESET_ZONE:UTC}
+      # 0 or negative means unlimited.
+      daily-limit-by-tier:
+        FREE: ${ASSISTANT_CHAT_TOKEN_BUDGET_FREE_PER_DAY:20000}
+        PRO: ${ASSISTANT_CHAT_TOKEN_BUDGET_PRO_PER_DAY:0}
+      # Per-request completion token cap (still subject to remaining daily budget).
+      max-completion-tokens-by-tier:
+        FREE: ${ASSISTANT_CHAT_TOKEN_BUDGET_FREE_MAX_COMPLETION_TOKENS:512}
+        PRO: ${ASSISTANT_CHAT_TOKEN_BUDGET_PRO_MAX_COMPLETION_TOKENS:4096}
+
   credentials:
     master-key: ${PRISM_AI_CREDENTIALS_MASTER_KEY:} # base64-encoded 32-byte key for AES-GCM

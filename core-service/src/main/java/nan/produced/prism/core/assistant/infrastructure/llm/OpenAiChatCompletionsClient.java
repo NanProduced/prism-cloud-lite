@@ -22,8 +22,8 @@ public class OpenAiChatCompletionsClient {
         this.temperature = temperature;
     }
 
-    public ChatResult complete(List<Message> messages) {
-        ChatCompletionsRequest request = new ChatCompletionsRequest(model, messages, temperature, false);
+    public ChatResult complete(List<Message> messages, Integer maxTokens) {
+        ChatCompletionsRequest request = new ChatCompletionsRequest(model, messages, temperature, false, maxTokens);
 
         RestClient.RequestHeadersSpec<?> spec = restClient.post()
                 .uri("/v1/chat/completions")
@@ -42,26 +42,41 @@ public class OpenAiChatCompletionsClient {
         if (choice == null || choice.message == null) {
             throw new IllegalStateException("Chat completion missing message");
         }
-        return new ChatResult(choice.message.content, choice.finishReason);
+        Integer promptTokens = response.usage != null ? response.usage.promptTokens : null;
+        Integer completionTokens = response.usage != null ? response.usage.completionTokens : null;
+        Integer totalTokens = response.usage != null ? response.usage.totalTokens : null;
+        return new ChatResult(choice.message.content, choice.finishReason, promptTokens, completionTokens, totalTokens);
     }
 
     public record Message(String role, String content) {
     }
 
-    public record ChatResult(String content, String finishReason) {
+    public record ChatResult(String content, String finishReason, Integer promptTokens, Integer completionTokens, Integer totalTokens) {
     }
 
     public record ChatCompletionsRequest(
             String model,
             List<Message> messages,
             double temperature,
-            boolean stream
+            boolean stream,
+            @JsonProperty("max_tokens") Integer maxTokens
     ) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class ChatCompletionsResponse {
         public List<Choice> choices;
+        public Usage usage;
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Usage {
+        @JsonProperty("prompt_tokens")
+        public Integer promptTokens;
+        @JsonProperty("completion_tokens")
+        public Integer completionTokens;
+        @JsonProperty("total_tokens")
+        public Integer totalTokens;
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -77,4 +92,3 @@ public class OpenAiChatCompletionsClient {
         public String content;
     }
 }
-

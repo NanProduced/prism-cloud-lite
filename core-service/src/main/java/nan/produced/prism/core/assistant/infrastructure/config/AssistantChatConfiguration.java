@@ -9,6 +9,7 @@ import nan.produced.prism.core.assistant.application.tools.AssistantToolExecutor
 import nan.produced.prism.core.assistant.infrastructure.springai.AssistantChatModelRouter;
 import nan.produced.prism.core.assistant.infrastructure.springai.AssistantSpringAiToolCallbacks;
 import nan.produced.prism.core.assistant.infrastructure.springai.SpringAiAssistantChatLlmClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -17,7 +18,7 @@ import org.springframework.retry.support.RetryTemplate;
 import org.springframework.web.client.RestClient;
 
 @Configuration
-@EnableConfigurationProperties(AssistantChatProperties.class)
+@EnableConfigurationProperties({AssistantChatProperties.class, AssistantChatTierLimitsProperties.class, AssistantChatTokenBudgetProperties.class})
 public class AssistantChatConfiguration {
 
     @Bean
@@ -28,7 +29,10 @@ public class AssistantChatConfiguration {
     }
 
     @Bean
-    public OpenAiChatCompletionsClient openAiChatCompletionsClient(AssistantChatProperties properties, RestClient assistantLlmRestClient) {
+    public OpenAiChatCompletionsClient openAiChatCompletionsClient(
+            AssistantChatProperties properties,
+            @Qualifier("assistantLlmRestClient") RestClient assistantLlmRestClient
+    ) {
         return new OpenAiChatCompletionsClient(assistantLlmRestClient, properties.llm().model(), properties.llm().apiKey(), properties.llm().temperature());
     }
 

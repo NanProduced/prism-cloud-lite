@@ -12,6 +12,7 @@ import nan.produced.prism.core.assistant.infrastructure.config.AssistantChatProp
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.tool.ToolCallingManager;
@@ -58,7 +59,7 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
     }
 
     @Override
-    public StreamResult stream(UUID userId, List<Message> messages, ToolEventListener toolEvents, Consumer<String> onDelta) {
+    public StreamResult stream(UUID userId, List<Message> messages, StreamOptions streamOptions, ToolEventListener toolEvents, Consumer<String> onDelta) {
         AssistantChatModelRouter.LlmTarget target = router.resolveForUser(userId);
 
         OpenAiApi.Builder apiBuilder = OpenAiApi.builder().baseUrl(target.baseUrl());
@@ -68,7 +69,7 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
         OpenAiApi api = apiBuilder.build();
 
         List<ToolCallback> callbacks = toolCallbacks.buildAll();
-        OpenAiChatOptions options = OpenAiChatOptions.builder()
+        OpenAiChatOptions.Builder chatOptionsBuilder = OpenAiChatOptions.builder()
                 .model(target.model())
                 .temperature(target.temperature())
                 .toolCallbacks(callbacks)
@@ -76,10 +77,16 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
                 // Tool execution is handled manually (we need toolCallId for audit + custom SSE tool events).
                 .internalToolExecutionEnabled(false)
                 .parallelToolCalls(true)
-                .toolChoice("auto")
-                .build();
+                .toolChoice("auto");
+        Integer maxCompletionTokens = streamOptions != null && streamOptions.maxCompletionTokens() > 0 ? streamOptions.maxCompletionTokens() : null;
+        if (maxCompletionTokens != null) {
+            // vLLM is OpenAI-compatible and typically supports max_tokens; OpenAI may prefer max_completion_tokens.
+            chatOptionsBuilder.maxTokens(maxCompletionTokens);
+            chatOptionsBuilder.maxCompletionTokens(maxCompletionTokens);
+        }
+        OpenAiChatOptions chatOptions = chatOptionsBuilder.build();
 
-        OpenAiChatModel chatModel = new OpenAiChatModel(api, options, toolCallingManager, retryTemplate, observationRegistry);
+        OpenAiChatModel chatModel = new OpenAiChatModel(api, chatOptions, toolCallingManager, retryTemplate, observationRegistry);
 
         List<org.springframework.ai.chat.messages.Message> history = toSpringAiMessages(messages);
 
@@ -89,13 +96,27 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
         // - append ToolResponseMessage
         // - repeat until no tool calls, then return final text (single delta)
         int toolRounds = 0;
-        int maxToolRounds = properties.tools() != null ? Math.max(1, properties.tools().maxRounds()) : 3;
-        int maxCallsPerRound = properties.tools() != null ? Math.max(1, properties.tools().maxCallsPerRound()) : 5;
+        int configuredMaxRounds = properties.tools() != null ? properties.tools().maxRounds() : 3;
+        int configuredMaxCalls = properties.tools() != null ? properties.tools().maxCallsPerRound() : 5;
+        int maxToolRounds = streamOptions != null && streamOptions.maxToolRounds() > 0 ? streamOptions.maxToolRounds() : Math.max(1, configuredMaxRounds);
+        int maxCallsPerRound = streamOptions != null && streamOptions.maxCallsPerRound() > 0 ? streamOptions.maxCallsPerRound() : Math.max(1, configuredMaxCalls);
+        int maxToolResultChars = streamOptions != null ? streamOptions.maxToolResultChars() : 0;
+        long promptTokensSum = 0;
+        long completionTokensSum = 0;
 
         while (true) {
-            ChatResponse response = chatModel.call(new Prompt(history, options));
+            ChatResponse response = chatModel.call(new Prompt(history, chatOptions));
             if (response == null || response.getResult() == null || response.getResult().getOutput() == null) {
-                return new StreamResult("error");
+                return new StreamResult("error", null, null, null);
+            }
+            var usage = response.getMetadata() != null ? response.getMetadata().getUsage() : null;
+            if (usage != null) {
+                if (usage.getPromptTokens() != null) {
+                    promptTokensSum += usage.getPromptTokens();
+                }
+                if (usage.getCompletionTokens() != null) {
+                    completionTokensSum += usage.getCompletionTokens();
+                }
             }
 
             var assistant = response.getResult().getOutput();
@@ -113,7 +134,7 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
                         }
                         ObjectNode err = objectMapper.createObjectNode();
                         err.put("error", "too_many_tool_calls");
-                        responses.add(new ToolResponseMessage.ToolResponse(toolCallId, "toolLimit", toJsonString(err)));
+                        responses.add(new ToolResponseMessage.ToolResponse(toolCallId, "toolLimit", toJsonString(err, maxToolResultChars)));
                         break;
                     }
                     String toolCallId = StringUtils.hasText(call.id()) ? call.id() : ("tool-" + UUID.randomUUID());
@@ -129,14 +150,14 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
                         if (toolEvents != null) {
                             toolEvents.onToolOutputAvailable(toolCallId, exec.output());
                         }
-                        responses.add(new ToolResponseMessage.ToolResponse(toolCallId, toolName, toJsonString(exec.output())));
+                        responses.add(new ToolResponseMessage.ToolResponse(toolCallId, toolName, toJsonString(exec.output(), maxToolResultChars)));
                     } else {
                         if (toolEvents != null) {
                             toolEvents.onToolOutputError(toolCallId, exec.errorText());
                         }
                         ObjectNode err = objectMapper.createObjectNode();
                         err.put("error", exec.errorText() == null ? "Tool error" : exec.errorText());
-                        responses.add(new ToolResponseMessage.ToolResponse(toolCallId, toolName, toJsonString(err)));
+                        responses.add(new ToolResponseMessage.ToolResponse(toolCallId, toolName, toJsonString(err, maxToolResultChars)));
                     }
                 }
                 history.add(new ToolResponseMessage(responses));
@@ -144,7 +165,10 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
                 toolRounds++;
                 if (toolRounds >= maxToolRounds) {
                     onDelta.accept("工具调用轮次过多，已中止。请缩小问题范围或提供更具体的条件。");
-                    return new StreamResult("error");
+                    Integer pt = safeIntOrNull(promptTokensSum);
+                    Integer ct = safeIntOrNull(completionTokensSum);
+                    Integer tt = safeIntOrNull(promptTokensSum + completionTokensSum);
+                    return new StreamResult("error", pt, ct, tt);
                 }
                 continue;
             }
@@ -154,8 +178,21 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
                 onDelta.accept(content);
             }
             String finishReason = response.getResult().getMetadata() != null ? response.getResult().getMetadata().getFinishReason() : null;
-            return new StreamResult(finishReason);
+            Integer pt = safeIntOrNull(promptTokensSum);
+            Integer ct = safeIntOrNull(completionTokensSum);
+            Integer tt = safeIntOrNull(promptTokensSum + completionTokensSum);
+            return new StreamResult(finishReason, pt, ct, tt);
         }
+    }
+
+    private static Integer safeIntOrNull(long v) {
+        if (v <= 0) {
+            return null;
+        }
+        if (v > Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        return (int) v;
     }
 
     private static List<org.springframework.ai.chat.messages.Message> toSpringAiMessages(List<Message> messages) {
@@ -172,6 +209,7 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
             switch (role) {
                 case "system" -> result.add(new SystemMessage(content));
                 case "user" -> result.add(new UserMessage(content));
+                case "assistant" -> result.add(new AssistantMessage(content));
                 default -> {
                     // Ignore unsupported roles for now.
                 }
@@ -193,9 +231,17 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
         }
     }
 
-    private String toJsonString(JsonNode node) {
+    private String toJsonString(JsonNode node, int maxChars) {
         try {
-            return objectMapper.writeValueAsString(node);
+            String json = objectMapper.writeValueAsString(node);
+            if (maxChars > 0 && json.length() > maxChars) {
+                ObjectNode out = objectMapper.createObjectNode();
+                out.put("_truncated", true);
+                out.put("_maxChars", maxChars);
+                out.put("_text", json.substring(0, maxChars));
+                return objectMapper.writeValueAsString(out);
+            }
+            return json;
         } catch (Exception e) {
             return "{\"error\":\"failed_to_serialize\"}";
         }

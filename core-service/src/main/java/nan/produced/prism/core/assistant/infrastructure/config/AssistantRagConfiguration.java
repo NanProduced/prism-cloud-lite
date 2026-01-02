@@ -1,6 +1,7 @@
 package nan.produced.prism.core.assistant.infrastructure.config;
 
 import nan.produced.prism.core.assistant.infrastructure.embeddings.OpenAiEmbeddingClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,8 +19,10 @@ public class AssistantRagConfiguration {
     }
 
     @Bean
-    public OpenAiEmbeddingClient openAiEmbeddingClient(AssistantRagProperties properties, RestClient assistantEmbeddingsRestClient) {
+    public OpenAiEmbeddingClient openAiEmbeddingClient(
+            AssistantRagProperties properties,
+            @Qualifier("assistantEmbeddingsRestClient") RestClient assistantEmbeddingsRestClient
+    ) {
         return new OpenAiEmbeddingClient(assistantEmbeddingsRestClient, properties.embedding().model(), properties.embedding().dimension());
     }
 }
-

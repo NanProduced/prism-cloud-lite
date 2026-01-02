@@ -22,8 +22,10 @@ public class AssistantChatController {
     public SseEmitter chat(@RequestBody JsonNode request) {
         // Let the client keep the connection open; caller controls abort.
         SseEmitter emitter = new SseEmitter(0L);
+        var user = CloudAuthContext.getCurrentUser();
         UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
-        assistantChatService.handle(userId, request, emitter);
+        String tier = user.tier();
+        assistantChatService.handle(userId, tier, request, emitter);
         return emitter;
     }
 }
