@@ -33,7 +33,7 @@ assistant:
       overlap-chars: ${ASSISTANT_RAG_CHUNK_OVERLAP_CHARS:200}
 
   chat:
-    engine: ${ASSISTANT_CHAT_ENGINE:raw} # raw|spring-ai
+    engine: ${ASSISTANT_CHAT_ENGINE:spring-ai} # raw|spring-ai
     prompt:
       system-template: ${ASSISTANT_CHAT_SYSTEM_TEMPLATE:classpath:assistant/prompts/system.md}
     tools:
