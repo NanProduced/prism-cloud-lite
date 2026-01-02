@@ -17,6 +17,7 @@ public class RagDocsRepository {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private volatile String vectorTypeForCast = "vector";
+    private volatile String distanceExprTemplate = "c.embedding <=> CAST(:queryVector AS %s)";
 
     public record UpsertDocumentParams(
             UUID id,
@@ -151,21 +152,167 @@ public class RagDocsRepository {
 
     @PostConstruct
     void resolveVectorType() {
-        // pgvector can be installed into different schemas; resolve the actual type name once.
-        String sql = """
+        // Resolve pgvector's real type location once. We do NOT trust schema-qualified names like
+        // assistant.vector because a conflicting user-defined type can exist in that schema.
+        String typeSql = """
                 SELECT
-                  CASE
-                    WHEN to_regtype('assistant.vector') IS NOT NULL THEN 'assistant.vector'
-                    WHEN to_regtype('public.vector') IS NOT NULL THEN 'public.vector'
-                    WHEN to_regtype('vector') IS NOT NULL THEN 'vector'
-                    ELSE NULL
-                  END AS vector_type
+                  format('%I', n.nspname) AS schema_sql,
+                  format('%I.%I', n.nspname, t.typname) AS type_sql,
+                  t.oid AS type_oid
+                FROM pg_extension e
+                JOIN pg_depend dep
+                  ON dep.refobjid = e.oid
+                 AND dep.deptype = 'e'
+                 AND dep.classid = 'pg_type'::regclass
+                JOIN pg_type t ON t.oid = dep.objid
+                JOIN pg_namespace n ON n.oid = t.typnamespace
+                WHERE e.extname = 'vector'
+                  AND t.typname = 'vector'
+                LIMIT 1
                 """;
-        String resolved = jdbcTemplate.getJdbcTemplate().queryForObject(sql, String.class);
-        if (resolved == null || resolved.isBlank()) {
-            throw new IllegalStateException("pgvector type not found (expected assistant.vector/public.vector/vector)");
+
+        PgVectorTypeInfo typeInfo = jdbcTemplate.query(typeSql, rs -> {
+            if (!rs.next()) {
+                return null;
+            }
+            return new PgVectorTypeInfo(
+                    rs.getString("schema_sql"),
+                    rs.getString("type_sql"),
+                    rs.getLong("type_oid")
+            );
+        });
+
+        if (typeInfo == null || typeInfo.typeSql == null || typeInfo.typeSql.isBlank()) {
+            throw new IllegalStateException("pgvector extension type not found (expected extension 'vector' installed)");
         }
-        this.vectorTypeForCast = resolved;
+        this.vectorTypeForCast = typeInfo.typeSql;
+
+        // Determine which distance expression really works at runtime.
+        // Catalog checks alone are not always reliable (e.g. type shadowing / old extension installs).
+        DistanceExprCandidate[] candidates = new DistanceExprCandidate[] {
+                // cosine (preferred, matches vector_cosine_ops)
+                new DistanceExprCandidate(
+                        "CAST(c.embedding AS %s) <=> CAST(:queryVector AS %s)",
+                        "CAST(:v1 AS %s) <=> CAST(:v2 AS %s)",
+                        "<=>",
+                        null
+                ),
+                new DistanceExprCandidate(
+                        typeInfo.schemaSql + ".cosine_distance(CAST(c.embedding AS %s), CAST(:queryVector AS %s))",
+                        typeInfo.schemaSql + ".cosine_distance(CAST(:v1 AS %s), CAST(:v2 AS %s))",
+                        null,
+                        "cosine_distance"
+                ),
+                // L2 fallback (works on older pgvector versions)
+                new DistanceExprCandidate(
+                        "CAST(c.embedding AS %s) <-> CAST(:queryVector AS %s)",
+                        "CAST(:v1 AS %s) <-> CAST(:v2 AS %s)",
+                        "<->",
+                        null
+                ),
+                new DistanceExprCandidate(
+                        typeInfo.schemaSql + ".l2_distance(CAST(c.embedding AS %s), CAST(:queryVector AS %s))",
+                        typeInfo.schemaSql + ".l2_distance(CAST(:v1 AS %s), CAST(:v2 AS %s))",
+                        null,
+                        "l2_distance"
+                )
+        };
+
+        for (DistanceExprCandidate candidate : candidates) {
+            if (candidate.requiredOperator != null && !hasOperator(candidate.requiredOperator, typeInfo.typeOid)) {
+                continue;
+            }
+            if (candidate.requiredFunction != null && !hasDistanceFunction(candidate.requiredFunction, typeInfo.typeOid)) {
+                continue;
+            }
+            if (probeDistanceExpr(candidate.probeExprTemplate, vectorTypeForCast)) {
+                this.distanceExprTemplate = candidate.distanceExprTemplate;
+                return;
+            }
+        }
+
+        throw new IllegalStateException("pgvector distance operator/function not found or not executable (expected <=>/cosine_distance/<->/l2_distance)");
+    }
+
+    private static final class DistanceExprCandidate {
+        private final String distanceExprTemplate;
+        private final String probeExprTemplate;
+        private final String requiredOperator;
+        private final String requiredFunction;
+
+        private DistanceExprCandidate(String distanceExprTemplate,
+                                      String probeExprTemplate,
+                                      String requiredOperator,
+                                      String requiredFunction) {
+            this.distanceExprTemplate = distanceExprTemplate;
+            this.probeExprTemplate = probeExprTemplate;
+            this.requiredOperator = requiredOperator;
+            this.requiredFunction = requiredFunction;
+        }
+    }
+
+    private boolean probeDistanceExpr(String probeExprTemplate, String vectorTypeSql) {
+        if (probeExprTemplate == null || probeExprTemplate.isBlank()) {
+            return false;
+        }
+        String expr = probeExprTemplate.formatted(vectorTypeSql, vectorTypeSql);
+        String sql = "SELECT (" + expr + ") AS distance";
+        MapSqlParameterSource p = new MapSqlParameterSource()
+                .addValue("v1", "[0,0,0]")
+                .addValue("v2", "[0,0,0]");
+        try {
+            jdbcTemplate.queryForObject(sql, p, Double.class);
+            return true;
+        } catch (Exception ignore) {
+            return false;
+        }
+    }
+
+    private boolean hasOperator(String name, long vectorTypeOid) {
+        String sql = """
+                SELECT EXISTS (
+                  SELECT 1
+                  FROM pg_operator o
+                  WHERE o.oprname = :name
+                    AND o.oprleft = :typeOid::oid
+                    AND o.oprright = :typeOid::oid
+                )
+                """;
+        MapSqlParameterSource p = new MapSqlParameterSource()
+                .addValue("name", name)
+                .addValue("typeOid", vectorTypeOid);
+        Boolean exists = jdbcTemplate.queryForObject(sql, p, Boolean.class);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    private boolean hasDistanceFunction(String name, long vectorTypeOid) {
+        String sql = """
+                SELECT EXISTS (
+                  SELECT 1
+                  FROM pg_proc p
+                  WHERE p.proname = :name
+                    AND p.pronargs = 2
+                    AND p.proargtypes[0] = :typeOid::oid
+                    AND p.proargtypes[1] = :typeOid::oid
+                )
+                """;
+        MapSqlParameterSource p = new MapSqlParameterSource()
+                .addValue("name", name)
+                .addValue("typeOid", vectorTypeOid);
+        Boolean exists = jdbcTemplate.queryForObject(sql, p, Boolean.class);
+        return Boolean.TRUE.equals(exists);
+    }
+
+    private static final class PgVectorTypeInfo {
+        private final String schemaSql;
+        private final String typeSql;
+        private final long typeOid;
+
+        private PgVectorTypeInfo(String schemaSql, String typeSql, long typeOid) {
+            this.schemaSql = schemaSql;
+            this.typeSql = typeSql;
+            this.typeOid = typeOid;
+        }
     }
 
     public record RagChunkHit(
@@ -185,6 +332,7 @@ public class RagDocsRepository {
             return List.of();
         }
 
+        String distanceExpr = distanceExprTemplate.formatted(vectorTypeForCast, vectorTypeForCast);
         String sql = """
                 SELECT
                   d.doc_key,
@@ -193,15 +341,15 @@ public class RagDocsRepository {
                   d.title,
                   c.heading_path,
                   c.chunk_text,
-                  (c.embedding <=> CAST(:queryVector AS %s)) AS distance
+                  (%s) AS distance
                 FROM assistant.rag_chunk c
                 JOIN assistant.rag_document d ON d.id = c.doc_id
                 WHERE d.lang = :lang
                   AND d.audience = 'user'
                   AND d.status = 'stable'
-                ORDER BY c.embedding <=> CAST(:queryVector AS %s)
+                ORDER BY %s
                 LIMIT :topK
-                """.formatted(vectorTypeForCast, vectorTypeForCast);
+                """.formatted(distanceExpr, distanceExpr);
 
         MapSqlParameterSource p = new MapSqlParameterSource()
                 .addValue("queryVector", queryVectorLiteral)

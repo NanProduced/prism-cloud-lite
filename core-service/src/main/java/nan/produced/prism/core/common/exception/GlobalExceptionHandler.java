@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import jakarta.validation.ConstraintViolationException;
 
@@ -118,6 +119,19 @@ public class GlobalExceptionHandler {
         return ResponseEntity
             .status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body(response);
+    }
+
+    /**
+     * 处理未匹配到任何 Controller 的情况（404）。
+     * <p>
+     * Spring WebMVC 在处理静态资源时，如果路径未命中任何资源，会抛出 {@link NoResourceFoundException}。
+     * 对于 API 请求，这类异常更符合 404 语义，而不是 500。
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<BffResponse<Void>> handleNoResourceFound(NoResourceFoundException e) {
+        BffResponse<Void> response = BffResponse.<Void>error(ErrorCode.ENDPOINT_NOT_FOUND)
+            .withTraceId(TraceUtils.getTraceId());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
     /**

@@ -64,6 +64,7 @@ public enum ErrorCode {
     OTP_INVALID("CORE-2407", "验证码错误或已过期", "验证码不正确，请重新获取", HttpStatus.BAD_REQUEST, true),
     OTP_VERIFY_TOO_FREQUENT("CORE-2408", "操作过于频繁", "操作过于频繁，请稍后再试", HttpStatus.TOO_MANY_REQUESTS, true),
     SUBSCRIPTION_REDEEM_CODE_INVALID("CORE-2409", "兑换码无效或已使用", "兑换码无效或已使用，请检查后重试", HttpStatus.BAD_REQUEST, true),
+    ENDPOINT_NOT_FOUND("CORE-2410", "接口不存在", "接口不存在，请检查请求路径", HttpStatus.NOT_FOUND, false),
 
     // ============ 内部代码异常 (CORE-25xx) ============
     INSTANTIATION_IS_PROHIBITED("CORE-2501", "实例化被禁止", "请勿实例化该类", HttpStatus.INTERNAL_SERVER_ERROR, true),
