@@ -46,6 +46,8 @@ import org.springframework.security.oauth2.server.authorization.token.OAuth2Toke
 import org.springframework.security.web.SecurityFilterChain;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.time.Duration;
@@ -159,7 +161,6 @@ public class AuthorizationServerConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri(securityProps.getOauth2().getClient().getPrismGatewayClient().getRedirectUri())
                 .clientSettings(ClientSettings.builder()
                         .requireAuthorizationConsent(false)
                         .setting("settings.client.backchannel-logout-uri",
@@ -173,8 +174,10 @@ public class AuthorizationServerConfig {
                         .build())
                 ;
 
-        securityProps.getOauth2().getClient().getPrismGatewayClient()
-                .resolvePostLogoutRedirectUris()
+        resolveLoopbackRedirectUris(securityProps.getOauth2().getClient().getPrismGatewayClient().getRedirectUri())
+                .forEach(builder::redirectUri);
+
+        resolvePostLogoutRedirectUris(securityProps.getOauth2().getClient().getPrismGatewayClient().resolvePostLogoutRedirectUris())
                 .forEach(builder::postLogoutRedirectUri);
 
         scopes.forEach(builder::scope);
@@ -196,7 +199,6 @@ public class AuthorizationServerConfig {
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri(securityProps.getOauth2().getClient().getPrismConsoleClient().getRedirectUri())
                 .clientSettings(ClientSettings.builder()
                         .requireAuthorizationConsent(false)
                         .setting("settings.client.backchannel-logout-uri",
@@ -209,8 +211,10 @@ public class AuthorizationServerConfig {
                         .refreshTokenTimeToLive(Duration.ofDays(securityProps.getOauth2().getClient().getPrismConsoleClient().getRefreshTokenValidityMinutes()))
                         .build());
 
-        securityProps.getOauth2().getClient().getPrismConsoleClient()
-                .resolvePostLogoutRedirectUris()
+        resolveLoopbackRedirectUris(securityProps.getOauth2().getClient().getPrismConsoleClient().getRedirectUri())
+                .forEach(builder::redirectUri);
+
+        resolvePostLogoutRedirectUris(securityProps.getOauth2().getClient().getPrismConsoleClient().resolvePostLogoutRedirectUris())
                 .forEach(builder::postLogoutRedirectUri);
 
         scopes.forEach(builder::scope);
@@ -228,6 +232,62 @@ public class AuthorizationServerConfig {
         // OIDC requires `openid`; keep it always enabled for the default gateway client.
         scopes.add("openid");
         return scopes;
+    }
+
+    private Set<String> resolvePostLogoutRedirectUris(Iterable<String> uris) {
+        Set<String> resolved = new LinkedHashSet<>();
+        if (uris == null) {
+            return resolved;
+        }
+        for (String uri : uris) {
+            resolved.addAll(resolveLoopbackRedirectUris(uri));
+        }
+        return resolved;
+    }
+
+    /**
+     * dev 环境常见问题：访问 gateway 用 127.0.0.1 会导致 OAuth2 redirect_uri 变成 127.0.0.1，
+     * 而 auth-service 侧 RegisteredClient 里只登记了 localhost（或反过来），从而触发 400。
+     * 这里对 localhost/127.0.0.1 做一个“互为别名”的容错登记。
+     */
+    private Set<String> resolveLoopbackRedirectUris(String uri) {
+        Set<String> resolved = new LinkedHashSet<>();
+        if (uri == null || uri.isBlank()) {
+            return resolved;
+        }
+        resolved.add(uri);
+
+        URI parsed;
+        try {
+            parsed = URI.create(uri);
+        } catch (IllegalArgumentException e) {
+            return resolved;
+        }
+
+        String host = parsed.getHost();
+        if (host == null || host.isBlank()) {
+            return resolved;
+        }
+
+        String altHost = null;
+        if ("localhost".equalsIgnoreCase(host)) {
+            altHost = "127.0.0.1";
+        } else if ("127.0.0.1".equals(host)) {
+            altHost = "localhost";
+        }
+
+        if (altHost == null) {
+            return resolved;
+        }
+
+        try {
+            URI alt = new URI(parsed.getScheme(), parsed.getUserInfo(), altHost, parsed.getPort(), parsed.getPath(), parsed.getQuery(), parsed.getFragment());
+            resolved.add(alt.toString());
+        } catch (URISyntaxException ignored) {
+            // Ignore invalid alternates; keep original uri.
+        }
+
+        return resolved;
     }
 
     private boolean needsUpdate(RegisteredClient existing, RegisteredClient desired) {
