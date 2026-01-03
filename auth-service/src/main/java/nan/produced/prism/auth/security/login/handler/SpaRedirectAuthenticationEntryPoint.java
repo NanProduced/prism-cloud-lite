@@ -59,8 +59,9 @@ public class SpaRedirectAuthenticationEntryPoint implements AuthenticationEntryP
         }
 
         String target = buildOriginalRequestUrl(request);
+        String entryPage = resolveEntryPage(request);
         String redirectUrl = UriComponentsBuilder
-                .fromUriString(securityProps.getLogin().getSpa().getEntryPage())
+                .fromUriString(entryPage)
                 .queryParam(securityProps.getLogin().getSpa().getContinueParam(), target)
                 .build()
                 .encode(StandardCharsets.UTF_8)
@@ -68,6 +69,26 @@ public class SpaRedirectAuthenticationEntryPoint implements AuthenticationEntryP
 
         log.debug("Redirecting unauthenticated request to SPA login: {}", redirectUrl);
         response.sendRedirect(redirectUrl);
+    }
+
+    private String resolveEntryPage(HttpServletRequest request) {
+        if (request == null) {
+            return securityProps.getLogin().getSpa().getEntryPage();
+        }
+
+        String path = request.getRequestURI();
+        boolean isAuthorize = StringUtils.hasText(path)
+                && (path.startsWith("/oauth2/authorize") || path.startsWith("/auth/oauth2/authorize"));
+        if (!isAuthorize) {
+            return securityProps.getLogin().getSpa().getEntryPage();
+        }
+
+        String clientId = request.getParameter("client_id");
+        String consoleClientId = securityProps.getOauth2().getClient().getPrismConsoleClient().getClientId();
+        if (StringUtils.hasText(clientId) && StringUtils.hasText(consoleClientId) && consoleClientId.equals(clientId)) {
+            return securityProps.getLogin().getSpa().getAdminEntryPage();
+        }
+        return securityProps.getLogin().getSpa().getEntryPage();
     }
 
     /**

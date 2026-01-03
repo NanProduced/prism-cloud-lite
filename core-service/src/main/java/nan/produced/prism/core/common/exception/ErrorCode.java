@@ -38,6 +38,7 @@ public enum ErrorCode {
     EXPORT_FILE_NOT_FOUND("CORE-2013", "导出文件不存在", "导出文件不存在或无权访问", HttpStatus.NOT_FOUND, false),
     EXPORT_PRO_REQUIRED("CORE-2014", "需要 Pro 订阅", "该导出格式/功能需要 Pro 订阅，请升级套餐后使用", HttpStatus.FORBIDDEN, false),
     EXPORT_NOT_READY("CORE-2015", "导出尚未完成", "导出任务尚未完成，请稍后再试", HttpStatus.BAD_REQUEST, false),
+    USER_NOT_FOUND_IN_AUTH("CORE-2016", "用户在认证中心不存在", "用户不存在", HttpStatus.NOT_FOUND, false),
 
     // ============ 设备标签相关 (CORE-21xx) ============
     DEVICE_TAG_NOT_FOUND("CORE-2100", "设备标签不存在", "指定的标签不存在或无权访问", HttpStatus.NOT_FOUND, false),
@@ -65,6 +66,7 @@ public enum ErrorCode {
     OTP_VERIFY_TOO_FREQUENT("CORE-2408", "操作过于频繁", "操作过于频繁，请稍后再试", HttpStatus.TOO_MANY_REQUESTS, true),
     SUBSCRIPTION_REDEEM_CODE_INVALID("CORE-2409", "兑换码无效或已使用", "兑换码无效或已使用，请检查后重试", HttpStatus.BAD_REQUEST, true),
     ENDPOINT_NOT_FOUND("CORE-2410", "接口不存在", "接口不存在，请检查请求路径", HttpStatus.NOT_FOUND, false),
+    FORBIDDEN("CORE-2411", "禁止访问", "无权限执行该操作", HttpStatus.FORBIDDEN, false),
 
     // ============ 内部代码异常 (CORE-25xx) ============
     INSTANTIATION_IS_PROHIBITED("CORE-2501", "实例化被禁止", "请勿实例化该类", HttpStatus.INTERNAL_SERVER_ERROR, true),

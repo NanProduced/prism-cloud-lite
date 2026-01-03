@@ -5,16 +5,20 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.auth.common.exception.BizException;
 import nan.produced.prism.auth.common.response.ApiResponse;
 import nan.produced.prism.auth.internal.dto.InternalUserResponse;
+import nan.produced.prism.auth.internal.dto.InternalUserSearchPageView;
 import nan.produced.prism.auth.internal.service.InternalUserService;
 import nan.produced.prism.auth.utils.TraceUtils;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "内部接口-用户", description = "仅供服务间调用（core-service），前端勿用")
@@ -50,6 +54,60 @@ public class InternalUserController {
         } catch (BizException ex) {
             return ResponseEntity.status(ex.getErrorCode().getHttpStatus())
                 .body(ApiResponse.<InternalUserResponse>error(ex.getErrorCode(), ex.getMessage())
+                    .withMeta(TraceUtils.getTraceId(), null));
+        }
+    }
+
+    @GetMapping("/search")
+    @Operation(
+        summary = "搜索用户（email/phone/publicId）",
+        description = """
+            供 core-service 管理端使用的最小搜索接口。
+
+            - 访问路径：对外为 `/auth/internal/users/search`（因为 auth-service context-path 为 `/auth`）；
+            - 鉴权：service-signature + IP 白名单；
+            - 响应体：`ApiResponse<InternalUserSearchPageView>`（内部 RPC 格式）。
+            """)
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "成功返回分页",
+        content = @Content(mediaType = "application/json", schema = @Schema(implementation = InternalUserSearchPageView.class)))
+    public ResponseEntity<ApiResponse<InternalUserSearchPageView>> search(
+        @RequestParam("q") String q,
+        @RequestParam(value = "page", defaultValue = "0") int page,
+        @RequestParam(value = "size", defaultValue = "20") int size) {
+        try {
+            InternalUserSearchPageView response = internalUserService.search(q, page, size);
+            return ResponseEntity.ok(ApiResponse.success(response).withMeta(TraceUtils.getTraceId(), null));
+        } catch (BizException ex) {
+            return ResponseEntity.status(ex.getErrorCode().getHttpStatus())
+                .body(ApiResponse.<InternalUserSearchPageView>error(ex.getErrorCode(), ex.getMessage())
+                    .withMeta(TraceUtils.getTraceId(), null));
+        }
+    }
+
+    @PostMapping("/{userId}/lock")
+    @Operation(summary = "锁定用户")
+    public ResponseEntity<ApiResponse<Object>> lock(@PathVariable("userId") UUID userId) {
+        try {
+            internalUserService.lockUser(userId);
+            return ResponseEntity.ok(ApiResponse.success().withMeta(TraceUtils.getTraceId(), null));
+        } catch (BizException ex) {
+            return ResponseEntity.status(ex.getErrorCode().getHttpStatus())
+                .body(ApiResponse.<Object>error(ex.getErrorCode(), ex.getMessage())
+                    .withMeta(TraceUtils.getTraceId(), null));
+        }
+    }
+
+    @PostMapping("/{userId}/unlock")
+    @Operation(summary = "解锁用户")
+    public ResponseEntity<ApiResponse<Object>> unlock(@PathVariable("userId") UUID userId) {
+        try {
+            internalUserService.unlockUser(userId);
+            return ResponseEntity.ok(ApiResponse.success().withMeta(TraceUtils.getTraceId(), null));
+        } catch (BizException ex) {
+            return ResponseEntity.status(ex.getErrorCode().getHttpStatus())
+                .body(ApiResponse.<Object>error(ex.getErrorCode(), ex.getMessage())
                     .withMeta(TraceUtils.getTraceId(), null));
         }
     }

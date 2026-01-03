@@ -2,8 +2,10 @@ package nan.produced.prism.auth.security.login;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import nan.produced.prism.auth.domain.user.repository.AdminUserRepository;
 import nan.produced.prism.auth.security.login.otp.PrismEmailOtpLoginService;
 import nan.produced.prism.auth.security.login.otp.PrismPhoneOtpLoginService;
+import nan.produced.prism.auth.security.login.pwd.PrismAdminPwdLoginService;
 import nan.produced.prism.auth.security.login.pwd.PrismPwdLoginService;
 import nan.produced.prism.auth.security.otp.EmailOtpService;
 import nan.produced.prism.auth.security.otp.PnvService;
@@ -25,6 +27,8 @@ public class PrismComboLoginService implements PrismLoginInterface{
 
     private final UserDetailsService userDetailsService;
 
+    private final AdminUserRepository adminUserRepository;
+
     private final EmailOtpService emailOtpService;
 
     private final PnvService pnvService;
@@ -38,6 +42,7 @@ public class PrismComboLoginService implements PrismLoginInterface{
         this.authTypeLoginServiceMap.put(LoginAuthType.PHONE_PWD, prismPwdLoginService);
         this.authTypeLoginServiceMap.put(LoginAuthType.EMAIL_OTP, new PrismEmailOtpLoginService(userDetailsService, emailOtpService));
         this.authTypeLoginServiceMap.put(LoginAuthType.PHONE_OTP, new PrismPhoneOtpLoginService(userDetailsService, pnvService));
+        this.authTypeLoginServiceMap.put(LoginAuthType.ADMIN_EMAIL_PWD, new PrismAdminPwdLoginService(adminUserRepository, passwordEncoder));
     }
 
     @Override

@@ -67,6 +67,14 @@ public class SecurityProps {
             private String entryPage = "http://localhost:5173/auth-form";
 
             /**
+             * Console SPA 登录页完整 URL（管理平台）。
+             * <p>
+             * 当访问 /oauth2/authorize 且 client_id 为 prism-console-client 时，会跳转到该页面。
+             * </p>
+             */
+            private String adminEntryPage = "http://localhost:5174/admin-login";
+
+            /**
              * SPA 登录页使用的 continue 参数名
              */
             private String continueParam = "continue";
@@ -126,6 +134,8 @@ public class SecurityProps {
 
             private PrismGatewayClient prismGatewayClient = new PrismGatewayClient();
 
+            private PrismConsoleClient prismConsoleClient = new PrismConsoleClient();
+
             @Data
             public static class PrismGatewayClient {
 
@@ -175,6 +185,53 @@ public class SecurityProps {
                     return new ArrayList<>(dedup);
                 }
 
+            }
+
+            @Data
+            public static class PrismConsoleClient {
+
+                /**
+                 * OIDC client id for the management console.
+                 */
+                private String clientId = "prism-console-client";
+
+                private String clientSecret = "NanProduced";
+
+                /**
+                 * Console gateway host (typically same as API gateway host, but can be split by subdomain).
+                 */
+                private String host = "http://localhost:8082";
+
+                private String redirectUri = host + "/login/oauth2/code/prism-console";
+
+                private String logoutRedirectUri = host + "/logout-status";
+
+                private List<String> postLogoutRedirectUris;
+
+                private String backchannelLogoutUri;
+
+                private String scope = "openid,email,prism.account,prism.session";
+
+                private Long accessTokenValidityMinutes = 30L;
+
+                private Long refreshTokenValidityMinutes = 720L;
+
+                public List<String> resolvePostLogoutRedirectUris() {
+                    if (postLogoutRedirectUris != null && !postLogoutRedirectUris.isEmpty()) {
+                        return postLogoutRedirectUris;
+                    }
+
+                    Set<String> dedup = new LinkedHashSet<>();
+                    if (StringUtils.hasText(logoutRedirectUri)) {
+                        dedup.add(logoutRedirectUri.trim());
+                    }
+                    if (StringUtils.hasText(host)) {
+                        String normalizedHost = host.trim();
+                        dedup.add(normalizedHost + "/logout-status");
+                        dedup.add(normalizedHost + "/logout_status");
+                    }
+                    return new ArrayList<>(dedup);
+                }
             }
         }
     }

@@ -5,11 +5,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.gateway.security.config.GatewaySecurityProps;
 import nan.produced.prism.gateway.security.config.GatewaySecurityProps.ApiPolicy;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.authorization.AuthorizationDecision;
 import org.springframework.security.authorization.AuthorizationManager;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 import org.springframework.stereotype.Component;
@@ -35,6 +40,8 @@ public class GatewayAuthorizationManager implements AuthorizationManager<Request
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
     private final GatewaySecurityProps securityProps;
+    private final OAuth2AuthorizedClientRepository authorizedClientRepository;
+    private final JwtDecoder jwtDecoder;
 
     @Override
     public AuthorizationDecision check(Supplier<Authentication> authentication, RequestAuthorizationContext context) {
@@ -48,7 +55,7 @@ public class GatewayAuthorizationManager implements AuthorizationManager<Request
             return new AuthorizationDecision(false);
         }
 
-        Map<String, Object> claims = extractClaims(auth);
+        Map<String, Object> claims = extractClaims(auth, request);
         boolean granted = evaluatePolicy(policy, claims, requestPath);
         if (!granted) {
             log.info("GatewayAuthorizationManager - access denied for path {} with realm={}, tier={} claims", requestPath,
@@ -127,7 +134,7 @@ public class GatewayAuthorizationManager implements AuthorizationManager<Request
      * @param authentication 认证信息
      * @return 声明
      */
-    private Map<String, Object> extractClaims(Authentication authentication) {
+    private Map<String, Object> extractClaims(Authentication authentication, HttpServletRequest request) {
 
         return switch (authentication) {
 
@@ -136,12 +143,38 @@ public class GatewayAuthorizationManager implements AuthorizationManager<Request
 
 
             // OIDC Login 前端SPA调用
-            case OAuth2AuthenticationToken oidc when oidc.getPrincipal() instanceof DefaultOidcUser oidcUser ->
-                    oidcUser.getClaims();
+            case OAuth2AuthenticationToken oidc when oidc.getPrincipal() instanceof DefaultOidcUser oidcUser -> {
+                Map<String, Object> result = new java.util.HashMap<>(oidcUser.getClaims());
+                Map<String, Object> accessTokenClaims = resolveAccessTokenClaims(oidc, request);
+                if (accessTokenClaims != null && !accessTokenClaims.isEmpty()) {
+                    result.putAll(accessTokenClaims);
+                }
+                yield result;
+            }
 
             case null, default -> Collections.emptyMap();
         };
 
     }
-}
 
+    private Map<String, Object> resolveAccessTokenClaims(OAuth2AuthenticationToken authenticationToken, HttpServletRequest request) {
+        if (authorizedClientRepository == null || jwtDecoder == null || authenticationToken == null || request == null) {
+            return Collections.emptyMap();
+        }
+        try {
+            OAuth2AuthorizedClient client = authorizedClientRepository.loadAuthorizedClient(
+                    authenticationToken.getAuthorizedClientRegistrationId(), authenticationToken, request);
+            if (client == null || client.getAccessToken() == null) {
+                return Collections.emptyMap();
+            }
+            Jwt jwt = jwtDecoder.decode(client.getAccessToken().getTokenValue());
+            return jwt == null ? Collections.emptyMap() : new java.util.HashMap<>(jwt.getClaims());
+        } catch (JwtException ex) {
+            log.warn("GatewayAuthorizationManager - failed to decode access token", ex);
+            return Collections.emptyMap();
+        } catch (Exception ex) {
+            log.warn("GatewayAuthorizationManager - failed to resolve access token claims", ex);
+            return Collections.emptyMap();
+        }
+    }
+}

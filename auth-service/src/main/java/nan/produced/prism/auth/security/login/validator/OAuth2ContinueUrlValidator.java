@@ -47,8 +47,12 @@ public class OAuth2ContinueUrlValidator {
         }
 
         MultiValueMap<String, String> queryParams = components.getQueryParams();
-        String requiredClientId = securityProps.getOauth2().getClient().getPrismGatewayClient().getClientId();
-        if (!requiredClientId.equals(queryParams.getFirst("client_id"))) {
+        String clientId = queryParams.getFirst("client_id");
+        String gatewayClientId = securityProps.getOauth2().getClient().getPrismGatewayClient().getClientId();
+        String consoleClientId = securityProps.getOauth2().getClient().getPrismConsoleClient().getClientId();
+        boolean matchesGateway = gatewayClientId != null && gatewayClientId.equals(clientId);
+        boolean matchesConsole = consoleClientId != null && consoleClientId.equals(clientId);
+        if (!matchesGateway && !matchesConsole) {
             throw new IllegalArgumentException("continueUrl client_id mismatch");
         }
 

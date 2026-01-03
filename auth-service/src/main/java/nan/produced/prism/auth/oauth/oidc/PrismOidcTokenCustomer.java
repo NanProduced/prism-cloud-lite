@@ -119,8 +119,26 @@ public class PrismOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncoding
         if (authorization != null) {
             claims.put(CLAIM_SESSION_ID, authorization.getAttribute(CLAIM_SESSION_ID));
         }
-        claims.put(CLAIM_REALM, "END_USER");
+        claims.put(CLAIM_REALM, resolveRealm(context));
         return claims;
+    }
+
+    private String resolveRealm(JwtEncodingContext context) {
+        if (context == null) {
+            return "END_USER";
+        }
+        if (AuthorizationGrantType.CLIENT_CREDENTIALS.equals(context.getAuthorizationGrantType())) {
+            return "END_USER";
+        }
+        Authentication authentication = context.getPrincipal();
+        Object principal = authentication == null ? null : authentication.getPrincipal();
+        if (principal instanceof PrismUserPrincipal prismUserPrincipal && prismUserPrincipal.getUserType() != null) {
+            return switch (prismUserPrincipal.getUserType()) {
+                case ADMIN, MANAGER -> "ADMIN";
+                default -> "END_USER";
+            };
+        }
+        return "END_USER";
     }
 
     private String resolveUserUuid(Authentication authentication) {

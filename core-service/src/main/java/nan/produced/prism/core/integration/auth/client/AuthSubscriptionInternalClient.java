@@ -1,7 +1,9 @@
 package nan.produced.prism.core.integration.auth.client;
 
 import java.util.UUID;
+import java.util.List;
 import nan.produced.prism.core.common.response.ApiResponse;
+import nan.produced.prism.core.integration.auth.dto.AuthRedeemCodeBatchCreateRequest;
 import nan.produced.prism.core.integration.auth.dto.AuthSubscriptionHistoryPageView;
 import nan.produced.prism.core.integration.auth.dto.AuthSubscriptionRedeemRequest;
 import nan.produced.prism.core.integration.auth.dto.AuthSubscriptionView;
@@ -25,5 +27,7 @@ public interface AuthSubscriptionInternalClient {
     ApiResponse<AuthSubscriptionHistoryPageView> listEvents(@RequestParam("userId") UUID userId,
                                                             @RequestParam("page") int page,
                                                             @RequestParam("size") int size);
-}
 
+    @PostMapping("/redeem-codes/batch")
+    ApiResponse<List<String>> createRedeemCodeBatch(@RequestBody AuthRedeemCodeBatchCreateRequest request);
+}

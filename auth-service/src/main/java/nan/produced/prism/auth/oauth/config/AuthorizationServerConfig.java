@@ -128,6 +128,13 @@ public class AuthorizationServerConfig {
         if (existing == null || needsUpdate(existing, desired)) {
             jdbcRegisteredClientRepository.save(desired);
         }
+
+        String consoleClientId = securityProps.getOauth2().getClient().getPrismConsoleClient().getClientId();
+        RegisteredClient existingConsole = jdbcRegisteredClientRepository.findByClientId(consoleClientId);
+        RegisteredClient desiredConsole = buildConsoleClient(passwordEncoder, existingConsole);
+        if (existingConsole == null || needsUpdate(existingConsole, desiredConsole)) {
+            jdbcRegisteredClientRepository.save(desiredConsole);
+        }
         return jdbcRegisteredClientRepository;
     }
 
@@ -167,6 +174,42 @@ public class AuthorizationServerConfig {
                 ;
 
         securityProps.getOauth2().getClient().getPrismGatewayClient()
+                .resolvePostLogoutRedirectUris()
+                .forEach(builder::postLogoutRedirectUri);
+
+        scopes.forEach(builder::scope);
+        return builder.build();
+    }
+
+    private RegisteredClient buildConsoleClient(PasswordEncoder passwordEncoder, RegisteredClient existing) {
+        String scopeRaw = securityProps.getOauth2().getClient().getPrismConsoleClient().getScope();
+        Set<String> scopes = parseScopes(scopeRaw);
+
+        String rawSecret = securityProps.getOauth2().getClient().getPrismConsoleClient().getClientSecret();
+        String encodedSecret = existing != null && existing.getClientSecret() != null
+                ? existing.getClientSecret()
+                : passwordEncoder.encode(rawSecret);
+
+        RegisteredClient.Builder builder = RegisteredClient.withId(existing != null ? existing.getId() : UUID.randomUUID().toString())
+                .clientId(securityProps.getOauth2().getClient().getPrismConsoleClient().getClientId())
+                .clientSecret(encodedSecret)
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .redirectUri(securityProps.getOauth2().getClient().getPrismConsoleClient().getRedirectUri())
+                .clientSettings(ClientSettings.builder()
+                        .requireAuthorizationConsent(false)
+                        .setting("settings.client.backchannel-logout-uri",
+                                securityProps.getOauth2().getClient().getPrismConsoleClient().getBackchannelLogoutUri())
+                        .setting("settings.client.backchannel-logout-session-required",
+                                Boolean.TRUE)
+                        .build())
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofMinutes(securityProps.getOauth2().getClient().getPrismConsoleClient().getAccessTokenValidityMinutes()))
+                        .refreshTokenTimeToLive(Duration.ofDays(securityProps.getOauth2().getClient().getPrismConsoleClient().getRefreshTokenValidityMinutes()))
+                        .build());
+
+        securityProps.getOauth2().getClient().getPrismConsoleClient()
                 .resolvePostLogoutRedirectUris()
                 .forEach(builder::postLogoutRedirectUri);
 
