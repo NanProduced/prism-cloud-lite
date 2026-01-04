@@ -332,6 +332,7 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
             Long commandTtl) {
 
         boolean accepted = result != null && result.isAccepted();
+        Long effectiveTtlMinutes = commandTtl != null && commandTtl > 0 ? commandTtl : 60L;
         return DeviceCommandLog.builder()
                 .id(IdGenerator.nextId())
                 .userId(userId)
@@ -341,7 +342,7 @@ public class DeviceActionDispatchApplicationService implements DeviceActionDispa
                 .trackingLevel(action != null && action.getType() != null ? action.getType().getTrackingLevel() : null)
                 .status(accepted ? DeviceCommandStatus.PUBLISHED : DeviceCommandStatus.FAILED)
                 .payload(JsonUtils.toJson(action != null ? action.getBody() : null))
-                .ttlMinutes(commandTtl)
+                .ttlMinutes(effectiveTtlMinutes)
                 .sendMethod(result != null ? result.getSendMethod() : null)
                 .queuedId(result != null ? result.getQueuedId() : null)
                 .accepted(accepted)

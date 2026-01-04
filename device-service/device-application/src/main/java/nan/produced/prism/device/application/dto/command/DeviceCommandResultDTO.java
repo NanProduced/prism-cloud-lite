@@ -51,7 +51,9 @@ public class DeviceCommandResultDTO {
                 .deviceId(deviceId)
                 .commandId(commandId)
                 .accepted(true)
+                .covered(covered)
+                .sendMethod(sendMethod)
+                .queuedId(queueId)
                 .build();
     }
 }
-
