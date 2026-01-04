@@ -3,6 +3,7 @@ package nan.produced.prism.auth.subscription;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -116,13 +117,13 @@ public class SubscriptionService {
         target.setEndAt(newEndAt);
         userSubscriptionRepository.save(target);
 
-        recordRedeemEvent(userId, true, code, Map.of(
-            "oldTier", oldTier.name(),
-            "newTier", newTier.name(),
-            "oldEndAt", oldEndAt,
-            "newEndAt", newEndAt,
-            "durationDays", durationDays
-        ));
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("oldTier", oldTier.name());
+        metadata.put("newTier", newTier.name());
+        metadata.put("oldEndAt", oldEndAt);
+        metadata.put("newEndAt", newEndAt);
+        metadata.put("durationDays", durationDays);
+        recordRedeemEvent(userId, true, code, metadata);
 
         return new SubscriptionSnapshot(newTier, target.getStartAt(), newEndAt, true);
     }

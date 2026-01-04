@@ -21,17 +21,17 @@ public class SubscriptionQuotaApplicationService implements SubscriptionQuotaFac
     private static final SubscriptionQuota DEFAULT_FREE = new SubscriptionQuota(
             20,
             2L * 1024 * 1024 * 1024, // 2GB
-            50,
-            5,
-            2
+            20,
+            100,
+            3
     );
 
     private static final SubscriptionQuota DEFAULT_PRO = new SubscriptionQuota(
             100,
-            10L * 1024 * 1024 * 1024, // 10GB
-            -1,
-            20,
-            10
+            50L * 1024 * 1024 * 1024, // 50GB
+            200,
+            1000,
+            20
     );
 
     private final PlatformConfigRepositoryJpa platformConfigRepositoryJpa;
