@@ -217,8 +217,93 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
             }
 
             String content = assistant.getText();
+
+            // Fallback for models/servers that don't support structured tool calls but emit them in text:
+            //   <tool_call> {"name":"xxx","arguments":{...}} </tool_call>
+            List<AssistantToolCall> embeddedToolCalls = parseToolCallsFromText(content, maxCallsPerRound);
+            if (embeddedToolCalls != null && !embeddedToolCalls.isEmpty()) {
+                String stripped = stripToolCallBlocks(content);
+                if (StringUtils.hasText(stripped)) {
+                    history.add(new AssistantMessage(stripped));
+                } else {
+                    history.add(new AssistantMessage(""));
+                }
+
+                var toolResults = objectMapper.createArrayNode();
+                int callCount = 0;
+                for (AssistantToolCall call : embeddedToolCalls) {
+                    callCount++;
+                    if (callCount > maxCallsPerRound) {
+                        String toolCallId = "tool-" + UUID.randomUUID();
+                        if (toolEvents != null) {
+                            toolEvents.onToolOutputError(toolCallId, "Too many tool calls in one request");
+                        }
+                        ObjectNode err = objectMapper.createObjectNode();
+                        err.put("error", "too_many_tool_calls");
+                        ObjectNode item = objectMapper.createObjectNode();
+                        item.put("toolCallId", toolCallId);
+                        item.put("toolName", "toolLimit");
+                        item.set("input", objectMapper.createObjectNode());
+                        item.set("output", err);
+                        toolResults.add(item);
+                        break;
+                    }
+
+                    if (toolEvents != null) {
+                        toolEvents.onToolInputAvailable(call.toolCallId(), call.toolName(), call.input());
+                    }
+
+                    var exec = toolExecutor.execute(userId, call);
+                    if (exec.success()) {
+                        if (toolEvents != null) {
+                            toolEvents.onToolOutputAvailable(call.toolCallId(), exec.output());
+                        }
+                        ObjectNode item = objectMapper.createObjectNode();
+                        item.put("toolCallId", call.toolCallId());
+                        item.put("toolName", call.toolName());
+                        item.set("input", call.input());
+                        item.set("output", exec.output());
+                        toolResults.add(item);
+                    } else {
+                        if (toolEvents != null) {
+                            toolEvents.onToolOutputError(call.toolCallId(), exec.errorText());
+                        }
+                        ObjectNode err = objectMapper.createObjectNode();
+                        err.put("error", exec.errorText() == null ? "Tool error" : exec.errorText());
+                        ObjectNode item = objectMapper.createObjectNode();
+                        item.put("toolCallId", call.toolCallId());
+                        item.put("toolName", call.toolName());
+                        item.set("input", call.input());
+                        item.set("output", err);
+                        toolResults.add(item);
+                    }
+                }
+
+                // In text-embedded tool-call fallback mode, feed tool results back as plain messages for maximum
+                // compatibility with OpenAI-compatible servers that don't implement tool role/tool_calls fully.
+                history.add(new SystemMessage("""
+                        以下是服务端执行的工具调用结果（JSON）：
+                        %s
+
+                        请基于这些结果继续回答用户；不要输出任何 <tool_call> 或 </tool_call> 标签。
+                        """.formatted(toJsonString(toolResults, maxToolResultChars))));
+
+                toolRounds++;
+                if (toolRounds >= maxToolRounds) {
+                    onDelta.accept("工具调用轮次过多，已中止。请缩小问题范围或提供更具体的条件。");
+                    Integer pt = safeIntOrNull(promptTokensSum);
+                    Integer ct = safeIntOrNull(completionTokensSum);
+                    Integer tt = safeIntOrNull(promptTokensSum + completionTokensSum);
+                    return new StreamResult("error", pt, ct, tt);
+                }
+                continue;
+            }
+
             if (StringUtils.hasText(content)) {
-                onDelta.accept(content);
+                String cleaned = stripToolCallBlocks(content);
+                if (StringUtils.hasText(cleaned)) {
+                    onDelta.accept(cleaned);
+                }
             }
             String finishReason = response.getResult().getMetadata() != null ? response.getResult().getMetadata().getFinishReason() : null;
             Integer pt = safeIntOrNull(promptTokensSum);
@@ -384,5 +469,89 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
         } catch (Exception e) {
             return "{\"error\":\"failed_to_serialize\"}";
         }
+    }
+
+    List<AssistantToolCall> parseToolCallsFromText(String content, int maxCallsPerRound) {
+        if (!StringUtils.hasText(content)) {
+            return List.of();
+        }
+        int searchFrom = 0;
+        List<AssistantToolCall> calls = new ArrayList<>();
+        while (searchFrom < content.length()) {
+            int start = content.indexOf("<tool_call>", searchFrom);
+            if (start < 0) {
+                break;
+            }
+            int end = content.indexOf("</tool_call>", start);
+            if (end < 0) {
+                break;
+            }
+
+            if (maxCallsPerRound > 0 && calls.size() >= maxCallsPerRound) {
+                break;
+            }
+
+            String raw = content.substring(start + "<tool_call>".length(), end).trim();
+            String json = stripMarkdownCodeFence(raw);
+            try {
+                JsonNode node = objectMapper.readTree(json);
+                String toolName = node != null && node.hasNonNull("name") ? node.get("name").asText() : null;
+                if (!StringUtils.hasText(toolName)) {
+                    searchFrom = end + "</tool_call>".length();
+                    continue;
+                }
+                JsonNode argsNode = node.has("arguments") ? node.get("arguments") : null;
+                if (argsNode == null || argsNode.isNull()) {
+                    argsNode = objectMapper.createObjectNode();
+                } else if (argsNode.isTextual()) {
+                    argsNode = parseArgs(argsNode.asText());
+                }
+                calls.add(new AssistantToolCall("tool-" + UUID.randomUUID(), toolName, argsNode));
+            } catch (Exception ignore) {
+                // ignore invalid embedded tool call block
+            }
+
+            searchFrom = end + "</tool_call>".length();
+        }
+        return calls;
+    }
+
+    static String stripToolCallBlocks(String content) {
+        if (!StringUtils.hasText(content)) {
+            return content;
+        }
+        String out = content;
+        int guard = 0;
+        while (guard++ < 50) {
+            int start = out.indexOf("<tool_call>");
+            if (start < 0) {
+                break;
+            }
+            int end = out.indexOf("</tool_call>", start);
+            if (end < 0) {
+                break;
+            }
+            out = out.substring(0, start) + out.substring(end + "</tool_call>".length());
+        }
+        return out.trim();
+    }
+
+    static String stripMarkdownCodeFence(String text) {
+        if (!StringUtils.hasText(text)) {
+            return text;
+        }
+        String t = text.trim();
+        if (!t.startsWith("```")) {
+            return t;
+        }
+        int firstNewline = t.indexOf('\n');
+        if (firstNewline < 0) {
+            return t;
+        }
+        int lastFence = t.lastIndexOf("```");
+        if (lastFence <= firstNewline) {
+            return t.substring(firstNewline + 1).trim();
+        }
+        return t.substring(firstNewline + 1, lastFence).trim();
     }
 }
