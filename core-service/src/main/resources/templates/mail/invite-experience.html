@@ -15,21 +15,21 @@
 
         <div style="padding:24px;">
             <p style="margin:0 0 12px 0;font-size:14px;line-height:1.6;">
-                你好<span th:if="${name != null and #strings.isNotEmpty(name)}" th:text="'，' + ${name}">，朋友</span>：
+                你好<span th:if="${name != null and !#strings.isEmpty(name)}" th:text="'，' + ${name}">，朋友</span>：
             </p>
             <p style="margin:0 0 14px 0;font-size:14px;line-height:1.8;color:#334155;">
                 我们邀请你体验 <span style="font-weight:700;" th:text="${productName}">Prism Cloud Lite</span>。
                 如果你愿意，现在就可以点击下面按钮开始体验。
             </p>
 
-            <div th:if="${ctaUrl != null and #strings.isNotEmpty(ctaUrl)}" style="margin:18px 0 16px 0;">
+            <div th:if="${ctaUrl != null and !#strings.isEmpty(ctaUrl)}" style="margin:18px 0 16px 0;">
                 <a th:href="${ctaUrl}"
                    style="display:inline-block;background:#111827;color:#fff;text-decoration:none;padding:12px 16px;border-radius:12px;font-size:14px;font-weight:700;">
                     开始体验
                 </a>
             </div>
 
-            <div th:if="${noteHtml != null and #strings.isNotEmpty(noteHtml)}"
+            <div th:if="${noteHtml != null and !#strings.isEmpty(noteHtml)}"
                  style="margin-top:14px;padding:14px 16px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;">
                 <div style="font-size:12px;color:#64748b;margin-bottom:6px;">补充说明</div>
                 <div th:utext="${noteHtml}" style="font-size:14px;line-height:1.7;color:#0f172a;"></div>
@@ -47,4 +47,3 @@
 </div>
 </body>
 </html>
-

@@ -52,9 +52,22 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 ENV TZ=Asia/Shanghai
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl \
-  && rm -rf /var/lib/apt/lists/*
+ARG INSTALL_FFMPEG="false"
+ARG APT_MIRROR_URL=""
+
+RUN set -eux; \
+  if [ -n "$APT_MIRROR_URL" ]; then \
+    find /etc/apt -type f \( -name '*.list' -o -name '*.sources' -o -name 'sources.list' \) -print0 \
+      | xargs -0 sed -i \
+        -e "s|http://archive.ubuntu.com/ubuntu|$APT_MIRROR_URL|g" \
+        -e "s|http://security.ubuntu.com/ubuntu|$APT_MIRROR_URL|g"; \
+  fi; \
+  apt-get update -o Acquire::Retries=5; \
+  apt-get install -y --no-install-recommends ca-certificates curl; \
+  if [ "$INSTALL_FFMPEG" = "true" ]; then \
+    apt-get install -y --no-install-recommends ffmpeg; \
+  fi; \
+  rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /out/app.jar /app/app.jar
 COPY docker/wait-for-url.sh /usr/local/bin/wait-for-url
