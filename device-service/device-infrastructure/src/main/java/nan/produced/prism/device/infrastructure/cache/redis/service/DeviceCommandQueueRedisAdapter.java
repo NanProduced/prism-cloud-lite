@@ -267,9 +267,19 @@ public class DeviceCommandQueueRedisAdapter implements DeviceCommandQueuePort {
         for (Object commandData : commandResult) {
             if (commandData != null) {
                 try {
-                    String commandJson = "";
-                    if (commandData instanceof  byte[] commandBytes) {
+                    String commandJson;
+                    if (commandData instanceof byte[] commandBytes) {
                         commandJson = new String(commandBytes, StandardCharsets.UTF_8);
+                    } else if (commandData instanceof String s) {
+                        commandJson = s;
+                    } else {
+                        commandJson = commandData.toString();
+                    }
+
+                    if (StringUtils.isBlank(commandJson)) {
+                        log.warn("DeviceCommandQueue - 指令详情为空，跳过解析, deviceId: {}, commandDataType: {}",
+                                deviceId, commandData.getClass().getName());
+                        continue;
                     }
 
                     DeviceCommand command = JsonUtils.fromJson(commandJson, DeviceCommand.class);
