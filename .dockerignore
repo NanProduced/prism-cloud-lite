@@ -1,0 +1,13 @@
+.git
+.idea
+.serena
+.claude
+
+**/target
+**/*.log
+
+docs
+help
+ai-stack
+scripts
+*.iml

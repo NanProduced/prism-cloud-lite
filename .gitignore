@@ -50,3 +50,7 @@ docker-compose.yml
 docs/
 .serena/
 ai-stack
+
+docker-compose.app.yml
+.env
+.env.*

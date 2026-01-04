@@ -1,0 +1,38 @@
+FROM maven:3.9.9-eclipse-temurin-21 AS build
+
+WORKDIR /src
+COPY . .
+
+ARG MODULE
+RUN test -n "$MODULE"
+
+# Build only the requested module (and its deps) as a runnable Spring Boot jar.
+RUN ./mvnw -q -pl "$MODULE" -am -DskipTests package
+
+# Pick the repackaged jar (exclude *.jar.original) and normalize name for runtime image.
+RUN set -eux; \
+  JAR_PATH="$(ls -1 "$MODULE"/target/*.jar | grep -v '\\.jar\\.original$' | head -n 1)"; \
+  test -f "$JAR_PATH"; \
+  mkdir -p /out; \
+  cp "$JAR_PATH" /out/app.jar
+
+FROM eclipse-temurin:21-jre
+
+WORKDIR /app
+ENV TZ=Asia/Shanghai
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /out/app.jar /app/app.jar
+COPY docker/wait-for-url.sh /usr/local/bin/wait-for-url
+RUN chmod +x /usr/local/bin/wait-for-url
+
+ENV JAVA_OPTS=""
+ENV WAIT_FOR_URL=""
+ENV WAIT_FOR_TEXT=""
+ENV WAIT_FOR_TIMEOUT_SECONDS="120"
+ENV WAIT_FOR_INTERVAL_SECONDS="2"
+
+ENTRYPOINT ["sh", "-c", "if [ -n \"$WAIT_FOR_URL\" ]; then wait-for-url \"$WAIT_FOR_URL\" \"$WAIT_FOR_TEXT\" \"$WAIT_FOR_TIMEOUT_SECONDS\" \"$WAIT_FOR_INTERVAL_SECONDS\"; fi; exec java $JAVA_OPTS -jar /app/app.jar"]
