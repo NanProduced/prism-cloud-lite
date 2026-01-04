@@ -3,94 +3,61 @@
     <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="auth-service"/>
     <springProperty scope="context" name="ENV" source="spring.profiles.active" defaultValue="dev"/>
 
-    <!-- Dev 环境专用：可读格式控制台输出 -->
-    <appender name="CONSOLE_DEV" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) [%thread] %cyan([%X{traceId:--},%X{spanId:--}]) %yellow(%-40.40logger{39}) : %msg%n</pattern>
-            <charset>UTF-8</charset>
-        </encoder>
-    </appender>
+    <property name="LOG_PATTERN_PLAIN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] [${APP_NAME},${ENV}] [%X{traceId:--},%X{spanId:--}] %logger{36} : %msg%n%ex{full}"/>
 
-    <!-- 生产环境：JSON 格式控制台输出（用于 ELK） -->
-    <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <!-- 自定义字段 -->
-            <customFields>{"service":"${APP_NAME}","env":"${ENV}"}</customFields>
-
-            <!-- 包含 MDC 字段（traceId, spanId 由 Micrometer Tracing 自动注入） -->
-            <includeMdcKeyName>traceId</includeMdcKeyName>
-            <includeMdcKeyName>spanId</includeMdcKeyName>
-            <includeMdcKeyName>bizTag</includeMdcKeyName>
-
-            <!-- 字段名称映射 -->
-            <fieldNames>
-                <timestamp>timestamp</timestamp>
-                <message>message</message>
-                <logger>logger</logger>
-                <thread>thread</thread>
-                <level>level</level>
-                <levelValue>[ignore]</levelValue>
-                <stackTrace>stack_trace</stackTrace>
-            </fieldNames>
-
-            <!-- 时间戳格式 -->
-            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSSZZ</timestampPattern>
-
-            <!-- 缩短日志名称 -->
-            <shortenedLoggerNameLength>36</shortenedLoggerNameLength>
-        </encoder>
-    </appender>
-
-    <!-- File Appender with JSON format (optional, for production) -->
-    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/${APP_NAME}.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>logs/${APP_NAME}.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
-            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
-                <maxFileSize>100MB</maxFileSize>
-            </timeBasedFileNamingAndTriggeringPolicy>
-            <maxHistory>30</maxHistory>
-        </rollingPolicy>
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <customFields>{"service":"${APP_NAME}","env":"${ENV}"}</customFields>
-            <includeMdcKeyName>traceId</includeMdcKeyName>
-            <includeMdcKeyName>spanId</includeMdcKeyName>
-            <includeMdcKeyName>bizTag</includeMdcKeyName>
-            <fieldNames>
-                <timestamp>timestamp</timestamp>
-                <message>message</message>
-                <logger>logger</logger>
-                <thread>thread</thread>
-                <level>level</level>
-                <levelValue>[ignore]</levelValue>
-                <stackTrace>stack_trace</stackTrace>
-            </fieldNames>
-            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSSZZ</timestampPattern>
-            <shortenedLoggerNameLength>36</shortenedLoggerNameLength>
-        </encoder>
-    </appender>
-
-    <!-- 开发环境：仅控制台输出（可读格式） -->
     <springProfile name="dev">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+                <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %highlight(%-5level) [%thread] %cyan([%X{traceId:--},%X{spanId:--}]) %yellow(%-40.40logger{39}) : %msg%n%ex{full}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
         <root level="INFO">
-            <appender-ref ref="CONSOLE_DEV"/>
+            <appender-ref ref="CONSOLE"/>
         </root>
         <logger name="nan.produced.prism" level="DEBUG"/>
     </springProfile>
 
-    <!-- 生产环境：控制台（JSON）+ 文件输出（JSON） -->
     <springProfile name="prod">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+                <pattern>${LOG_PATTERN_PLAIN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
+        <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+            <file>logs/${APP_NAME}.log</file>
+            <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+                <fileNamePattern>logs/${APP_NAME}.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+                <maxFileSize>100MB</maxFileSize>
+                <maxHistory>30</maxHistory>
+            </rollingPolicy>
+            <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+                <pattern>${LOG_PATTERN_PLAIN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
         <root level="INFO">
-            <appender-ref ref="CONSOLE_JSON"/>
+            <appender-ref ref="CONSOLE"/>
             <appender-ref ref="FILE"/>
         </root>
         <logger name="nan.produced.prism" level="INFO"/>
     </springProfile>
 
-    <!-- 其他环境：默认使用 JSON 格式 -->
     <springProfile name="!dev &amp; !prod">
+        <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+            <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+                <pattern>${LOG_PATTERN_PLAIN}</pattern>
+                <charset>UTF-8</charset>
+            </encoder>
+        </appender>
+
         <root level="INFO">
-            <appender-ref ref="CONSOLE_JSON"/>
+            <appender-ref ref="CONSOLE"/>
         </root>
     </springProfile>
 </configuration>
