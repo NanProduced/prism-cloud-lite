@@ -44,6 +44,17 @@ docker compose -f docker-compose.yml -f docker-compose.app.yml ps
 
 如果你的 Postgres 里数据库名不是 `prism-core/prism-auth/prism-device`，改对应容器的 `SPRING_DATASOURCE_URL`。
 
+### Maven 依赖下载失败（TLS / 网络抖动）
+
+如果在 build 阶段出现类似错误：
+
+- `Could not transfer artifact ... from/to central ... SSL peer shut down incorrectly`
+
+可按需在 `.env` 或命令行提供以下变量，让 build 使用镜像源/重试：
+
+- `MAVEN_MIRROR_URL=https://maven.aliyun.com/repository/public`（推荐：包含 central + 常用补充仓库）
+- `MAVEN_INSECURE_SSL=true`（不推荐，仅临时排障）
+
 ## 3) 停止/清理
 
 停止（保留数据卷）：

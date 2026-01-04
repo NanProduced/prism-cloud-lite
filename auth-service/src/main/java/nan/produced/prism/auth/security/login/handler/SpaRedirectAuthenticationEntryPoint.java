@@ -18,6 +18,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -124,11 +125,129 @@ public class SpaRedirectAuthenticationEntryPoint implements AuthenticationEntryP
      * @return 完整的原始请求URL
      */
     private String buildOriginalRequestUrl(HttpServletRequest request) {
-        StringBuffer requestURL = request.getRequestURL();
+        String scheme = firstForwardedValue(request.getHeader("X-Forwarded-Proto"));
+        HostAndPort forwardedHost = parseHostAndPort(firstForwardedValue(request.getHeader("X-Forwarded-Host")));
+        Integer forwardedPort = parsePort(firstForwardedValue(request.getHeader("X-Forwarded-Port")));
+
+        String resolvedScheme = StringUtils.hasText(scheme) ? scheme : request.getScheme();
+        String resolvedHost = StringUtils.hasText(forwardedHost.host) ? forwardedHost.host : request.getServerName();
+        Integer resolvedPort = forwardedPort != null
+                ? forwardedPort
+                : (forwardedHost.port != null ? forwardedHost.port : request.getServerPort());
+
+        if (looksInternalHost(resolvedHost)) {
+            URI publicBase = resolvePublicBaseUri(request);
+            if (publicBase != null && StringUtils.hasText(publicBase.getHost())) {
+                if (StringUtils.hasText(publicBase.getScheme())) {
+                    resolvedScheme = publicBase.getScheme();
+                }
+                resolvedHost = publicBase.getHost();
+                if (publicBase.getPort() > 0) {
+                    resolvedPort = publicBase.getPort();
+                } else {
+                    resolvedPort = defaultPortForScheme(resolvedScheme);
+                }
+            }
+        }
+
+        StringBuilder url = new StringBuilder();
+        url.append(resolvedScheme).append("://").append(resolvedHost);
+        if (resolvedPort != null && resolvedPort > 0 && !isDefaultPort(resolvedScheme, resolvedPort)) {
+            url.append(':').append(resolvedPort);
+        }
+        url.append(request.getRequestURI());
+
         String queryString = request.getQueryString();
         if (StringUtils.hasText(queryString)) {
-            requestURL.append('?').append(queryString);
+            url.append('?').append(queryString);
         }
-        return requestURL.toString();
+        return url.toString();
+    }
+
+    private URI resolvePublicBaseUri(HttpServletRequest request) {
+        String clientId = request != null ? request.getParameter("client_id") : null;
+        String consoleClientId = securityProps.getOauth2().getClient().getPrismConsoleClient().getClientId();
+        String configuredHost;
+        if (StringUtils.hasText(clientId) && StringUtils.hasText(consoleClientId) && consoleClientId.equals(clientId)) {
+            configuredHost = securityProps.getOauth2().getClient().getPrismConsoleClient().getHost();
+        } else {
+            configuredHost = securityProps.getOauth2().getClient().getPrismGatewayClient().getHost();
+        }
+        if (!StringUtils.hasText(configuredHost)) return null;
+        try {
+            return URI.create(configuredHost.trim());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    private static String firstForwardedValue(String headerValue) {
+        if (!StringUtils.hasText(headerValue)) return null;
+        String v = headerValue.trim();
+        int comma = v.indexOf(',');
+        return (comma >= 0 ? v.substring(0, comma) : v).trim();
+    }
+
+    private static HostAndPort parseHostAndPort(String hostValue) {
+        if (!StringUtils.hasText(hostValue)) return new HostAndPort(null, null);
+        String v = hostValue.trim();
+
+        if (v.startsWith("[") && v.contains("]")) {
+            return new HostAndPort(v, null);
+        }
+
+        int idx = v.lastIndexOf(':');
+        if (idx > 0 && idx < v.length() - 1) {
+            String maybePort = v.substring(idx + 1);
+            Integer port = parsePort(maybePort);
+            if (port != null) {
+                return new HostAndPort(v.substring(0, idx), port);
+            }
+        }
+        return new HostAndPort(v, null);
+    }
+
+    private static Integer parsePort(String input) {
+        if (!StringUtils.hasText(input)) return null;
+        String v = input.trim();
+        try {
+            int p = Integer.parseInt(v);
+            if (p <= 0 || p > 65535) return null;
+            return p;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static int defaultPortForScheme(String scheme) {
+        if (!StringUtils.hasText(scheme)) return 80;
+        return "https".equalsIgnoreCase(scheme) ? 443 : 80;
+    }
+
+    private static boolean isDefaultPort(String scheme, int port) {
+        if (!StringUtils.hasText(scheme)) return port == 80;
+        return ("https".equalsIgnoreCase(scheme) && port == 443) || ("http".equalsIgnoreCase(scheme) && port == 80);
+    }
+
+    private static boolean looksInternalHost(String host) {
+        if (!StringUtils.hasText(host)) return true;
+        String h = host.trim().toLowerCase();
+        if ("localhost".equals(h) || "auth-service".equals(h) || "gateway-service".equals(h)) return true;
+        if (h.startsWith("127.") || h.startsWith("10.") || h.startsWith("192.168.")) return true;
+        if (h.startsWith("172.")) {
+            String[] parts = h.split("\\.");
+            if (parts.length >= 2) {
+                try {
+                    int second = Integer.parseInt(parts[1]);
+                    return second >= 16 && second <= 31;
+                } catch (NumberFormatException ignored) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private record HostAndPort(String host, Integer port) {
     }
 }

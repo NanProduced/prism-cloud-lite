@@ -6,8 +6,39 @@ COPY . .
 ARG MODULE
 RUN test -n "$MODULE"
 
+# Optional: use a Maven mirror if Maven Central TLS is flaky in your network.
+# Example: https://maven.aliyun.com/repository/central
+ARG MAVEN_MIRROR_URL=""
+# Optional: allow insecure TLS (NOT recommended). Use only for temporary debugging.
+ARG MAVEN_INSECURE_SSL="false"
+
 # Build only the requested module (and its deps) as a runnable Spring Boot jar.
-RUN ./mvnw -q -pl "$MODULE" -am -DskipTests package
+RUN --mount=type=cache,target=/root/.m2 \
+  set -eux; \
+  mkdir -p /root/.m2; \
+  if [ -n "$MAVEN_MIRROR_URL" ]; then \
+    printf '%s\n' \
+      '<settings xmlns="http://maven.apache.org/SETTINGS/1.2.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.2.0 https://maven.apache.org/xsd/settings-1.2.0.xsd">' \
+      '  <mirrors>' \
+      '    <mirror>' \
+      '      <id>mirror-central</id>' \
+      '      <mirrorOf>central</mirrorOf>' \
+      "      <url>${MAVEN_MIRROR_URL}</url>" \
+      '    </mirror>' \
+      '  </mirrors>' \
+      '</settings>' \
+      > /root/.m2/settings.xml; \
+  fi; \
+  EXTRA_SSL_ARGS=""; \
+  if [ "$MAVEN_INSECURE_SSL" = "true" ]; then \
+    EXTRA_SSL_ARGS="-Dmaven.wagon.http.ssl.insecure=true -Dmaven.wagon.http.ssl.allowall=true"; \
+  fi; \
+  ./mvnw -B -q -pl "$MODULE" -am -DskipTests \
+    -U \
+    -Dmaven.wagon.http.retryHandler.count=5 \
+    -Dmaven.wagon.http.retryHandler.requestSentEnabled=true \
+    $EXTRA_SSL_ARGS \
+    package
 
 # Pick the repackaged jar (exclude *.jar.original) and normalize name for runtime image.
 RUN set -eux; \
