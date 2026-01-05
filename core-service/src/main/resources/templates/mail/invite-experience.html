@@ -1,48 +1,70 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title th:text="${productName} + ' 体验邀请'">体验邀请</title>
+    <title th:text="${productName} + ' 体验邀请'">内测邀请</title>
 </head>
-<body style="margin:0;padding:0;background:#f6f7fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:#0f172a;">
-<div style="max-width:720px;margin:0 auto;padding:24px;">
-    <div style="background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
-        <div style="padding:22px 24px;background:linear-gradient(135deg,#0ea5e9,#6366f1);color:#fff;">
-            <div style="font-size:14px;opacity:.9;">邀请体验</div>
-            <div style="font-size:20px;font-weight:700;line-height:1.2;margin-top:6px;" th:text="${productName}">Prism Cloud Lite</div>
-        </div>
+<body style="margin:0;padding:0;background-color:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;-webkit-font-smoothing:antialiased;">
+<div style="max-width:560px;margin:0 auto;padding:60px 20px;">
 
-        <div style="padding:24px;">
-            <p style="margin:0 0 12px 0;font-size:14px;line-height:1.6;">
-                你好<span th:if="${name != null and !#strings.isEmpty(name)}" th:text="'，' + ${name}">，朋友</span>：
-            </p>
-            <p style="margin:0 0 14px 0;font-size:14px;line-height:1.8;color:#334155;">
-                我们邀请你体验 <span style="font-weight:700;" th:text="${productName}">Prism Cloud Lite</span>。
-                如果你愿意，现在就可以点击下面按钮开始体验。
-            </p>
-
-            <div th:if="${ctaUrl != null and !#strings.isEmpty(ctaUrl)}" style="margin:18px 0 16px 0;">
-                <a th:href="${ctaUrl}"
-                   style="display:inline-block;background:#111827;color:#fff;text-decoration:none;padding:12px 16px;border-radius:12px;font-size:14px;font-weight:700;">
-                    开始体验
-                </a>
-            </div>
-
-            <div th:if="${noteHtml != null and !#strings.isEmpty(noteHtml)}"
-                 style="margin-top:14px;padding:14px 16px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;">
-                <div style="font-size:12px;color:#64748b;margin-bottom:6px;">补充说明</div>
-                <div th:utext="${noteHtml}" style="font-size:14px;line-height:1.7;color:#0f172a;"></div>
-            </div>
-
-            <hr style="border:none;border-top:1px solid #e5e7eb;margin:22px 0;"/>
-            <p style="margin:0;font-size:12px;line-height:1.6;color:#64748b;">
-                如需帮助或反馈问题，可直接回复此邮件（或在产品内使用“提个 bug/反馈”）。
-            </p>
+    <div style="margin-bottom:40px; text-align: left;">
+        <div style="display:inline-block; font-size:18px; font-weight:700; color:#0f172a; letter-spacing:-0.5px;">
+            <span style="background:#0f172a; color:#fff; padding:4px 8px; border-radius:6px; margin-right:8px;">P</span>
+            <span th:text="${productName}">Prism Cloud Lite</span>
         </div>
     </div>
-    <div style="text-align:center;font-size:12px;color:#94a3b8;margin-top:14px;">
-        <span th:text="${productName}">Prism Cloud Lite</span>
+
+    <div style="border-top:4px solid #0f172a; padding-top:40px;">
+        <h2 style="font-size:24px; font-weight:800; color:#0f172a; margin:0 0 24px 0; line-height:1.3;">
+            加入我们的内测计划
+        </h2>
+
+        <p style="font-size:15px; line-height:1.8; color:#475569; margin-bottom:20px;">
+            你好 <span th:if="${name != null and !#strings.isEmpty(name)}" th:text="${name}" style="font-weight:600; color:#0f172a;">朋友</span>，
+        </p>
+
+        <p style="font-size:15px; line-height:1.8; color:#475569; margin-bottom:30px;">
+            我们正在构建 <span th:text="${productName}">Prism Cloud Lite</span> —— 一个轻量直观的远程播控平台。目前该平台已开启内测，我们诚挚地邀请你参与体验，帮助我们打磨产品细节。
+        </p>
+
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:24px; margin-bottom:40px;">
+            <div style="display: flex; margin-bottom: 20px;">
+                <div style="font-size:20px; margin-right:12px; line-height: 1;">✨</div>
+                <div>
+                    <div style="font-size:14px; font-weight:700; color:#0f172a; margin-bottom:4px;">新功能：AI Assistant</div>
+                    <div style="font-size:13px; line-height:1.6; color:#64748b;">内置智能助手，可随时解答你在操作过程中的疑问。</div>
+                </div>
+            </div>
+            <div style="display: flex;">
+                <div style="font-size:20px; margin-right:12px; line-height: 1;">🐛</div>
+                <div>
+                    <div style="font-size:14px; font-weight:700; color:#0f172a; margin-bottom:4px;">反馈与建议</div>
+                    <div style="font-size:13px; line-height:1.6; color:#64748b;">
+                        内测阶段可能存在不稳定情况，你可以通过平台内的<strong style="color:#475569;">“反馈”</strong>按钮提交 Bug，我们会快速响应。
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${ctaUrl != null and !#strings.isEmpty(ctaUrl)}" style="margin-bottom:40px;">
+            <a th:href="${ctaUrl}"
+               style="display:inline-block; background:#0f172a; color:#ffffff; text-decoration:none; padding:14px 30px; border-radius:10px; font-size:15px; font-weight:600;">
+                开始内测体验
+            </a>
+        </div>
+
+        <div th:if="${noteHtml != null and !#strings.isEmpty(noteHtml)}"
+             style="border-left:2px solid #e2e8f0; padding-left:20px; margin-bottom:40px;">
+            <div th:utext="${noteHtml}" style="font-size:14px; line-height:1.8; color:#64748b; font-style:italic;"></div>
+        </div>
+
+        <div style="padding-top:30px; border-top:1px solid #f1f5f9;">
+            <p style="margin:0; font-size:13px; color:#94a3b8; line-height:1.6;">
+                诚挚地，<br/>
+                <strong style="color:#475569;" th:text="${productName}">Prism Cloud Lite</strong> 团队
+            </p>
+        </div>
     </div>
 </div>
 </body>

@@ -1,53 +1,77 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title th:text="${productName} + ' Pro 兑换码'">Pro 兑换码</title>
+    <title th:text="${productName} + ' Pro 兑换码'">权益发放</title>
 </head>
-<body style="margin:0;padding:0;background:#0b1220;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:#e5e7eb;">
-<div style="max-width:720px;margin:0 auto;padding:24px;">
-    <div style="background:#0f172a;border-radius:16px;overflow:hidden;border:1px solid #1f2937;">
-        <div style="padding:22px 24px;background:linear-gradient(135deg,#22c55e,#0ea5e9);color:#0b1220;">
-            <div style="font-size:14px;opacity:.85;">Pro 订阅兑换码</div>
-            <div style="font-size:20px;font-weight:800;line-height:1.2;margin-top:6px;" th:text="${productName}">Prism Cloud Lite</div>
+<body style="margin:0;padding:0;background-color:#020617;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f8fafc;-webkit-font-smoothing:antialiased;">
+<div style="max-width:520px;margin:0 auto;padding:40px 20px;">
+
+    <div style="margin-bottom:32px; text-align: center;">
+        <div style="display:inline-block; font-size:16px; font-weight:700; color:#ffffff; letter-spacing:1px;">
+            <span th:text="${productName}">Prism Cloud Lite</span>
+        </div>
+    </div>
+
+    <div style="background:#0f172a; border-radius:24px; overflow:hidden; border:1px solid #1e293b; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+        <div style="padding:40px 32px; background:linear-gradient(135deg,#10b981 0%,#3b82f6 100%); text-align:center; color:#0f172a;">
+            <div style="display:inline-block; background:rgba(255,255,255,0.2); padding:4px 12px; border-radius:20px; font-size:12px; font-weight:800; text-transform:uppercase; margin-bottom:12px; letter-spacing:1px;">
+                Premium Access
+            </div>
+            <h1 style="font-size:26px; font-weight:900; margin:0; line-height:1.2;">您的 Pro 权益已就绪</h1>
         </div>
 
-        <div style="padding:24px;">
-            <p style="margin:0 0 12px 0;font-size:14px;line-height:1.6;color:#e5e7eb;">
-                你好<span th:if="${name != null and !#strings.isEmpty(name)}" th:text="'，' + ${name}">，朋友</span>：
+        <div style="padding:40px 32px;">
+            <p style="margin:0 0 16px 0; font-size:15px; color:#94a3b8;">
+                你好 <span th:if="${name != null and !#strings.isEmpty(name)}" th:text="${name}" style="color:#f8fafc; font-weight:600;">朋友</span>，
             </p>
-            <p style="margin:0 0 10px 0;font-size:14px;line-height:1.8;color:#cbd5e1;">
-                这是为你生成的 <span style="font-weight:800;color:#fff;">Pro</span> 订阅兑换码
-                <span th:if="${durationDays != null}" th:text="'（有效期 ' + ${durationDays} + ' 天）'">（有效期 N 天）</span>：
+            <p style="margin:0 0 32px 0; font-size:15px; line-height:1.7; color:#cbd5e1;">
+                感谢你对 <span th:text="${productName}">Prism Cloud Lite</span> 的支持。为了让你深度体验平台的全部能力，我们为你准备了 <span style="color:#10b981; font-weight:700;">Pro</span> 订阅兑换码：
             </p>
 
-            <div style="margin:16px 0 18px 0;padding:16px;border-radius:14px;background:#0b1220;border:1px solid #334155;">
-                <div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">兑换码</div>
-                <div style="font-size:20px;font-weight:900;letter-spacing:0.08em;color:#ffffff;" th:text="${code}">XXXX-XXXX</div>
-                <div th:if="${expiresAt != null}" style="font-size:12px;color:#94a3b8;margin-top:8px;">
-                    过期时间：<span th:text="${#temporals.format(expiresAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</span>（UTC）
+            <div style="background:linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border:1px solid #334155; border-radius:16px; padding:32px; text-align:center; margin-bottom:32px;">
+                <div style="font-size:12px; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:2px; margin-bottom:12px;">兑换码</div>
+
+                <div style="font-size:28px; font-weight:900; letter-spacing:4px; color:#ffffff; font-family: 'Courier New', monospace;" th:text="${code}">XXXX-XXXX</div>
+
+                <div style="display:inline-block; margin-top:20px; padding:6px 12px; background:rgba(16, 185, 129, 0.1); border-radius:8px; border:1px solid rgba(16, 185, 129, 0.2);">
+                    <span style="font-size:13px; color:#10b981; font-weight:600;" th:if="${durationDays != null}" th:text="${durationDays} + ' 天 Pro 全功能权限'">N 天 Pro 权限</span>
+                </div>
+
+                <div th:if="${expiresAt != null}" style="font-size:12px; color:#475569; margin-top:20px;">
+                    请在 <span style="color:#64748b;" th:text="${#temporals.format(expiresAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</span> (UTC) 前激活
                 </div>
             </div>
 
-            <p style="margin:0 0 12px 0;font-size:14px;line-height:1.7;color:#cbd5e1;">
-                使用方式：登录后进入 <span style="color:#fff;">订阅</span> 页面，选择“兑换码”并输入上述 code。
-            </p>
-            <div th:if="${consoleUrl != null and !#strings.isEmpty(consoleUrl)}" style="margin-top:10px;">
+            <div style="margin-bottom:32px;">
+                <div style="font-size:14px; font-weight:700; color:#f8fafc; margin-bottom:12px;">如何使用？</div>
+                <ol style="margin:0; padding-left:18px; font-size:13px; line-height:1.8; color:#94a3b8;">
+                    <li style="margin-bottom:8px;">访问控制台并登录您的账户；</li>
+                    <li style="margin-bottom:8px;">前往 <strong style="color:#cbd5e1;">“订阅管理”</strong> 页面；</li>
+                    <li>选择 <strong style="color:#cbd5e1;">“使用兑换码”</strong> 并输入上述代码即可即时生效。</li>
+                </ol>
+            </div>
+
+            <div th:if="${consoleUrl != null and !#strings.isEmpty(consoleUrl)}" style="text-align:center; margin-bottom:40px;">
                 <a th:href="${consoleUrl}"
-                   style="display:inline-block;background:#22c55e;color:#0b1220;text-decoration:none;padding:12px 16px;border-radius:12px;font-size:14px;font-weight:800;">
-                    打开控制台
+                   style="display:inline-block; background:#ffffff; color:#0f172a; text-decoration:none; padding:14px 40px; border-radius:12px; font-size:15px; font-weight:700; transition: all 0.2s;">
+                    立即前往兑换
                 </a>
             </div>
 
-            <hr style="border:none;border-top:1px solid #1f2937;margin:22px 0;"/>
-            <p style="margin:0;font-size:12px;line-height:1.6;color:#94a3b8;">
-                如需帮助或反馈问题，可直接回复此邮件。
+            <hr style="border:none; border-top:1px solid #1e293b; margin:32px 0;"/>
+
+            <p style="margin:0; font-size:12px; line-height:1.6; color:#475569; text-align:center;">
+                如有任何兑换问题，请直接回复此邮件联系技术支持。
             </p>
         </div>
     </div>
-    <div style="text-align:center;font-size:12px;color:#64748b;margin-top:14px;">
-        <span th:text="${productName}">Prism Cloud Lite</span>
+
+    <div style="text-align:center; margin-top:32px;">
+        <div style="font-size:12px; color:#475569;">
+            Powered by <span th:text="${productName}">Prism Cloud</span> · 赋予屏幕智慧
+        </div>
     </div>
 </div>
 </body>

@@ -1,36 +1,63 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title th:text="${productName} + ' 反馈回复'">反馈回复</title>
+    <title th:text="${productName} + ' 反馈回复'">反馈进展</title>
 </head>
-<body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,'PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;color:#0f172a;">
-<div style="max-width:720px;margin:0 auto;padding:24px;">
-    <div style="background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e5e7eb;">
-        <div style="padding:22px 24px;background:#111827;color:#fff;">
-            <div style="font-size:14px;opacity:.85;">反馈回复</div>
-            <div style="font-size:20px;font-weight:800;line-height:1.2;margin-top:6px;" th:text="${productName}">Prism Cloud Lite</div>
+<body style="margin:0;padding:0;background-color:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;-webkit-font-smoothing:antialiased;">
+<div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+
+    <div style="background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);border:1px solid #e2e8f0;">
+
+        <div style="padding:32px; background:#ffffff; border-bottom:1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <div style="font-size:12px; color:#6366f1; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;">Support Update</div>
+                <h1 style="font-size:20px; font-weight:800; color:#0f172a; margin:0;" th:text="${productName}">Prism Cloud Lite</h1>
+            </div>
+            <div style="background:#ecfdf5; color:#059669; padding:4px 12px; border-radius:12px; font-size:12px; font-weight:700;">
+                已回复
+            </div>
         </div>
 
-        <div style="padding:24px;">
-            <p style="margin:0 0 12px 0;font-size:14px;line-height:1.8;color:#334155;">
-                我们已收到你的反馈并进行了处理，回复如下：
+        <div style="padding:32px;">
+            <p style="margin:0 0 20px 0; font-size:15px; color:#475569; line-height:1.6;">
+                你好，感谢你对 <span th:text="${productName}">Prism Cloud Lite</span> 的关注。关于你之前提交的反馈，我们的团队已进行了审阅与处理。
             </p>
 
-            <div style="margin:14px 0 18px 0;padding:16px;border-radius:14px;background:#f8fafc;border:1px solid #e2e8f0;">
-                <div th:utext="${replyHtml}" style="font-size:14px;line-height:1.8;color:#0f172a;"></div>
+            <div style="margin-bottom:32px;">
+                <div style="font-size:13px; font-weight:700; color:#94a3b8; margin-bottom:12px; display:flex; align-items:center;">
+                    <span style="margin-right:8px;">💬</span> 官方回复内容
+                </div>
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; padding:24px; position:relative;">
+                    <div th:utext="${replyHtml}" style="font-size:15px; line-height:1.8; color:#0f172a;"></div>
+                </div>
             </div>
 
-            <p style="margin:0;font-size:12px;line-height:1.6;color:#64748b;">
-                如果还有其他问题，欢迎继续回复此邮件或在产品内提交新的反馈。
+            <div style="background:#eff6ff; border-radius:12px; padding:16px; margin-bottom:32px;">
+                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                    <tr>
+                        <td style="font-size:18px; width:30px; vertical-align:top;">💡</td>
+                        <td style="font-size:13px; color:#1e40af; line-height:1.6;">
+                            如果对此回复仍有疑问，或有更多细节想补充，您可以<strong>直接回复本邮件</strong>，我们的技术人员会继续跟进。
+                        </td>
+                    </tr>
+                </table>
+            </div>
+
+            <hr style="border:none; border-top:1px solid #f1f5f9; margin:32px 0;"/>
+
+            <p style="margin:0; font-size:13px; line-height:1.6; color:#94a3b8; text-align:center;">
+                您的每一份反馈都在帮助 <span th:text="${productName}">Prism Cloud</span> 变得更好。
             </p>
         </div>
     </div>
-    <div style="text-align:center;font-size:12px;color:#94a3b8;margin-top:14px;">
-        <span th:text="${productName}">Prism Cloud Lite</span>
+
+    <div style="text-align:center; margin-top:24px;">
+        <div style="font-size:12px; color:#94a3b8;">
+            此邮件由系统自动发送，旨在通知您反馈进展。
+        </div>
     </div>
 </div>
 </body>
 </html>
-
