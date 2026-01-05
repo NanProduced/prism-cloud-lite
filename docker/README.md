@@ -17,6 +17,12 @@
 docker compose -f docker-compose.yml up -d
 ```
 
+如需启用 `core-service` 的 AI Assistant（本地 vLLM + embeddings），再启动 AI 模型服务：
+
+```bash
+docker compose -f ai-stack/docker-compose.yml up -d
+```
+
 再启动应用服务（会自动 build 镜像）：
 
 ```bash
@@ -33,12 +39,35 @@ docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
 docker compose -f docker-compose.yml -f docker-compose.app.yml ps
 ```
 
-## 1.1) 开启 Debug 日志（可选）
+## 1.1) AI 服务网络互通（常见报错）
+
+如果你发现 `core-service` 日志里出现 `http://127.0.0.1:7997/embeddings` 连接被拒绝（`Connection refused`），通常原因是：
+
+- 在容器里 `127.0.0.1` 指向容器自身，而 embeddings/LLM 在另一个容器中。
+
+建议用一次命令把中间件 + AI + 应用放到同一个 compose project / network：
+
+```bash
+docker compose -f docker-compose.yml -f ai-stack/docker-compose.yml -f docker-compose.app.yml up -d --build
+```
+
+并确保 `.env` 中这两项是容器内可达的服务名（默认已改为）：
+
+- `ASSISTANT_CHAT_LLM_BASE_URL=http://llm-vllm:8000`
+- `ASSISTANT_RAG_EMBEDDING_BASE_URL=http://embeddings:7997`
+
+## 1.2) 开启 Debug 日志（可选）
 
 默认日志级别由各服务的 `application-*.yml` 决定。若你只想打开**业务包**（`nan.produced.prism.*`）的 Debug 日志、避免 Spring/框架日志刷屏，可叠加 `docker-compose.debug.yml`：
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.app.yml -f docker-compose.debug.yml up -d --build
+```
+
+如果你同时启用了 `ai-stack`（vLLM + embeddings），用下面这个“一次性启动全部”的组合：
+
+```bash
+docker compose -f docker-compose.yml -f ai-stack/docker-compose.yml -f docker-compose.app.yml -f docker-compose.debug.yml up -d --build
 ```
 
 关闭 Debug：启动命令里去掉 `-f docker-compose.debug.yml` 即可。
