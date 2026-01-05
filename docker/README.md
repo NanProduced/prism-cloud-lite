@@ -33,6 +33,16 @@ docker compose -f docker-compose.yml -f docker-compose.app.yml up -d --build
 docker compose -f docker-compose.yml -f docker-compose.app.yml ps
 ```
 
+## 1.1) 开启 Debug 日志（可选）
+
+默认日志级别由各服务的 `application-*.yml` 决定。若你只想打开**业务包**（`nan.produced.prism.*`）的 Debug 日志、避免 Spring/框架日志刷屏，可叠加 `docker-compose.debug.yml`：
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.app.yml -f docker-compose.debug.yml up -d --build
+```
+
+关闭 Debug：启动命令里去掉 `-f docker-compose.debug.yml` 即可。
+
 ## 2) 常用环境变量（按需覆盖）
 
 `docker-compose.app.yml` 已给了默认值/占位符，常见需要你在命令行或 `.env` 文件里提供：

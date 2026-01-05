@@ -1,0 +1,30 @@
+version: "3.8"
+
+# Debug logging overrides for app services.
+# Use with:
+#   docker compose -f docker-compose.yml -f docker-compose.app.yml -f docker-compose.debug.yml up -d --build
+#
+# Notes:
+# - `LOGGING_LEVEL_*` env vars map to Spring Boot `logging.level.*` properties.
+# - This file is optional; omit it to keep default log levels.
+
+services:
+  gateway-service:
+    environment:
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_NAN_PRODUCED_PRISM: DEBUG
+
+  auth-service:
+    environment:
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_NAN_PRODUCED_PRISM: DEBUG
+
+  core-service:
+    environment:
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_NAN_PRODUCED_PRISM: DEBUG
+
+  device-service:
+    environment:
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_NAN_PRODUCED_PRISM: DEBUG

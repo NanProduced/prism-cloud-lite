@@ -5,6 +5,7 @@ import com.aliyun.sdk.service.dypnsapi20170525.models.CheckSmsVerifyCodeRequest;
 import com.aliyun.sdk.service.dypnsapi20170525.models.CheckSmsVerifyCodeResponse;
 import com.aliyun.sdk.service.dypnsapi20170525.models.SendSmsVerifyCodeRequest;
 import com.aliyun.sdk.service.dypnsapi20170525.models.SendSmsVerifyCodeResponse;
+import com.aliyun.sdk.service.dypnsapi20170525.models.SendSmsVerifyCodeResponseBody;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.auth.common.exception.BizException;
@@ -121,7 +122,38 @@ public class PnvService {
 
             SendSmsVerifyCodeResponse sendSmsVerifyCodeResponse = responseFuture.get();
 
-            log.debug("阿里云短信服务调用结果: {}", sendSmsVerifyCodeResponse);
+            SendSmsVerifyCodeResponseBody body = sendSmsVerifyCodeResponse.getBody();
+            SendSmsVerifyCodeResponseBody.Model model = body == null ? null : body.getModel();
+
+            Boolean success = body == null ? null : body.getSuccess();
+            String code = body == null ? null : body.getCode();
+            String message = body == null ? null : body.getMessage();
+            String requestId = body == null ? null : body.getRequestId();
+            String bizId = model == null ? null : model.getBizId();
+            String outId = model == null ? null : model.getOutId();
+
+            log.debug(
+                    "阿里云短信发送结果: success={}, code={}, message={}, statusCode={}, requestId={}, bizId={}, outId={}",
+                    success,
+                    code,
+                    message,
+                    sendSmsVerifyCodeResponse.getStatusCode(),
+                    requestId,
+                    bizId,
+                    outId
+            );
+
+            if (!Boolean.TRUE.equals(success) || (code != null && !"OK".equalsIgnoreCase(code))) {
+                log.warn(
+                        "阿里云短信发送失败: success={}, code={}, message={}, statusCode={}, requestId={}",
+                        success,
+                        code,
+                        message,
+                        sendSmsVerifyCodeResponse.getStatusCode(),
+                        requestId
+                );
+                throw new ThirdPartyException(ErrorCode.PHONE_NUMBER_VALIDATION_CODE_GAIN_ERROR);
+            }
 
             // 标记该手机号在指定场景下已发送验证码，用于避免跨场景复用。
             redisTemplate.opsForValue().set(sceneMarkerKey(scene, phone), "1", pnvProps.getValidityMinutes(), TimeUnit.MINUTES);
