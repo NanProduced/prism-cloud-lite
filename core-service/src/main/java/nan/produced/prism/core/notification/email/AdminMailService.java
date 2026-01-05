@@ -55,7 +55,9 @@ public class AdminMailService {
             safeVars.putAll(variables);
         }
         safeVars.putIfAbsent("productName", mailProps.getProductName());
-        safeVars.putIfAbsent("consoleUrl", mailProps.getConsoleUrl());
+        String prismUrl = resolvePrismUrl();
+        safeVars.putIfAbsent("prismUrl", prismUrl);
+        safeVars.putIfAbsent("consoleUrl", prismUrl);
 
         AdminMailLogEntity logEntity = AdminMailLogEntity.builder()
                 .id(UUID.randomUUID())
@@ -114,6 +116,19 @@ public class AdminMailService {
         throw new BizException(ErrorCode.EXTERNAL_SERVICE_ERROR, "未配置发件邮箱（prism.mail.from 或 spring.mail.username）");
     }
 
+    private String resolvePrismUrl() {
+        if (StringUtils.hasText(mailProps.getPrismUrl())) {
+            return mailProps.getPrismUrl().trim();
+        }
+        if (!StringUtils.hasText(mailProps.getConsoleUrl())) {
+            return null;
+        }
+        String legacy = mailProps.getConsoleUrl().trim();
+        return legacy.contains("console.nanproduced.cloud")
+                ? legacy.replace("console.nanproduced.cloud", "prism.nanproduced.cloud")
+                : legacy;
+    }
+
     private static String safeActor() {
         try {
             return CloudAuthContext.hasAuthenticatedUser() ? CloudAuthContext.getCurrentPublicId() : null;
@@ -130,4 +145,3 @@ public class AdminMailService {
         return trimmed.length() > max ? trimmed.substring(0, max) : trimmed;
     }
 }
-

@@ -23,8 +23,15 @@ public class MailProps {
     private String productName = "Prism Cloud Lite";
 
     /**
-     * Console URL (used in templates).
+     * User portal URL (used in customer-facing templates).
      */
+    private String prismUrl = "https://prism.nanproduced.cloud";
+
+    /**
+     * Console URL (legacy, used in templates).
+     *
+     * @deprecated Use {@link #prismUrl} instead.
+     */
+    @Deprecated
     private String consoleUrl;
 }
-
