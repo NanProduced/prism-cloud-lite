@@ -120,13 +120,7 @@ public class AdminMailService {
         if (StringUtils.hasText(mailProps.getPrismUrl())) {
             return mailProps.getPrismUrl().trim();
         }
-        if (!StringUtils.hasText(mailProps.getConsoleUrl())) {
-            return null;
-        }
-        String legacy = mailProps.getConsoleUrl().trim();
-        return legacy.contains("console.nanproduced.cloud")
-                ? legacy.replace("console.nanproduced.cloud", "prism.nanproduced.cloud")
-                : legacy;
+        else return "https://prism.nanproduced.cloud/";
     }
 
     private static String safeActor() {

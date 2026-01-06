@@ -50,6 +50,8 @@ docker-compose.yml
 docs/
 .serena/
 ai-stack
+servers/
+.tmp-mcp-review/
 
 docker-compose.app.yml
 .env

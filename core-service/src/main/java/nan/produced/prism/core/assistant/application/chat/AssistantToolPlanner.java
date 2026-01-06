@@ -56,6 +56,27 @@ public class AssistantToolPlanner {
             return new AssistantToolCall("tool-" + UUID.randomUUID(), "searchDevices", input);
         }
 
+        // Example: "为什么指令一直待下发 / 指令没生效？" -> diagnoseDeviceCommand (recent)
+        String lowered = userText.toLowerCase();
+        if ((userText.contains("指令") || userText.contains("命令") || lowered.contains("command"))
+                && (userText.contains("没执行") || userText.contains("不执行") || userText.contains("没生效")
+                || userText.contains("失败") || userText.contains("待下发") || lowered.contains("pending")
+                || userText.contains("排查") || userText.contains("诊断"))) {
+            ObjectNode input = objectMapper.createObjectNode();
+            input.put("sinceMinutes", 1440);
+            input.put("limit", 10);
+            return new AssistantToolCall("tool-" + UUID.randomUUID(), "diagnoseDeviceCommand", input);
+        }
+
+        // Example: "帮我查一下最近的指令日志" -> searchCommandLogs (recent)
+        if ((userText.contains("指令") || userText.contains("命令") || lowered.contains("command"))
+                && (userText.contains("日志") || userText.contains("记录") || lowered.contains("log"))) {
+            ObjectNode input = objectMapper.createObjectNode();
+            input.put("sinceMinutes", 1440);
+            input.put("limit", 10);
+            return new AssistantToolCall("tool-" + UUID.randomUUID(), "searchCommandLogs", input);
+        }
+
         return null;
     }
 

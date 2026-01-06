@@ -1,0 +1,28 @@
+spring:
+  main:
+    web-application-type: none
+
+  flyway:
+    enabled: false
+
+  cloud:
+    nacos:
+      discovery:
+        enabled: false
+      config:
+        enabled: false
+        import-check:
+          enabled: false
+
+assistant:
+  rag:
+    pgvector:
+      init-enabled: false
+    ingest:
+      enabled: true
+      exit-after-run: true
+
+  # Ingest job only: disable chat RAG usage to avoid accidental retrieval during boot.
+  chat:
+    rag:
+      enabled: false

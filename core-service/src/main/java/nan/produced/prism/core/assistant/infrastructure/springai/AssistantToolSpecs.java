@@ -100,6 +100,52 @@ public class AssistantToolSpecs {
                               "additionalProperties": false
                             }
                             """.trim()
+            ),
+            "diagnoseDeviceCommand",
+            new ToolSpec(
+                    "diagnoseDeviceCommand",
+                    "Diagnose a device command status/failure for the current user and explain why it is pending/failed/expired/confirmed. Use when the user asks why a command didn't execute.",
+                    """
+                            {
+                              "type": "object",
+                              "properties": {
+                                "commandLogId": { "type": "integer", "description": "Device command log ID (internal; usually supplied by UI selection)." },
+                                "operationId": { "type": "string", "description": "Operation ID / command ID (UUID string). (internal; usually hidden from users)" },
+                                "deviceId": { "type": "integer", "description": "Device ID (internal; usually supplied by UI selection)." },
+                                "deviceName": { "type": "string", "description": "Device name keyword (user-visible)." },
+                                "actionType": { "type": "string", "description": "Device action type enum name, e.g. SCREENSHOT/POWER/PROGRAM_PUBLISH." },
+                                "sinceMinutes": { "type": "integer", "minimum": 1, "maximum": 43200, "default": 1440 },
+                                "limit": { "type": "integer", "minimum": 1, "maximum": 30, "default": 10 }
+                              },
+                              "additionalProperties": false
+                            }
+                            """.trim()
+            ),
+            "searchCommandLogs",
+            new ToolSpec(
+                    "searchCommandLogs",
+                    "Search device command logs for the current user by device name/time/action/status and return candidates for interactive picking. Use when the user asks to find which command to diagnose.",
+                    """
+                            {
+                              "type": "object",
+                              "properties": {
+                                "deviceName": { "type": "string", "description": "Device name keyword (user-visible)." },
+                                "deviceId": { "type": "integer", "description": "Device ID (internal; usually supplied by UI selection)." },
+                                "actionType": { "type": "string", "description": "Device action type enum name, e.g. SCREENSHOT/POWER/PROGRAM_PUBLISH." },
+                                "statuses": {
+                                  "type": "array",
+                                  "items": { "type": "string" },
+                                  "description": "Device command statuses, e.g. PUBLISHED/CONFIRMED/COMPLETED/EXPIRED/FAILED."
+                                },
+                                "accepted": { "type": "boolean" },
+                                "covered": { "type": "boolean" },
+                                "sendMethod": { "type": "string", "description": "Send method filter, e.g. websocket/http." },
+                                "sinceMinutes": { "type": "integer", "minimum": 1, "maximum": 43200, "default": 1440 },
+                                "limit": { "type": "integer", "minimum": 1, "maximum": 30, "default": 10 }
+                              },
+                              "additionalProperties": false
+                            }
+                            """.trim()
             )
     );
 

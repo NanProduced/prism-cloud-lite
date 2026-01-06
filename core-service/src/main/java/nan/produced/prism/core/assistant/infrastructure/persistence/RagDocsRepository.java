@@ -1,6 +1,7 @@
 package nan.produced.prism.core.assistant.infrastructure.persistence;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Repository;
@@ -16,6 +17,7 @@ import java.util.Objects;
 public class RagDocsRepository {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
+    private final Environment environment;
     private volatile String vectorTypeForCast = "vector";
     private volatile String distanceExprTemplate = "c.embedding <=> CAST(:queryVector AS %s)";
 
@@ -152,6 +154,11 @@ public class RagDocsRepository {
 
     @PostConstruct
     void resolveVectorType() {
+        boolean initEnabled = environment.getProperty("assistant.rag.pgvector.init-enabled", Boolean.class, true);
+        if (!initEnabled) {
+            return;
+        }
+
         // Resolve pgvector's real type location once. We do NOT trust schema-qualified names like
         // assistant.vector because a conflicting user-defined type can exist in that schema.
         String typeSql = """

@@ -47,6 +47,9 @@ public class AssistantChatService {
     private final AssistantChatModelRouter modelRouter;
     private final AssistantToolPlanner toolPlanner;
     private final AssistantToolExecutor toolExecutor;
+    private final AssistantSelectionTokenParser selectionTokenParser;
+    private final AssistantCommandLogPickerResolver commandLogPickerResolver;
+    private final AssistantDevicePickerResolver devicePickerResolver;
 
     public void handle(UUID userId, String tier, JsonNode request, SseEmitter emitter) {
         CompletableFuture.runAsync(() -> doHandle(userId, tier, request, emitter));
@@ -61,14 +64,55 @@ public class AssistantChatService {
                 limits.historyMaxMessages(),
                 limits.historyMaxChars()
         );
-        String userText = lastUserText(conversation);
-        if (!StringUtils.hasText(userText)) {
+        String rawUserText = lastUserText(conversation);
+        if (!StringUtils.hasText(rawUserText)) {
             sendErrorAndDone(emitter, "Missing user message");
             return;
         }
 
+        AssistantSelectionTokenParser.ParseResult selection = selectionTokenParser.parse(rawUserText);
+        conversation = sanitizeUserMessages(conversation);
+        String userText = lastUserText(conversation);
+        if (!StringUtils.hasText(userText)) {
+            userText = StringUtils.hasText(selection.cleanedText()) ? selection.cleanedText() : "请帮我继续处理";
+        }
+        if (StringUtils.hasText(selection.cleanedText())) {
+            userText = selection.cleanedText();
+        }
+
         try {
             sendChunk(emitter, Map.of("type", "start"));
+
+            Object toolResultForPrompt = null;
+            if (selection.hasAnySelection()) {
+                AssistantToolCall injectedToolCall = selection.toInjectedToolCall(objectMapper);
+                if (injectedToolCall != null) {
+                    sendChunk(emitter, Map.of(
+                            "type", "tool-input-available",
+                            "toolCallId", injectedToolCall.toolCallId(),
+                            "toolName", injectedToolCall.toolName(),
+                            "input", injectedToolCall.input(),
+                            "providerExecuted", true
+                    ));
+                    var exec = toolExecutor.execute(userId, injectedToolCall);
+                    if (exec.success()) {
+                        toolResultForPrompt = truncateJson(exec.output(), limits.toolResultMaxChars());
+                        sendChunk(emitter, Map.of(
+                                "type", "tool-output-available",
+                                "toolCallId", injectedToolCall.toolCallId(),
+                                "output", exec.output(),
+                                "providerExecuted", true
+                        ));
+                    } else {
+                        sendChunk(emitter, Map.of(
+                                "type", "tool-output-error",
+                                "toolCallId", injectedToolCall.toolCallId(),
+                                "errorText", exec.errorText(),
+                                "providerExecuted", true
+                        ));
+                    }
+                }
+            }
 
             AssistantNavigationToolResolver.NavigationTarget nav = navigationToolResolver.resolve(userText);
             if (nav != null) {
@@ -85,11 +129,42 @@ public class AssistantChatService {
                 return;
             }
 
+            if (!selection.hasAnySelection()) {
+                AssistantCommandLogPickerResolver.PickPayload commandPick = commandLogPickerResolver.resolve(userId, userText);
+                if (commandPick != null) {
+                    String toolCallId = "tool-" + UUID.randomUUID();
+                    sendChunk(emitter, Map.of(
+                            "type", "tool-input-available",
+                            "toolCallId", toolCallId,
+                            "toolName", "pickCommandLog",
+                            "input", commandPick,
+                            "providerExecuted", false
+                    ));
+                    sendChunk(emitter, Map.of("type", "finish", "finishReason", "tool-calls"));
+                    sendDone(emitter);
+                    return;
+                }
+
+                AssistantDevicePickerResolver.PickPayload devicePick = devicePickerResolver.resolve(userId, userText);
+                if (devicePick != null) {
+                    String toolCallId = "tool-" + UUID.randomUUID();
+                    sendChunk(emitter, Map.of(
+                            "type", "tool-input-available",
+                            "toolCallId", toolCallId,
+                            "toolName", "pickDevice",
+                            "input", devicePick,
+                            "providerExecuted", false
+                    ));
+                    sendChunk(emitter, Map.of("type", "finish", "finishReason", "tool-calls"));
+                    sendDone(emitter);
+                    return;
+                }
+            }
+
             AssistantToolCall plannedToolCall = "spring-ai".equalsIgnoreCase(properties.engine())
                     ? null
                     : toolPlanner.plan(userText);
-            Object toolResultForPrompt = null;
-            if (!"spring-ai".equalsIgnoreCase(properties.engine()) && plannedToolCall != null) {
+            if (toolResultForPrompt == null && !"spring-ai".equalsIgnoreCase(properties.engine()) && plannedToolCall != null) {
                 sendChunk(emitter, Map.of(
                         "type", "tool-input-available",
                         "toolCallId", plannedToolCall.toolCallId(),
@@ -219,6 +294,22 @@ public class AssistantChatService {
             log.warn("assistant chat failed", e);
             sendErrorAndDone(emitter, "Assistant error: " + e.getMessage());
         }
+    }
+
+    private List<AiSdkChatRequestParser.ChatMessage> sanitizeUserMessages(List<AiSdkChatRequestParser.ChatMessage> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return List.of();
+        }
+        List<AiSdkChatRequestParser.ChatMessage> out = new ArrayList<>(messages.size());
+        for (AiSdkChatRequestParser.ChatMessage m : messages) {
+            if (m != null && "user".equals(m.role()) && StringUtils.hasText(m.content())) {
+                String cleaned = selectionTokenParser.stripKnownTokens(m.content());
+                out.add(new AiSdkChatRequestParser.ChatMessage(m.role(), cleaned));
+            } else {
+                out.add(m);
+            }
+        }
+        return List.copyOf(out);
     }
 
     private String buildSystemPrompt(AssistantRagContextService.RagContext rag, Object toolResult) {
