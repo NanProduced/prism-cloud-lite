@@ -20,7 +20,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 
 import java.util.UUID;
 
-@Tag(name = "AI Assistant", description = "AI 助手聊天（Vercel AI SDK 5.0 Data Stream Protocol v1）")
+@Tag(name = "AI Assistant", description = "AI 助手聊天（Vercel AI SDK 6 UIMessage Stream v1 · SSE）")
 @RestController
 @RequiredArgsConstructor
 public class AssistantChatController {
@@ -28,13 +28,13 @@ public class AssistantChatController {
     private final AssistantChatService assistantChatService;
 
     @Operation(
-            summary = "AI 助手聊天（Data Stream v1）",
+            summary = "AI 助手聊天（UIMessage Stream v1 / SSE）",
             description = """
                     - Endpoint：`POST /api/chat`
-                    - Response：`text/plain; charset=utf-8`
-                      - Header：`x-vercel-ai-data-stream: v1`
-                      - Body：Vercel AI SDK Data Stream Protocol(v1)，每行一个 chunk：`<tag>:<payload>\\n`
-                    - Request：OpenAI-like messages，仅解析 `messages[]` 中 `role=user|assistant` 的消息；忽略客户端传入的 `system` 以防 prompt injection。
+                    - Response：`text/event-stream; charset=utf-8`
+                      - Header：`x-vercel-ai-ui-message-stream: v1`
+                      - Body：UIMessage Stream Protocol(v1)，SSE JSON 事件流：每条事件 `data: <payload>\\n\\n`，以 `data: [DONE]\\n\\n` 结束
+                    - Request：AI SDK 6 `useChat` 默认发送 `messages: UIMessage[]`（含 `parts`）；后端仅解析 `role=user|assistant` 的内容；忽略客户端传入的 `system` 以防 prompt injection。
                     """)
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             required = true,
@@ -46,7 +46,7 @@ public class AssistantChatController {
                             value = """
                                     {
                                       "messages": [
-                                        { "role": "user", "content": "帮我解释一下订阅等级有什么区别？" }
+                                        { "id": "msg_user_1", "role": "user", "parts": [ { "type": "text", "text": "帮我解释一下订阅等级有什么区别？" } ] }
                                       ]
                                     }
                                     """
@@ -55,15 +55,18 @@ public class AssistantChatController {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "Data Stream Protocol(v1) 流式返回（按行输出 0/1/b/c/2/3/d chunk；以 d 结束）",
+            description = "UIMessage Stream v1（SSE）流式返回（按 `data: {type:...}` 输出；以 `finish` + `[DONE]` 结束）",
             content = @Content(
-                    mediaType = MediaType.TEXT_PLAIN_VALUE,
+                    mediaType = MediaType.TEXT_EVENT_STREAM_VALUE,
                     schema = @Schema(type = "string"),
                     examples = @ExampleObject(
-                            name = "DataStreamLines",
+                            name = "UiMessageStreamSse",
                             value = """
-                                    0:"你好，我是 Prism Cloud AI 助手。"
-                                    d:{"finishReason":"stop"}
+                                    data: {"type":"text-delta","id":"text-1","delta":"你好，我是 Prism Cloud AI 助手。"}
+                                                                    
+                                    data: {"type":"finish","finishReason":"stop"}
+                                                                    
+                                    data: [DONE]
                                     """
                     )
             )
@@ -74,7 +77,7 @@ public class AssistantChatController {
     @PostMapping(
             path = "/api/chat",
             consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.TEXT_PLAIN_VALUE
+            produces = MediaType.TEXT_EVENT_STREAM_VALUE
     )
     public ResponseEntity<StreamingResponseBody> chat(@RequestBody JsonNode request) {
         var user = CloudAuthContext.getCurrentUser();
@@ -84,11 +87,14 @@ public class AssistantChatController {
         StreamingResponseBody body = outputStream -> assistantChatService.handle(userId, tier, request, outputStream);
 
         HttpHeaders headers = new HttpHeaders();
-        headers.add("x-vercel-ai-data-stream", "v1");
+        headers.add("x-vercel-ai-ui-message-stream", "v1");
+        headers.add(HttpHeaders.CACHE_CONTROL, "no-cache");
+        headers.add(HttpHeaders.CONNECTION, "keep-alive");
+        headers.add("x-accel-buffering", "no");
 
         return ResponseEntity.ok()
                 .headers(headers)
-                .contentType(MediaType.parseMediaType("text/plain; charset=utf-8"))
+                .contentType(MediaType.parseMediaType("text/event-stream; charset=utf-8"))
                 .body(body);
     }
 }

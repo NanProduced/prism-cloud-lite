@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import nan.produced.prism.core.assistant.api.datastream.AiDataStreamWriter;
+import nan.produced.prism.core.assistant.api.uimessage.AiUiMessageSseWriter;
 import nan.produced.prism.core.assistant.infrastructure.config.AssistantChatProperties;
 import nan.produced.prism.core.assistant.infrastructure.config.AssistantChatTierLimitsProperties;
 import nan.produced.prism.core.assistant.infrastructure.config.AssistantChatTokenBudgetProperties;
@@ -53,10 +53,12 @@ public class AssistantChatService {
     private final AssistantPendingToolCallStore pendingToolCallStore;
 
     public void handle(UUID userId, String tier, JsonNode request, OutputStream outputStream) {
-        doHandle(userId, tier, request, new AiDataStreamWriter(objectMapper, outputStream));
+        AiUiMessageSseWriter writer = new AiUiMessageSseWriter(objectMapper, outputStream);
+        writer.startStep();
+        doHandle(userId, tier, request, writer);
     }
 
-    private void doHandle(UUID userId, String tier, JsonNode request, AiDataStreamWriter writer) {
+    private void doHandle(UUID userId, String tier, JsonNode request, AiUiMessageSseWriter writer) {
         AssistantChatTierLimits limits = resolveLimits(userId, tier);
         QuotaSnapshot quota = null;
 
@@ -72,21 +74,32 @@ public class AssistantChatService {
         String userText = lastUserText(conversation);
         userText = StringUtils.hasText(userText) ? userText : null;
 
-        // Tool result message (AI SDK 5.0): {"role":"tool","tool_call_id":"...","content":"{...}"}
-        AiSdkChatRequestParser.ToolMessage toolMessage = AiSdkChatRequestParser.lastToolMessage(request);
         String lastRole = AiSdkChatRequestParser.lastNonSystemRole(request);
         AssistantPendingToolCallStore.PendingToolCall pending = pendingToolCallStore.get(userId);
 
         ToolSelection selectionFromTool = null;
-        if (toolMessage != null && pending != null && pending.toolCallId() != null
-                && pending.toolCallId().equals(toolMessage.toolCallId())) {
-            selectionFromTool = parseToolSelectionJson(toolMessage.content());
-            if (selectionFromTool == null) {
-                sendInvalidToolResult(writer);
-                return;
+        if (pending != null && pending.toolCallId() != null) {
+            AiSdkChatRequestParser.ToolOutput toolOutput =
+                    AiSdkChatRequestParser.findToolOutput(request, pending.toolCallId(), pending.toolName());
+            if (toolOutput != null) {
+                if ("output-available".equalsIgnoreCase(toolOutput.state()) && toolOutput.output() != null) {
+                    selectionFromTool = parseToolSelectionNode(toolOutput.output());
+                    if (selectionFromTool == null) {
+                        sendInvalidToolResult(writer);
+                        return;
+                    }
+                    pendingToolCallStore.clear(userId);
+                } else if ("output-error".equalsIgnoreCase(toolOutput.state())) {
+                    pendingToolCallStore.clear(userId);
+                    writer.error(toolOutput.errorText() != null ? toolOutput.errorText() : "工具执行失败或用户取消");
+                    writer.finish("error", null);
+                    return;
+                }
+            } else if ("user".equals(lastRole)) {
+                // User skipped tool selection and typed a new message; clear pending state and continue.
+                pendingToolCallStore.clear(userId);
             }
-            pendingToolCallStore.clear(userId);
-        } else if (toolMessage == null && pending != null && "user".equals(lastRole)) {
+        } else if (pending != null && "user".equals(lastRole)) {
             // User skipped tool selection and typed a new message; clear pending state and continue.
             pendingToolCallStore.clear(userId);
         }
@@ -103,7 +116,7 @@ public class AssistantChatService {
         }
         if (!StringUtils.hasText(userText)) {
             writer.error("Missing user message");
-            writer.finish(Map.of("finishReason", "error"));
+            writer.finish("error", null);
             return;
         }
 
@@ -112,13 +125,13 @@ public class AssistantChatService {
             if (selection.hasAnySelection()) {
                 AssistantToolCall injectedToolCall = selection.toInjectedToolCall(objectMapper);
                 if (injectedToolCall != null) {
-                    writer.toolCall(injectedToolCall.toolCallId(), injectedToolCall.toolName(), injectedToolCall.input());
+                    writer.toolInputAvailable(injectedToolCall.toolCallId(), injectedToolCall.toolName(), injectedToolCall.input());
                     var exec = toolExecutor.execute(userId, injectedToolCall);
                     if (exec.success()) {
                         toolResultForPrompt = truncateJson(exec.output(), limits.toolResultMaxChars());
-                        writer.toolResult(injectedToolCall.toolCallId(), exec.output());
+                        writer.toolOutputAvailable(injectedToolCall.toolCallId(), exec.output());
                     } else {
-                        writer.toolResult(injectedToolCall.toolCallId(), Map.of("error", exec.errorText()));
+                        writer.toolOutputError(injectedToolCall.toolCallId(), exec.errorText());
                     }
                 }
             }
@@ -126,8 +139,8 @@ public class AssistantChatService {
             AssistantNavigationToolResolver.NavigationTarget nav = navigationToolResolver.resolve(userText);
             if (nav != null) {
                 String toolCallId = "tool-" + UUID.randomUUID();
-                writer.toolCall(toolCallId, "navigateToPage", Map.of("path", nav.path(), "label", nav.label()));
-                writer.finish(Map.of("finishReason", "stop"));
+                writer.toolInputAvailable(toolCallId, "navigateToPage", Map.of("path", nav.path(), "label", nav.label()));
+                writer.finish("stop", null);
                 return;
             }
 
@@ -136,8 +149,8 @@ public class AssistantChatService {
                 if (commandPick != null) {
                     String toolCallId = "tool-" + UUID.randomUUID();
                     pendingToolCallStore.set(userId, toolCallId, "pickCommandLog");
-                    writer.toolCall(toolCallId, "pickCommandLog", commandPick);
-                    writer.finish(Map.of("finishReason", "tool-calls"));
+                    writer.toolInputAvailable(toolCallId, "pickCommandLog", commandPick);
+                    writer.finish("tool-calls", null);
                     return;
                 }
 
@@ -145,8 +158,8 @@ public class AssistantChatService {
                 if (devicePick != null) {
                     String toolCallId = "tool-" + UUID.randomUUID();
                     pendingToolCallStore.set(userId, toolCallId, "pickDevice");
-                    writer.toolCall(toolCallId, "pickDevice", devicePick);
-                    writer.finish(Map.of("finishReason", "tool-calls"));
+                    writer.toolInputAvailable(toolCallId, "pickDevice", devicePick);
+                    writer.finish("tool-calls", null);
                     return;
                 }
             }
@@ -155,13 +168,13 @@ public class AssistantChatService {
                     ? null
                     : toolPlanner.plan(userText);
             if (toolResultForPrompt == null && !"spring-ai".equalsIgnoreCase(properties.engine()) && plannedToolCall != null) {
-                writer.toolCall(plannedToolCall.toolCallId(), plannedToolCall.toolName(), plannedToolCall.input());
+                writer.toolInputAvailable(plannedToolCall.toolCallId(), plannedToolCall.toolName(), plannedToolCall.input());
                 var exec = toolExecutor.execute(userId, plannedToolCall);
                 if (exec.success()) {
                     toolResultForPrompt = truncateJson(exec.output(), limits.toolResultMaxChars());
-                    writer.toolResult(plannedToolCall.toolCallId(), exec.output());
+                    writer.toolOutputAvailable(plannedToolCall.toolCallId(), exec.output());
                 } else {
-                    writer.toolResult(plannedToolCall.toolCallId(), Map.of("error", exec.errorText()));
+                    writer.toolOutputError(plannedToolCall.toolCallId(), exec.errorText());
                 }
             }
 
@@ -198,17 +211,17 @@ public class AssistantChatService {
                     new AssistantChatLlmClient.ToolEventListener() {
                         @Override
                         public void onToolInputAvailable(String toolCallId, String toolName, Object input) {
-                            writer.toolCall(toolCallId, toolName, input);
+                            writer.toolInputAvailable(toolCallId, toolName, input);
                         }
 
                         @Override
                         public void onToolOutputAvailable(String toolCallId, Object output) {
-                            writer.toolResult(toolCallId, output);
+                            writer.toolOutputAvailable(toolCallId, output);
                         }
 
                         @Override
                         public void onToolOutputError(String toolCallId, String errorText) {
-                            writer.toolResult(toolCallId, Map.of("error", errorText));
+                            writer.toolOutputError(toolCallId, errorText);
                         }
                     },
                     delta -> {
@@ -221,14 +234,7 @@ public class AssistantChatService {
             thinkSplitter.flush();
 
             for (var source : rag.sources()) {
-                writer.data(Map.of(
-                        "type", "source",
-                        "source", Map.of(
-                                "id", source.sourceId(),
-                                "url", source.url(),
-                                "title", source.title()
-                        )
-                ));
+                writer.sourceUrl(source.sourceId(), source.url(), source.title());
             }
 
             if (quota != null && quota.trackTokens() && llmResult != null) {
@@ -241,16 +247,16 @@ public class AssistantChatService {
             }
 
             String finishReason = llmResult != null ? llmResult.finishReason() : null;
-            Map<String, Object> finishChunk = new LinkedHashMap<>();
-            finishChunk.put("finishReason", normalizeFinishReason(finishReason));
+            String normalizedFinishReason = normalizeFinishReason(finishReason);
+            Object messageMetadata = null;
             if (quota != null && quota.trackTokens()) {
-                finishChunk.put("quota", quota.toFrontendPayload());
+                messageMetadata = Map.of("quota", quota.toFrontendPayload());
             }
-            writer.finish(finishChunk);
+            writer.finish(normalizedFinishReason, messageMetadata);
         } catch (Exception e) {
             log.warn("assistant chat failed", e);
             writer.error("Assistant error: " + e.getMessage());
-            writer.finish(Map.of("finishReason", "error"));
+            writer.finish("error", null);
         }
     }
 
@@ -265,13 +271,13 @@ public class AssistantChatService {
         private static final String OPEN = "<think>";
         private static final String CLOSE = "</think>";
 
-        private final AiDataStreamWriter writer;
+        private final AiUiMessageSseWriter writer;
         private final StringBuilder buffer = new StringBuilder(1024);
         private Mode mode = Mode.TEXT;
 
         private enum Mode {TEXT, THINK}
 
-        ThinkTagStreamSplitter(AiDataStreamWriter writer) {
+        ThinkTagStreamSplitter(AiUiMessageSseWriter writer) {
             this.writer = writer;
         }
 
@@ -352,14 +358,14 @@ public class AssistantChatService {
             if (s == null || s.isEmpty()) {
                 return;
             }
-            writer.text(s);
+            writer.textDelta(s);
         }
 
         private void emitReasoning(String s) {
             if (s == null || s.isEmpty()) {
                 return;
             }
-            writer.reasoning(s);
+            writer.reasoningDelta(s);
         }
     }
 
@@ -496,13 +502,12 @@ public class AssistantChatService {
         return "PRO".equals(upper) ? "PRO" : "FREE";
     }
 
-    private void sendQuotaExceededAndFinish(AiDataStreamWriter writer, QuotaSnapshot quota) {
+    private void sendQuotaExceededAndFinish(AiUiMessageSseWriter writer, QuotaSnapshot quota) {
         if (writer == null || quota == null) {
             return;
         }
         writer.error("今日 AI 助手体验额度已用完（" + quota.tier() + "）。请明天再试，或升级到 Pro，或绑定自己的 API Key。");
-        writer.finish(Map.of(
-                "finishReason", "error",
+        writer.finish("stop", Map.of(
                 "errorCode", "ASSISTANT_TOKEN_DAILY_LIMIT_EXCEEDED",
                 "details", quota.toFrontendPayload()
         ));
@@ -632,12 +637,12 @@ public class AssistantChatService {
         }
     }
 
-    private void sendInvalidToolResult(AiDataStreamWriter writer) {
+    private void sendInvalidToolResult(AiUiMessageSseWriter writer) {
         if (writer == null) {
             return;
         }
         writer.error("非法操作或选择已失效");
-        writer.finish(Map.of("finishReason", "error"));
+        writer.finish("error", null);
     }
 
     private record ToolSelection(Long deviceId, boolean fleet, Long commandLogId) {
@@ -650,23 +655,15 @@ public class AssistantChatService {
         }
     }
 
-    private ToolSelection parseToolSelectionJson(String rawJsonString) {
-        if (!StringUtils.hasText(rawJsonString)) {
+    private ToolSelection parseToolSelectionNode(JsonNode node) {
+        if (node == null || !node.isObject()) {
             return null;
         }
-        try {
-            JsonNode node = objectMapper.readTree(rawJsonString);
-            if (node == null || !node.isObject()) {
-                return null;
-            }
-            boolean fleet = node.has("fleet") && node.get("fleet").asBoolean(false);
-            Long deviceId = parseLongNode(node.get("deviceId"));
-            Long commandLogId = parseLongNode(node.get("commandLogId"));
-            ToolSelection selection = new ToolSelection(deviceId, fleet, commandLogId);
-            return selection.hasAnySelection() ? selection : null;
-        } catch (Exception e) {
-            return null;
-        }
+        boolean fleet = node.has("fleet") && node.get("fleet").asBoolean(false);
+        Long deviceId = parseLongNode(node.get("deviceId"));
+        Long commandLogId = parseLongNode(node.get("commandLogId"));
+        ToolSelection selection = new ToolSelection(deviceId, fleet, commandLogId);
+        return selection.hasAnySelection() ? selection : null;
     }
 
     private static Long parseLongNode(JsonNode node) {

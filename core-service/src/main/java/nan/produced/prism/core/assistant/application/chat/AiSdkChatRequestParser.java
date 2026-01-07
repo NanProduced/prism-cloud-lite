@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 public final class AiSdkChatRequestParser {
 
@@ -15,6 +16,9 @@ public final class AiSdkChatRequestParser {
     }
 
     public record ToolMessage(String toolCallId, String content) {
+    }
+
+    public record ToolOutput(String toolCallId, String toolName, String state, JsonNode output, String errorText) {
     }
 
     /**
@@ -100,6 +104,78 @@ public final class AiSdkChatRequestParser {
                 continue;
             }
             return new ToolMessage(toolCallId.trim(), content.trim());
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns a tool output from UIMessage-style messages (AI SDK 6).
+     *
+     * <p>Expected shape (assistant message part):</p>
+     * <pre>
+     * {
+     *   "type": "tool-pickDevice",
+     *   "toolCallId": "call_123",
+     *   "state": "output-available",
+     *   "output": { ... }
+     * }
+     * </pre>
+     */
+    public static ToolOutput findToolOutput(JsonNode request, String toolCallId, String toolName) {
+        if (request == null || toolCallId == null || toolCallId.isBlank()) {
+            return null;
+        }
+
+        JsonNode messages = request.get("messages");
+        if (messages == null || !messages.isArray()) {
+            return null;
+        }
+
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            JsonNode msg = messages.get(i);
+            if (msg == null) {
+                continue;
+            }
+            String roleRaw = textOrNull(msg.get("role"));
+            if (roleRaw == null) {
+                continue;
+            }
+            String role = roleRaw.trim().toLowerCase(Locale.ROOT);
+            if (!"assistant".equals(role)) {
+                continue;
+            }
+
+            JsonNode parts = msg.get("parts");
+            if (parts == null || !parts.isArray()) {
+                continue;
+            }
+
+            for (int p = parts.size() - 1; p >= 0; p--) {
+                JsonNode part = parts.get(p);
+                if (part == null) {
+                    continue;
+                }
+                String type = textOrNull(part.get("type"));
+                if (type == null || !type.startsWith("tool-")) {
+                    continue;
+                }
+
+                String partToolCallId = textOrNull(part.get("toolCallId"));
+                if (!Objects.equals(toolCallId, partToolCallId)) {
+                    continue;
+                }
+
+                String partToolName = type.substring("tool-".length());
+                if (toolName != null && !toolName.isBlank() && !toolName.equals(partToolName)) {
+                    continue;
+                }
+
+                String state = textOrNull(part.get("state"));
+                JsonNode output = part.get("output");
+                String errorText = textOrNull(part.get("errorText"));
+                return new ToolOutput(partToolCallId, partToolName, state, output, errorText);
+            }
         }
 
         return null;
