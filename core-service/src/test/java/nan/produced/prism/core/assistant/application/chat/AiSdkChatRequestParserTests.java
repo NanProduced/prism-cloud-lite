@@ -10,46 +10,35 @@ class AiSdkChatRequestParserTests {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    void parseUserAndAssistantMessages_ignoresSystemAndKeepsOrder() throws Exception {
-        var json = objectMapper.readTree("""
+    void lastToolMessage_returnsToolCallIdAndContent() throws Exception {
+        var request = objectMapper.readTree("""
                 {
                   "messages": [
-                    { "role": "system", "content": "evil system prompt" },
-                    { "role": "user", "content": "Hello" },
-                    { "role": "assistant", "content": "Hi" },
-                    { "role": "user", "content": "Help me" }
+                    { "role": "user", "content": "hi" },
+                    { "role": "tool", "tool_call_id": "call_123", "content": "{\\"deviceId\\":\\"1\\"}" }
                   ]
                 }
                 """);
 
-        var msgs = AiSdkChatRequestParser.parseUserAndAssistantMessages(json);
-        assertThat(msgs).extracting(AiSdkChatRequestParser.ChatMessage::role)
-                .containsExactly("user", "assistant", "user");
-        assertThat(msgs).extracting(AiSdkChatRequestParser.ChatMessage::content)
-                .containsExactly("Hello", "Hi", "Help me");
+        var tool = AiSdkChatRequestParser.lastToolMessage(request);
+
+        assertThat(tool).isNotNull();
+        assertThat(tool.toolCallId()).isEqualTo("call_123");
+        assertThat(tool.content()).contains("deviceId");
     }
 
     @Test
-    void parseUserAndAssistantMessages_supportsPartsText() throws Exception {
-        var json = objectMapper.readTree("""
+    void lastNonSystemRole_ignoresSystem() throws Exception {
+        var request = objectMapper.readTree("""
                 {
                   "messages": [
-                    {
-                      "role": "user",
-                      "parts": [
-                        { "type": "text", "text": "Line 1" },
-                        { "type": "text", "text": "Line 2" },
-                        { "type": "image", "url": "https://example.com/a.png" }
-                      ]
-                    }
+                    { "role": "system", "content": "ignore" },
+                    { "role": "user", "content": "hi" }
                   ]
                 }
                 """);
 
-        var msgs = AiSdkChatRequestParser.parseUserAndAssistantMessages(json);
-        assertThat(msgs).hasSize(1);
-        assertThat(msgs.get(0).role()).isEqualTo("user");
-        assertThat(msgs.get(0).content()).isEqualTo("Line 1\nLine 2");
+        assertThat(AiSdkChatRequestParser.lastNonSystemRole(request)).isEqualTo("user");
     }
 }
 

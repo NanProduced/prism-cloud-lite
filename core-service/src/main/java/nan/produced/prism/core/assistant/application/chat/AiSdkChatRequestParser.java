@@ -14,6 +14,9 @@ public final class AiSdkChatRequestParser {
     public record ChatMessage(String role, String content) {
     }
 
+    public record ToolMessage(String toolCallId, String content) {
+    }
+
     /**
      * Parses Vercel AI SDK-like request body and extracts chat messages in chronological order.
      *
@@ -51,6 +54,81 @@ public final class AiSdkChatRequestParser {
             result.add(new ChatMessage(role, content.trim()));
         }
         return result;
+    }
+
+    /**
+     * Returns the last tool message in a Vercel AI SDK-like request.
+     *
+     * <p>Expected shape:</p>
+     * <pre>
+     * {"role":"tool","tool_call_id":"...","content":"{...}"}
+     * </pre>
+     *
+     * <p>Notes:</p>
+     * <ul>
+     *   <li>{@code content} is expected to be a JSON string (frontend guarantees this).</li>
+     *   <li>This method does not parse the JSON string, it just returns it.</li>
+     * </ul>
+     */
+    public static ToolMessage lastToolMessage(JsonNode request) {
+        if (request == null) {
+            return null;
+        }
+
+        JsonNode messages = request.get("messages");
+        if (messages == null || !messages.isArray()) {
+            return null;
+        }
+
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            JsonNode msg = messages.get(i);
+            if (msg == null) {
+                continue;
+            }
+            String roleRaw = textOrNull(msg.get("role"));
+            if (roleRaw == null) {
+                continue;
+            }
+            String role = roleRaw.trim().toLowerCase(Locale.ROOT);
+            if (!"tool".equals(role)) {
+                continue;
+            }
+
+            String toolCallId = textOrNull(msg.get("tool_call_id"));
+            String content = textOrNull(msg.get("content"));
+            if (toolCallId == null || toolCallId.isBlank() || content == null || content.isBlank()) {
+                continue;
+            }
+            return new ToolMessage(toolCallId.trim(), content.trim());
+        }
+
+        return null;
+    }
+
+    public static String lastNonSystemRole(JsonNode request) {
+        if (request == null) {
+            return null;
+        }
+        JsonNode messages = request.get("messages");
+        if (messages == null || !messages.isArray()) {
+            return null;
+        }
+        for (int i = messages.size() - 1; i >= 0; i--) {
+            JsonNode msg = messages.get(i);
+            if (msg == null) {
+                continue;
+            }
+            String roleRaw = textOrNull(msg.get("role"));
+            if (roleRaw == null) {
+                continue;
+            }
+            String role = roleRaw.trim().toLowerCase(Locale.ROOT);
+            if (role.isBlank() || "system".equals(role)) {
+                continue;
+            }
+            return role;
+        }
+        return null;
     }
 
     public static String lastUserText(JsonNode request) {

@@ -10,15 +10,17 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.core.assistant.application.chat.AssistantChatService;
 import nan.produced.prism.core.security.api.CloudAuthContext;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import java.util.UUID;
 
-@Tag(name = "AI Assistant", description = "AI 助手聊天（SSE 流式输出，Vercel AI SDK-compatible 请求体）")
+@Tag(name = "AI Assistant", description = "AI 助手聊天（Vercel AI SDK 5.0 Data Stream Protocol v1）")
 @RestController
 @RequiredArgsConstructor
 public class AssistantChatController {
@@ -26,13 +28,13 @@ public class AssistantChatController {
     private final AssistantChatService assistantChatService;
 
     @Operation(
-            summary = "AI 助手聊天（SSE）",
+            summary = "AI 助手聊天（Data Stream v1）",
             description = """
                     - Endpoint：`POST /api/chat`
-                    - Response：`text/event-stream`
-                      - 每条 SSE `data:` 为一个 JSON chunk（UIMessageChunk-like）
-                      - 最终以 `data: [DONE]` 结束
-                    - Request：Vercel AI SDK-like，仅解析 `messages[]` 中 `role=user|assistant` 的消息；忽略客户端传入的 `system` 以防 prompt injection。
+                    - Response：`text/plain; charset=utf-8`
+                      - Header：`x-vercel-ai-data-stream: v1`
+                      - Body：Vercel AI SDK Data Stream Protocol(v1)，每行一个 chunk：`<tag>:<payload>\\n`
+                    - Request：OpenAI-like messages，仅解析 `messages[]` 中 `role=user|assistant` 的消息；忽略客户端传入的 `system` 以防 prompt injection。
                     """)
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             required = true,
@@ -53,25 +55,15 @@ public class AssistantChatController {
     )
     @ApiResponse(
             responseCode = "200",
-            description = "SSE 流式返回（每个 data 行是一段 JSON；以 [DONE] 结束）",
+            description = "Data Stream Protocol(v1) 流式返回（按行输出 0/1/b/c/2/3/d chunk；以 d 结束）",
             content = @Content(
-                    mediaType = MediaType.TEXT_EVENT_STREAM_VALUE,
+                    mediaType = MediaType.TEXT_PLAIN_VALUE,
                     schema = @Schema(type = "string"),
                     examples = @ExampleObject(
-                            name = "SseDataLines",
+                            name = "DataStreamLines",
                             value = """
-                                    data: {"type":"start"}
-
-                                    data: {"type":"text-start","id":"text-1"}
-
-                                    data: {"type":"text-delta","id":"text-1","delta":"..."} 
-
-                                    data: {"type":"text-end","id":"text-1"}
-
-                                    data: {"type":"finish","finishReason":"stop"}
-
-                                    data: [DONE]
-
+                                    0:"你好，我是 Prism Cloud AI 助手。"
+                                    d:{"finishReason":"stop"}
                                     """
                     )
             )
@@ -82,15 +74,21 @@ public class AssistantChatController {
     @PostMapping(
             path = "/api/chat",
             consumes = MediaType.APPLICATION_JSON_VALUE,
-            produces = MediaType.TEXT_EVENT_STREAM_VALUE
+            produces = MediaType.TEXT_PLAIN_VALUE
     )
-    public SseEmitter chat(@RequestBody JsonNode request) {
-        // Let the client keep the connection open; caller controls abort.
-        SseEmitter emitter = new SseEmitter(0L);
+    public ResponseEntity<StreamingResponseBody> chat(@RequestBody JsonNode request) {
         var user = CloudAuthContext.getCurrentUser();
         UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         String tier = user.tier();
-        assistantChatService.handle(userId, tier, request, emitter);
-        return emitter;
+
+        StreamingResponseBody body = outputStream -> assistantChatService.handle(userId, tier, request, outputStream);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("x-vercel-ai-data-stream", "v1");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .contentType(MediaType.parseMediaType("text/plain; charset=utf-8"))
+                .body(body);
     }
 }

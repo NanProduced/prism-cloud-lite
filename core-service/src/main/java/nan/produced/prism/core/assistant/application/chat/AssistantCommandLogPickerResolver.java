@@ -38,15 +38,14 @@ public class AssistantCommandLogPickerResolver {
     private final DeviceCommandLogRepositoryJpa commandLogRepositoryJpa;
     private final DeviceRepositoryJpa deviceRepositoryJpa;
 
-    public record PickCommandItem(long commandLogId,
-                                  long deviceId,
+    public record PickCommandItem(String commandLogId,
                                   String deviceName,
                                   String actionType,
                                   String status,
                                   String createdAt) {
     }
 
-    public record PickPayload(String title, String hint, List<PickCommandItem> items) {
+    public record PickPayload(String title, List<PickCommandItem> items) {
     }
 
     public PickPayload resolve(UUID userId, String userText) {
@@ -100,8 +99,7 @@ public class AssistantCommandLogPickerResolver {
             }
             String deviceName = names.getOrDefault(log.getDeviceId(), "Device " + log.getDeviceId());
             items.add(new PickCommandItem(
-                    log.getId(),
-                    log.getDeviceId(),
+                    String.valueOf(log.getId()),
                     deviceName,
                     log.getActionType() != null ? log.getActionType().name() : null,
                     log.getStatus() != null ? log.getStatus().name() : null,
@@ -113,11 +111,7 @@ public class AssistantCommandLogPickerResolver {
             return null;
         }
 
-        return new PickPayload(
-                "请选择要排查的指令",
-                "你也可以补充“设备名称 + 大概时间点/动作类型”，我会自动帮你定位。",
-                List.copyOf(items)
-        );
+        return new PickPayload("请选择要排查的指令", List.copyOf(items));
     }
 
     private static boolean shouldTrigger(String userText) {
@@ -151,4 +145,3 @@ public class AssistantCommandLogPickerResolver {
         return !lowered.contains("排程") && !lowered.contains("schedule");
     }
 }
-

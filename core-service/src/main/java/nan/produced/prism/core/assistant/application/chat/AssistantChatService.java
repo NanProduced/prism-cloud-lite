@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.core.assistant.api.datastream.AiDataStreamWriter;
 import nan.produced.prism.core.assistant.infrastructure.config.AssistantChatProperties;
 import nan.produced.prism.core.assistant.infrastructure.config.AssistantChatTierLimitsProperties;
 import nan.produced.prism.core.assistant.infrastructure.config.AssistantChatTokenBudgetProperties;
@@ -15,9 +16,9 @@ import nan.produced.prism.core.assistant.application.tools.AssistantToolExecutor
 import nan.produced.prism.core.assistant.infrastructure.persistence.AssistantChatTokenUsageRepository;
 import nan.produced.prism.core.assistant.infrastructure.springai.AssistantChatModelRouter;
 import org.springframework.stereotype.Service;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.util.StringUtils;
 
+import java.io.OutputStream;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -28,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 @Service
@@ -50,12 +50,13 @@ public class AssistantChatService {
     private final AssistantSelectionTokenParser selectionTokenParser;
     private final AssistantCommandLogPickerResolver commandLogPickerResolver;
     private final AssistantDevicePickerResolver devicePickerResolver;
+    private final AssistantPendingToolCallStore pendingToolCallStore;
 
-    public void handle(UUID userId, String tier, JsonNode request, SseEmitter emitter) {
-        CompletableFuture.runAsync(() -> doHandle(userId, tier, request, emitter));
+    public void handle(UUID userId, String tier, JsonNode request, OutputStream outputStream) {
+        doHandle(userId, tier, request, new AiDataStreamWriter(objectMapper, outputStream));
     }
 
-    private void doHandle(UUID userId, String tier, JsonNode request, SseEmitter emitter) {
+    private void doHandle(UUID userId, String tier, JsonNode request, AiDataStreamWriter writer) {
         AssistantChatTierLimits limits = resolveLimits(userId, tier);
         QuotaSnapshot quota = null;
 
@@ -65,51 +66,59 @@ public class AssistantChatService {
                 limits.historyMaxChars()
         );
         String rawUserText = lastUserText(conversation);
-        if (!StringUtils.hasText(rawUserText)) {
-            sendErrorAndDone(emitter, "Missing user message");
-            return;
-        }
 
         AssistantSelectionTokenParser.ParseResult selection = selectionTokenParser.parse(rawUserText);
         conversation = sanitizeUserMessages(conversation);
         String userText = lastUserText(conversation);
+        userText = StringUtils.hasText(userText) ? userText : null;
+
+        // Tool result message (AI SDK 5.0): {"role":"tool","tool_call_id":"...","content":"{...}"}
+        AiSdkChatRequestParser.ToolMessage toolMessage = AiSdkChatRequestParser.lastToolMessage(request);
+        String lastRole = AiSdkChatRequestParser.lastNonSystemRole(request);
+        AssistantPendingToolCallStore.PendingToolCall pending = pendingToolCallStore.get(userId);
+
+        ToolSelection selectionFromTool = null;
+        if (toolMessage != null && pending != null && pending.toolCallId() != null
+                && pending.toolCallId().equals(toolMessage.toolCallId())) {
+            selectionFromTool = parseToolSelectionJson(toolMessage.content());
+            if (selectionFromTool == null) {
+                sendInvalidToolResult(writer);
+                return;
+            }
+            pendingToolCallStore.clear(userId);
+        } else if (toolMessage == null && pending != null && "user".equals(lastRole)) {
+            // User skipped tool selection and typed a new message; clear pending state and continue.
+            pendingToolCallStore.clear(userId);
+        }
+
+        if (selectionFromTool != null && selectionFromTool.hasAnySelection()) {
+            selection = selectionFromTool.toTokenLikeSelection(selection.cleanedText());
+        }
+
         if (!StringUtils.hasText(userText)) {
-            userText = StringUtils.hasText(selection.cleanedText()) ? selection.cleanedText() : "请帮我继续处理";
+            userText = StringUtils.hasText(selection.cleanedText()) ? selection.cleanedText() : rawUserText;
         }
         if (StringUtils.hasText(selection.cleanedText())) {
             userText = selection.cleanedText();
         }
+        if (!StringUtils.hasText(userText)) {
+            writer.error("Missing user message");
+            writer.finish(Map.of("finishReason", "error"));
+            return;
+        }
 
         try {
-            sendChunk(emitter, Map.of("type", "start"));
-
             Object toolResultForPrompt = null;
             if (selection.hasAnySelection()) {
                 AssistantToolCall injectedToolCall = selection.toInjectedToolCall(objectMapper);
                 if (injectedToolCall != null) {
-                    sendChunk(emitter, Map.of(
-                            "type", "tool-input-available",
-                            "toolCallId", injectedToolCall.toolCallId(),
-                            "toolName", injectedToolCall.toolName(),
-                            "input", injectedToolCall.input(),
-                            "providerExecuted", true
-                    ));
+                    writer.toolCall(injectedToolCall.toolCallId(), injectedToolCall.toolName(), injectedToolCall.input());
                     var exec = toolExecutor.execute(userId, injectedToolCall);
                     if (exec.success()) {
                         toolResultForPrompt = truncateJson(exec.output(), limits.toolResultMaxChars());
-                        sendChunk(emitter, Map.of(
-                                "type", "tool-output-available",
-                                "toolCallId", injectedToolCall.toolCallId(),
-                                "output", exec.output(),
-                                "providerExecuted", true
-                        ));
+                        writer.toolResult(injectedToolCall.toolCallId(), exec.output());
                     } else {
-                        sendChunk(emitter, Map.of(
-                                "type", "tool-output-error",
-                                "toolCallId", injectedToolCall.toolCallId(),
-                                "errorText", exec.errorText(),
-                                "providerExecuted", true
-                        ));
+                        writer.toolResult(injectedToolCall.toolCallId(), Map.of("error", exec.errorText()));
                     }
                 }
             }
@@ -117,15 +126,8 @@ public class AssistantChatService {
             AssistantNavigationToolResolver.NavigationTarget nav = navigationToolResolver.resolve(userText);
             if (nav != null) {
                 String toolCallId = "tool-" + UUID.randomUUID();
-                sendChunk(emitter, Map.of(
-                        "type", "tool-input-available",
-                        "toolCallId", toolCallId,
-                        "toolName", "navigateToPage",
-                        "input", Map.of("path", nav.path(), "label", nav.label()),
-                        "providerExecuted", false
-                ));
-                sendChunk(emitter, Map.of("type", "finish", "finishReason", "tool-calls"));
-                sendDone(emitter);
+                writer.toolCall(toolCallId, "navigateToPage", Map.of("path", nav.path(), "label", nav.label()));
+                writer.finish(Map.of("finishReason", "stop"));
                 return;
             }
 
@@ -133,30 +135,18 @@ public class AssistantChatService {
                 AssistantCommandLogPickerResolver.PickPayload commandPick = commandLogPickerResolver.resolve(userId, userText);
                 if (commandPick != null) {
                     String toolCallId = "tool-" + UUID.randomUUID();
-                    sendChunk(emitter, Map.of(
-                            "type", "tool-input-available",
-                            "toolCallId", toolCallId,
-                            "toolName", "pickCommandLog",
-                            "input", commandPick,
-                            "providerExecuted", false
-                    ));
-                    sendChunk(emitter, Map.of("type", "finish", "finishReason", "tool-calls"));
-                    sendDone(emitter);
+                    pendingToolCallStore.set(userId, toolCallId, "pickCommandLog");
+                    writer.toolCall(toolCallId, "pickCommandLog", commandPick);
+                    writer.finish(Map.of("finishReason", "tool-calls"));
                     return;
                 }
 
                 AssistantDevicePickerResolver.PickPayload devicePick = devicePickerResolver.resolve(userId, userText);
                 if (devicePick != null) {
                     String toolCallId = "tool-" + UUID.randomUUID();
-                    sendChunk(emitter, Map.of(
-                            "type", "tool-input-available",
-                            "toolCallId", toolCallId,
-                            "toolName", "pickDevice",
-                            "input", devicePick,
-                            "providerExecuted", false
-                    ));
-                    sendChunk(emitter, Map.of("type", "finish", "finishReason", "tool-calls"));
-                    sendDone(emitter);
+                    pendingToolCallStore.set(userId, toolCallId, "pickDevice");
+                    writer.toolCall(toolCallId, "pickDevice", devicePick);
+                    writer.finish(Map.of("finishReason", "tool-calls"));
                     return;
                 }
             }
@@ -165,29 +155,13 @@ public class AssistantChatService {
                     ? null
                     : toolPlanner.plan(userText);
             if (toolResultForPrompt == null && !"spring-ai".equalsIgnoreCase(properties.engine()) && plannedToolCall != null) {
-                sendChunk(emitter, Map.of(
-                        "type", "tool-input-available",
-                        "toolCallId", plannedToolCall.toolCallId(),
-                        "toolName", plannedToolCall.toolName(),
-                        "input", plannedToolCall.input(),
-                        "providerExecuted", true
-                ));
+                writer.toolCall(plannedToolCall.toolCallId(), plannedToolCall.toolName(), plannedToolCall.input());
                 var exec = toolExecutor.execute(userId, plannedToolCall);
                 if (exec.success()) {
                     toolResultForPrompt = truncateJson(exec.output(), limits.toolResultMaxChars());
-                    sendChunk(emitter, Map.of(
-                            "type", "tool-output-available",
-                            "toolCallId", plannedToolCall.toolCallId(),
-                            "output", exec.output(),
-                            "providerExecuted", true
-                    ));
+                    writer.toolResult(plannedToolCall.toolCallId(), exec.output());
                 } else {
-                    sendChunk(emitter, Map.of(
-                            "type", "tool-output-error",
-                            "toolCallId", plannedToolCall.toolCallId(),
-                            "errorText", exec.errorText(),
-                            "providerExecuted", true
-                    ));
+                    writer.toolResult(plannedToolCall.toolCallId(), Map.of("error", exec.errorText()));
                 }
             }
 
@@ -204,14 +178,12 @@ public class AssistantChatService {
             if (isLocalVllmCall(userId) && tokenBudget != null && tokenBudget.isEnabled()) {
                 quota = resolveQuotaSnapshot(userId, tier, messages, tokenBudget.resetZoneId());
                 if (quota.blocked()) {
-                    sendQuotaExceededAndDone(emitter, quota);
+                    sendQuotaExceededAndFinish(writer, quota);
                     return;
                 }
                 maxCompletionTokens = quota.maxCompletionTokensForThisRequest();
             }
 
-            String textId = "text-1";
-            sendChunk(emitter, Map.of("type", "text-start", "id", textId));
             StringBuilder answerText = quota != null && quota.trackTokens() ? new StringBuilder() : null;
             AssistantChatLlmClient.StreamResult llmResult = llmClient.stream(
                     userId,
@@ -225,51 +197,36 @@ public class AssistantChatService {
                     new AssistantChatLlmClient.ToolEventListener() {
                         @Override
                         public void onToolInputAvailable(String toolCallId, String toolName, Object input) {
-                            sendChunk(emitter, Map.of(
-                                    "type", "tool-input-available",
-                                    "toolCallId", toolCallId,
-                                    "toolName", toolName,
-                                    "input", input,
-                                    "providerExecuted", true
-                            ));
+                            writer.toolCall(toolCallId, toolName, input);
                         }
 
                         @Override
                         public void onToolOutputAvailable(String toolCallId, Object output) {
-                            sendChunk(emitter, Map.of(
-                                    "type", "tool-output-available",
-                                    "toolCallId", toolCallId,
-                                    "output", output,
-                                    "providerExecuted", true
-                            ));
+                            writer.toolResult(toolCallId, output);
                         }
 
                         @Override
                         public void onToolOutputError(String toolCallId, String errorText) {
-                            sendChunk(emitter, Map.of(
-                                    "type", "tool-output-error",
-                                    "toolCallId", toolCallId,
-                                    "errorText", errorText,
-                                    "providerExecuted", true
-                            ));
+                            writer.toolResult(toolCallId, Map.of("error", errorText));
                         }
                     },
                     delta -> {
                         if (answerText != null && delta != null) {
                             answerText.append(delta);
                         }
-                        sendChunk(emitter, Map.of("type", "text-delta", "id", textId, "delta", delta));
+                        writer.text(delta);
                     }
             );
-            sendChunk(emitter, Map.of("type", "text-end", "id", textId));
 
             for (var source : rag.sources()) {
-                Map<String, Object> sourceChunk = new LinkedHashMap<>();
-                sourceChunk.put("type", "source-url");
-                sourceChunk.put("sourceId", source.sourceId());
-                sourceChunk.put("url", source.url());
-                sourceChunk.put("title", source.title());
-                sendChunk(emitter, sourceChunk);
+                writer.data(List.of(Map.of(
+                        "type", "source",
+                        "source", Map.of(
+                                "id", source.sourceId(),
+                                "url", source.url(),
+                                "title", source.title()
+                        )
+                )));
             }
 
             if (quota != null && quota.trackTokens() && llmResult != null) {
@@ -283,16 +240,15 @@ public class AssistantChatService {
 
             String finishReason = llmResult != null ? llmResult.finishReason() : null;
             Map<String, Object> finishChunk = new LinkedHashMap<>();
-            finishChunk.put("type", "finish");
             finishChunk.put("finishReason", normalizeFinishReason(finishReason));
             if (quota != null && quota.trackTokens()) {
                 finishChunk.put("quota", quota.toFrontendPayload());
             }
-            sendChunk(emitter, finishChunk);
-            sendDone(emitter);
+            writer.finish(finishChunk);
         } catch (Exception e) {
             log.warn("assistant chat failed", e);
-            sendErrorAndDone(emitter, "Assistant error: " + e.getMessage());
+            writer.error("Assistant error: " + e.getMessage());
+            writer.finish(Map.of("finishReason", "error"));
         }
     }
 
@@ -429,19 +385,16 @@ public class AssistantChatService {
         return "PRO".equals(upper) ? "PRO" : "FREE";
     }
 
-    private void sendQuotaExceededAndDone(SseEmitter emitter, QuotaSnapshot quota) {
-        try {
-            Map<String, Object> err = new LinkedHashMap<>();
-            err.put("type", "error");
-            err.put("errorCode", "ASSISTANT_TOKEN_DAILY_LIMIT_EXCEEDED");
-            err.put("errorText", "今日 AI 助手体验额度已用完（" + quota.tier() + "）。请明天再试，或升级到 Pro，或绑定自己的 API Key。");
-            err.put("details", quota.toFrontendPayload());
-            sendChunk(emitter, err);
-            sendChunk(emitter, Map.of("type", "finish", "finishReason", "error"));
-        } catch (Exception ignored) {
-        } finally {
-            sendDone(emitter);
+    private void sendQuotaExceededAndFinish(AiDataStreamWriter writer, QuotaSnapshot quota) {
+        if (writer == null || quota == null) {
+            return;
         }
+        writer.error("今日 AI 助手体验额度已用完（" + quota.tier() + "）。请明天再试，或升级到 Pro，或绑定自己的 API Key。");
+        writer.finish(Map.of(
+                "finishReason", "error",
+                "errorCode", "ASSISTANT_TOKEN_DAILY_LIMIT_EXCEEDED",
+                "details", quota.toFrontendPayload()
+        ));
     }
 
     private record QuotaSnapshot(
@@ -568,32 +521,64 @@ public class AssistantChatService {
         }
     }
 
-    private void sendChunk(SseEmitter emitter, Object chunk) {
+    private void sendInvalidToolResult(AiDataStreamWriter writer) {
+        if (writer == null) {
+            return;
+        }
+        writer.error("非法操作或选择已失效");
+        writer.finish(Map.of("finishReason", "error"));
+    }
+
+    private record ToolSelection(Long deviceId, boolean fleet, Long commandLogId) {
+        boolean hasAnySelection() {
+            return fleet || deviceId != null || commandLogId != null;
+        }
+
+        AssistantSelectionTokenParser.ParseResult toTokenLikeSelection(String cleanedText) {
+            return new AssistantSelectionTokenParser.ParseResult(cleanedText, deviceId, fleet, commandLogId);
+        }
+    }
+
+    private ToolSelection parseToolSelectionJson(String rawJsonString) {
+        if (!StringUtils.hasText(rawJsonString)) {
+            return null;
+        }
         try {
-            String json = objectMapper.writeValueAsString(chunk);
-            emitter.send(SseEmitter.event().data(json));
+            JsonNode node = objectMapper.readTree(rawJsonString);
+            if (node == null || !node.isObject()) {
+                return null;
+            }
+            boolean fleet = node.has("fleet") && node.get("fleet").asBoolean(false);
+            Long deviceId = parseLongNode(node.get("deviceId"));
+            Long commandLogId = parseLongNode(node.get("commandLogId"));
+            ToolSelection selection = new ToolSelection(deviceId, fleet, commandLogId);
+            return selection.hasAnySelection() ? selection : null;
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            return null;
         }
     }
 
-    private void sendDone(SseEmitter emitter) {
-        try {
-            emitter.send(SseEmitter.event().data("[DONE]"));
-        } catch (Exception ignored) {
-        } finally {
-            emitter.complete();
+    private static Long parseLongNode(JsonNode node) {
+        if (node == null || node.isNull()) {
+            return null;
         }
-    }
-
-    private void sendErrorAndDone(SseEmitter emitter, String errorText) {
-        try {
-            sendChunk(emitter, Map.of("type", "error", "errorText", errorText));
-            sendChunk(emitter, Map.of("type", "finish", "finishReason", "error"));
-        } catch (Exception ignored) {
-        } finally {
-            sendDone(emitter);
+        if (node.isNumber()) {
+            long v = node.asLong();
+            return v > 0 ? v : null;
         }
+        if (node.isTextual()) {
+            String s = node.asText();
+            if (!StringUtils.hasText(s)) {
+                return null;
+            }
+            try {
+                long v = Long.parseLong(s.trim());
+                return v > 0 ? v : null;
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private static String normalizeFinishReason(String raw) {

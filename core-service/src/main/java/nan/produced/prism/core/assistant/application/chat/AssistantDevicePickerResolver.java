@@ -28,7 +28,7 @@ public class AssistantDevicePickerResolver {
 
     private final DeviceSearchUseCase deviceSearchUseCase;
 
-    public record PickDeviceItem(long deviceId, String label, boolean online, String lastReportTime) {
+    public record PickDeviceItem(String deviceId, String label, boolean online, String lastReportTime) {
     }
 
     public record PickPayload(String title, String hint, List<PickDeviceItem> items, boolean includeFleetOption) {
@@ -68,7 +68,7 @@ public class AssistantDevicePickerResolver {
             boolean online = d.getOnlineStatus() != null && d.getOnlineStatus() == 1;
             String label = StringUtils.hasText(d.getDeviceName()) ? d.getDeviceName().trim() : ("Device " + d.getDeviceId());
             String last = d.getLastReportTime() != null ? d.getLastReportTime().toString() : null;
-            items.add(new PickDeviceItem(d.getDeviceId(), label, online, last));
+            items.add(new PickDeviceItem(String.valueOf(d.getDeviceId()), label, online, last));
         }
 
         if (items.isEmpty()) {
