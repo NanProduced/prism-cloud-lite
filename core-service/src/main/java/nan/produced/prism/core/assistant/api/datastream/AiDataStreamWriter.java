@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 
 @RequiredArgsConstructor
@@ -38,8 +37,8 @@ public class AiDataStreamWriter {
         ));
     }
 
-    public void data(List<?> data) {
-        writeLine("2", data == null ? List.of() : data);
+    public void data(Object data) {
+        writeLine("2", data == null ? Map.of() : data);
     }
 
     public void error(String errorText) {
@@ -64,4 +63,3 @@ public class AiDataStreamWriter {
         }
     }
 }
-

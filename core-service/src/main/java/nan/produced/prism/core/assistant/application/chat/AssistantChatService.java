@@ -185,6 +185,7 @@ public class AssistantChatService {
             }
 
             StringBuilder answerText = quota != null && quota.trackTokens() ? new StringBuilder() : null;
+            ThinkTagStreamSplitter thinkSplitter = new ThinkTagStreamSplitter(writer);
             AssistantChatLlmClient.StreamResult llmResult = llmClient.stream(
                     userId,
                     messages,
@@ -214,19 +215,20 @@ public class AssistantChatService {
                         if (answerText != null && delta != null) {
                             answerText.append(delta);
                         }
-                        writer.text(delta);
+                        thinkSplitter.accept(delta);
                     }
             );
+            thinkSplitter.flush();
 
             for (var source : rag.sources()) {
-                writer.data(List.of(Map.of(
+                writer.data(Map.of(
                         "type", "source",
                         "source", Map.of(
                                 "id", source.sourceId(),
                                 "url", source.url(),
                                 "title", source.title()
                         )
-                )));
+                ));
             }
 
             if (quota != null && quota.trackTokens() && llmResult != null) {
@@ -249,6 +251,115 @@ public class AssistantChatService {
             log.warn("assistant chat failed", e);
             writer.error("Assistant error: " + e.getMessage());
             writer.finish(Map.of("finishReason", "error"));
+        }
+    }
+
+    /**
+     * Per-request streaming splitter for local-model {@code <think>...</think>} outputs.
+     *
+     * <p>Implementation detail: stored in a ThreadLocal so it can be referenced from the delta callback without
+     * additional closure wiring.</p>
+     */
+    private static final class ThinkTagStreamSplitter {
+
+        private static final String OPEN = "<think>";
+        private static final String CLOSE = "</think>";
+
+        private final AiDataStreamWriter writer;
+        private final StringBuilder buffer = new StringBuilder(1024);
+        private Mode mode = Mode.TEXT;
+
+        private enum Mode {TEXT, THINK}
+
+        ThinkTagStreamSplitter(AiDataStreamWriter writer) {
+            this.writer = writer;
+        }
+
+        void accept(String delta) {
+            if (delta == null || delta.isEmpty()) {
+                return;
+            }
+            buffer.append(delta);
+            process(false);
+        }
+
+        void flush() {
+            process(true);
+        }
+
+        private void process(boolean flushAll) {
+            while (true) {
+                if (mode == Mode.TEXT) {
+                    int openIdx = buffer.indexOf(OPEN);
+                    if (openIdx >= 0) {
+                        emitText(buffer.substring(0, openIdx));
+                        buffer.delete(0, openIdx + OPEN.length());
+                        mode = Mode.THINK;
+                        continue;
+                    }
+
+                    int keep = flushAll ? 0 : keepSuffixThatMayStartTag(buffer, OPEN);
+                    if (keep > 0) {
+                        int emitLen = buffer.length() - keep;
+                        emitText(buffer.substring(0, emitLen));
+                        buffer.delete(0, emitLen);
+                    } else {
+                        emitText(buffer.toString());
+                        buffer.setLength(0);
+                    }
+                    return;
+                }
+
+                int closeIdx = buffer.indexOf(CLOSE);
+                if (closeIdx >= 0) {
+                    emitReasoning(buffer.substring(0, closeIdx));
+                    buffer.delete(0, closeIdx + CLOSE.length());
+                    mode = Mode.TEXT;
+                    continue;
+                }
+
+                int keep = flushAll ? 0 : keepSuffixThatMayStartTag(buffer, CLOSE);
+                if (keep > 0) {
+                    int emitLen = buffer.length() - keep;
+                    emitReasoning(buffer.substring(0, emitLen));
+                    buffer.delete(0, emitLen);
+                } else {
+                    emitReasoning(buffer.toString());
+                    buffer.setLength(0);
+                }
+                return;
+            }
+        }
+
+        private static int keepSuffixThatMayStartTag(CharSequence buf, String tag) {
+            int max = Math.min(buf.length(), tag.length() - 1);
+            for (int keep = max; keep >= 1; keep--) {
+                boolean matches = true;
+                for (int j = 0; j < keep; j++) {
+                    if (buf.charAt(buf.length() - keep + j) != tag.charAt(j)) {
+                        matches = false;
+                        break;
+                    }
+                }
+                if (matches) {
+                    return keep;
+                }
+            }
+            return 0;
+        }
+
+        private void emitText(String s) {
+            if (s == null || s.isEmpty()) {
+                return;
+            }
+            writer.text(s);
+        }
+
+        private void emitReasoning(String s) {
+            if (s == null || s.isEmpty()) {
+                return;
+            }
+            writer.reasoning(s);
         }
     }
 
