@@ -46,7 +46,7 @@ assistant:
       prefer-lang: ${ASSISTANT_CHAT_RAG_PREFER_LANG:auto} # auto|zh|en
     llm:
       base-url: ${ASSISTANT_CHAT_LLM_BASE_URL:http://127.0.0.1:8000}
-      model: ${ASSISTANT_CHAT_LLM_MODEL:Qwen/Qwen3-8B}
+      model: ${ASSISTANT_CHAT_LLM_MODEL:Qwen/Qwen3-8B-AWQ}
       api-key: ${ASSISTANT_CHAT_LLM_API_KEY:}
       temperature: ${ASSISTANT_CHAT_LLM_TEMPERATURE:0.2}
     providers:
