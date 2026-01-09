@@ -70,12 +70,12 @@ public class GetRecentPublishFailuresTool implements AssistantTool {
 
             ObjectNode row = objectMapper.createObjectNode();
             row.put("messageId", m.getId() != null ? m.getId().toString() : null);
-            row.put("deviceId", m.getDeviceId());
+            row.put("deviceId", m.getDeviceId() != null ? String.valueOf(m.getDeviceId()) : null);
             row.put("deviceName", m.getDeviceNameSnapshot());
             row.put("actionType", actionType);
             row.put("finalStatus", textAt(payloadNode, "finalStatus"));
             row.put("errorMessage", textAt(payloadNode, "errorMessage"));
-            row.put("operationId", m.getOperationId());
+            row.put("operationId", m.getOperationId() != null ? String.valueOf(m.getOperationId()) : null);
             row.put("createdAt", m.getCreatedAt() != null ? m.getCreatedAt().toString() : null);
             items.add(row);
 
@@ -142,4 +142,3 @@ public class GetRecentPublishFailuresTool implements AssistantTool {
         return v != null && v.isTextual() ? v.asText() : null;
     }
 }
-

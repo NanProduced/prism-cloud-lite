@@ -53,38 +53,66 @@ public class AiUiMessageSseWriter {
     }
 
     public void toolInputAvailable(String toolCallId, String toolName, Object input) {
-        writeData(Map.of(
-                "type", "tool-input-available",
-                "toolCallId", toolCallId,
-                "toolName", toolName,
-                "input", input == null ? Map.of() : input
-        ));
+        toolInputAvailable(toolCallId, toolName, input, false);
+    }
+
+    public void toolInputAvailable(String toolCallId, String toolName, Object input, boolean providerExecuted) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("type", "tool-input-available");
+        payload.put("toolCallId", toolCallId);
+        payload.put("toolName", toolName);
+        payload.put("input", input == null ? Map.of() : input);
+        if (providerExecuted) {
+            payload.put("providerExecuted", true);
+        }
+        writeData(payload);
     }
 
     public void toolInputError(String toolCallId, String toolName, Object input, String errorText) {
-        writeData(Map.of(
-                "type", "tool-input-error",
-                "toolCallId", toolCallId,
-                "toolName", toolName,
-                "input", input == null ? Map.of() : input,
-                "errorText", errorText == null ? "" : errorText
-        ));
+        toolInputError(toolCallId, toolName, input, errorText, false);
+    }
+
+    public void toolInputError(String toolCallId, String toolName, Object input, String errorText, boolean providerExecuted) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("type", "tool-input-error");
+        payload.put("toolCallId", toolCallId);
+        payload.put("toolName", toolName);
+        payload.put("input", input == null ? Map.of() : input);
+        payload.put("errorText", errorText == null ? "" : errorText);
+        if (providerExecuted) {
+            payload.put("providerExecuted", true);
+        }
+        writeData(payload);
     }
 
     public void toolOutputAvailable(String toolCallId, Object output) {
-        writeData(Map.of(
-                "type", "tool-output-available",
-                "toolCallId", toolCallId,
-                "output", output == null ? Map.of() : output
-        ));
+        toolOutputAvailable(toolCallId, output, false);
+    }
+
+    public void toolOutputAvailable(String toolCallId, Object output, boolean providerExecuted) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("type", "tool-output-available");
+        payload.put("toolCallId", toolCallId);
+        payload.put("output", output == null ? Map.of() : output);
+        if (providerExecuted) {
+            payload.put("providerExecuted", true);
+        }
+        writeData(payload);
     }
 
     public void toolOutputError(String toolCallId, String errorText) {
-        writeData(Map.of(
-                "type", "tool-output-error",
-                "toolCallId", toolCallId,
-                "errorText", errorText == null ? "" : errorText
-        ));
+        toolOutputError(toolCallId, errorText, false);
+    }
+
+    public void toolOutputError(String toolCallId, String errorText, boolean providerExecuted) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("type", "tool-output-error");
+        payload.put("toolCallId", toolCallId);
+        payload.put("errorText", errorText == null ? "" : errorText);
+        if (providerExecuted) {
+            payload.put("providerExecuted", true);
+        }
+        writeData(payload);
     }
 
     public void sourceUrl(String sourceId, String url, String title) {

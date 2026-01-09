@@ -142,8 +142,8 @@ public class SearchCommandLogsTool implements AssistantTool {
         out.put("hint", "请选择一条指令继续排查（前端可把每条记录渲染为按钮，点击后发送 [[commandLogId:...]]）。");
         out.set("items", objectMapper.valueToTree(logs.stream().map(log -> {
             Map<String, Object> row = new HashMap<>();
-            row.put("commandLogId", log.getId());
-            row.put("deviceId", log.getDeviceId());
+            row.put("commandLogId", log.getId() != null ? String.valueOf(log.getId()) : null);
+            row.put("deviceId", log.getDeviceId() != null ? String.valueOf(log.getDeviceId()) : null);
             row.put("deviceName", names.getOrDefault(log.getDeviceId(), "Device " + log.getDeviceId()));
             row.put("actionType", log.getActionType() != null ? log.getActionType().name() : null);
             row.put("status", log.getStatus() != null ? log.getStatus().name() : null);
@@ -288,4 +288,3 @@ public class SearchCommandLogsTool implements AssistantTool {
         return List.of();
     }
 }
-

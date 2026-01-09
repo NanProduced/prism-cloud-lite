@@ -186,8 +186,8 @@ public class DiagnoseDeviceCommandTool implements AssistantTool {
 
     private ObjectNode toCandidateItem(DeviceCommandLog log) {
         ObjectNode row = objectMapper.createObjectNode();
-        row.put("commandLogId", log.getId());
-        row.put("deviceId", log.getDeviceId());
+        row.put("commandLogId", log.getId() != null ? String.valueOf(log.getId()) : null);
+        row.put("deviceId", log.getDeviceId() != null ? String.valueOf(log.getDeviceId()) : null);
         row.put("actionType", log.getActionType() != null ? log.getActionType().name() : null);
         row.put("status", log.getStatus() != null ? log.getStatus().name() : null);
         row.put("createdAt", log.getCreatedAt() != null ? log.getCreatedAt().toString() : null);
@@ -313,13 +313,13 @@ public class DiagnoseDeviceCommandTool implements AssistantTool {
         }
 
         ObjectNode deviceNode = objectMapper.createObjectNode();
-        deviceNode.put("deviceId", deviceId);
+        deviceNode.put("deviceId", deviceId != null ? String.valueOf(deviceId) : null);
         deviceNode.put("deviceName", deviceName);
         deviceNode.put("online", online);
         deviceNode.put("lastReportTime", device != null && device.getLastReportTime() != null ? device.getLastReportTime().toString() : null);
 
         ObjectNode commandNode = objectMapper.createObjectNode();
-        commandNode.put("commandLogId", log.getId());
+        commandNode.put("commandLogId", log.getId() != null ? String.valueOf(log.getId()) : null);
         commandNode.put("actionType", log.getActionType() != null ? log.getActionType().name() : null);
         commandNode.put("trackingLevel", trackingLevel != null ? trackingLevel.name() : null);
         commandNode.put("status", status != null ? status.name() : null);

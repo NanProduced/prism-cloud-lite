@@ -39,7 +39,7 @@ public class AnalyzeOfflineDevicesTool implements AssistantTool {
         out.put("limit", limit);
         out.set("items", objectMapper.valueToTree(offline.stream().map(d -> {
             ObjectNode row = objectMapper.createObjectNode();
-            row.put("deviceId", d.getDeviceId());
+            row.put("deviceId", d.getDeviceId() != null ? String.valueOf(d.getDeviceId()) : null);
             row.put("deviceName", d.getDeviceName());
             row.put("lastReportTime", d.getLastReportTime() != null ? d.getLastReportTime().toString() : null);
             row.put("model", d.getModel());
@@ -56,4 +56,3 @@ public class AnalyzeOfflineDevicesTool implements AssistantTool {
         return v != null && v.isInt() ? v.asInt() : defaultValue;
     }
 }
-

@@ -77,7 +77,7 @@ public class DiagnoseDeviceTool implements AssistantTool {
         }
 
         ObjectNode out = objectMapper.createObjectNode();
-        out.put("deviceId", d.getDeviceId());
+        out.put("deviceId", d.getDeviceId() != null ? String.valueOf(d.getDeviceId()) : null);
         out.put("deviceName", d.getDeviceName());
         out.put("onlineStatus", d.getOnlineStatus());
         out.put("lastReportTime", d.getLastReportTime() != null ? d.getLastReportTime().toString() : null);
@@ -118,4 +118,3 @@ public class DiagnoseDeviceTool implements AssistantTool {
         return null;
     }
 }
-

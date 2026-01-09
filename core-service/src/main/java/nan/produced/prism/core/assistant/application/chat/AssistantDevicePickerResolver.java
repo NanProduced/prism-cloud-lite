@@ -94,7 +94,7 @@ public class AssistantDevicePickerResolver {
             return false;
         }
         // Trigger on common "status/health/situation" intents.
-        return lowered.contains("情况")
+        boolean statusIntent = lowered.contains("情况")
                 || lowered.contains("状态")
                 || lowered.contains("在线")
                 || lowered.contains("离线")
@@ -104,5 +104,25 @@ public class AssistantDevicePickerResolver {
                 || lowered.contains("check")
                 || lowered.contains("status")
                 || lowered.contains("health");
+
+        // Also trigger on "query device info/detail/params" intents (common in the UI).
+        boolean queryIntent = lowered.contains("查询")
+                || lowered.contains("查看")
+                || lowered.contains("获取")
+                || lowered.contains("检索")
+                || lowered.contains("search")
+                || lowered.contains("get");
+        boolean infoIntent = lowered.contains("信息")
+                || lowered.contains("详情")
+                || lowered.contains("参数")
+                || lowered.contains("配置")
+                || lowered.contains("运行")
+                || lowered.contains("硬件")
+                || lowered.contains("detail")
+                || lowered.contains("info")
+                || lowered.contains("param")
+                || lowered.contains("config");
+
+        return statusIntent || (queryIntent && infoIntent);
     }
 }

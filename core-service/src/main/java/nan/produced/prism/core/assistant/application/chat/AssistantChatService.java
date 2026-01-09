@@ -125,13 +125,13 @@ public class AssistantChatService {
             if (selection.hasAnySelection()) {
                 AssistantToolCall injectedToolCall = selection.toInjectedToolCall(objectMapper);
                 if (injectedToolCall != null) {
-                    writer.toolInputAvailable(injectedToolCall.toolCallId(), injectedToolCall.toolName(), injectedToolCall.input());
+                    writer.toolInputAvailable(injectedToolCall.toolCallId(), injectedToolCall.toolName(), injectedToolCall.input(), true);
                     var exec = toolExecutor.execute(userId, injectedToolCall);
                     if (exec.success()) {
                         toolResultForPrompt = truncateJson(exec.output(), limits.toolResultMaxChars());
-                        writer.toolOutputAvailable(injectedToolCall.toolCallId(), exec.output());
+                        writer.toolOutputAvailable(injectedToolCall.toolCallId(), exec.output(), true);
                     } else {
-                        writer.toolOutputError(injectedToolCall.toolCallId(), exec.errorText());
+                        writer.toolOutputError(injectedToolCall.toolCallId(), exec.errorText(), true);
                     }
                 }
             }
@@ -168,13 +168,13 @@ public class AssistantChatService {
                     ? null
                     : toolPlanner.plan(userText);
             if (toolResultForPrompt == null && !"spring-ai".equalsIgnoreCase(properties.engine()) && plannedToolCall != null) {
-                writer.toolInputAvailable(plannedToolCall.toolCallId(), plannedToolCall.toolName(), plannedToolCall.input());
+                writer.toolInputAvailable(plannedToolCall.toolCallId(), plannedToolCall.toolName(), plannedToolCall.input(), true);
                 var exec = toolExecutor.execute(userId, plannedToolCall);
                 if (exec.success()) {
                     toolResultForPrompt = truncateJson(exec.output(), limits.toolResultMaxChars());
-                    writer.toolOutputAvailable(plannedToolCall.toolCallId(), exec.output());
+                    writer.toolOutputAvailable(plannedToolCall.toolCallId(), exec.output(), true);
                 } else {
-                    writer.toolOutputError(plannedToolCall.toolCallId(), exec.errorText());
+                    writer.toolOutputError(plannedToolCall.toolCallId(), exec.errorText(), true);
                 }
             }
 
@@ -211,17 +211,17 @@ public class AssistantChatService {
                     new AssistantChatLlmClient.ToolEventListener() {
                         @Override
                         public void onToolInputAvailable(String toolCallId, String toolName, Object input) {
-                            writer.toolInputAvailable(toolCallId, toolName, input);
+                            writer.toolInputAvailable(toolCallId, toolName, input, true);
                         }
 
                         @Override
                         public void onToolOutputAvailable(String toolCallId, Object output) {
-                            writer.toolOutputAvailable(toolCallId, output);
+                            writer.toolOutputAvailable(toolCallId, output, true);
                         }
 
                         @Override
                         public void onToolOutputError(String toolCallId, String errorText) {
-                            writer.toolOutputError(toolCallId, errorText);
+                            writer.toolOutputError(toolCallId, errorText, true);
                         }
                     },
                     delta -> {

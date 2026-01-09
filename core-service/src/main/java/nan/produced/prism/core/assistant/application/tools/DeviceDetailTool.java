@@ -31,7 +31,7 @@ public class DeviceDetailTool implements AssistantTool {
 
         DeviceDetailResp d = deviceSearchUseCase.getDeviceDetail(userId, deviceId);
         ObjectNode out = objectMapper.createObjectNode();
-        out.put("deviceId", d.getDeviceId());
+        out.put("deviceId", d.getDeviceId() != null ? String.valueOf(d.getDeviceId()) : null);
         out.put("deviceName", d.getDeviceName());
         out.put("onlineStatus", d.getOnlineStatus());
         out.put("model", d.getModel());
@@ -64,4 +64,3 @@ public class DeviceDetailTool implements AssistantTool {
         return null;
     }
 }
-
