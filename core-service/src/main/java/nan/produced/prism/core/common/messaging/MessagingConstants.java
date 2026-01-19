@@ -20,6 +20,12 @@ public final class MessagingConstants {
         public static final String DEVICE_EVENTS = "device.events";
         // 业务服务事件通知交换机（core-service内部使用） 任务推送/任务结果通知
         public static final String CORE_NOTIFICATIONS = "core.notifications";
+        // DLX for device events
+        public static final String DEVICE_EVENTS_DLX = "device.events.dlx";
+        // DLX for core notifications
+        public static final String CORE_NOTIFICATIONS_DLX = "core.notifications.dlx";
+        // error exchange for republished task failures
+        public static final String CORE_NOTIFICATIONS_ERROR = "core.notifications.error";
 
         private Exchanges() {
         }
@@ -35,14 +41,22 @@ public final class MessagingConstants {
         public static final String DEVICE_COMMAND = "core-device-command-q";
         // 设备数据上报队列
         public static final String DEVICE_REPORT = "core-device-report-q";
+        // DLQ - device events
+        public static final String DEVICE_STATUS_DLQ = "core-device-status-dlq";
+        public static final String DEVICE_COMMAND_DLQ = "core-device-command-dlq";
+        public static final String DEVICE_REPORT_DLQ = "core-device-report-dlq";
         // 业务异步任务推送/执行结果队列
         public static final String TASK_WORKER = "core-task-worker-q";
         // 导出任务执行队列（独立于 TASK_WORKER，避免不同任务类型互相反序列化失败）
         public static final String EXPORT_WORKER = "core-export-worker-q";
+        // error queue for republished task failures
+        public static final String TASK_ERROR = "core-task-error-q";
         // 前端spa通知队列
         public static final String COMMON_NOTIFY = "core-notify-q";
+        public static final String COMMON_NOTIFY_DLQ = "core-notify-dlq";
         // 面向前端的高频实时数据队列（传感器/GPS 等，仅用于 SSE，不落库到消息中心）
         public static final String REALTIME_NOTIFY = "core-realtime-q";
+        public static final String REALTIME_NOTIFY_DLQ = "core-realtime-dlq";
 
         private Queues() {
         }
@@ -64,6 +78,8 @@ public final class MessagingConstants {
         public static final String TASK_EXPORT_PENDING = "task.export.pending";
         // 业务异步任务执行结果路由键
         public static final String TASK_RESULT = "task.result";
+        // 业务任务失败路由键（用于 error exchange）
+        public static final String TASK_ERROR = "task.error";
         // 前端spa通知路由键
         public static final String NOTIFY_ALL = "notify.#";
 
@@ -128,6 +144,13 @@ public final class MessagingConstants {
         public static final String REALTIME_SENSOR_REPORTED = "realtime.sensor.reported";
 
         public static final String REALTIME_GPS_REPORTED = "realtime.gps.reported";
+
+        // DLQ routing keys
+        public static final String DLQ_DEVICE_STATUS = "dlq.status";
+        public static final String DLQ_DEVICE_COMMAND = "dlq.command";
+        public static final String DLQ_DEVICE_REPORT = "dlq.report";
+        public static final String DLQ_NOTIFY = "dlq.notify";
+        public static final String DLQ_REALTIME = "dlq.realtime";
 
         private RoutingKeys() {
         }

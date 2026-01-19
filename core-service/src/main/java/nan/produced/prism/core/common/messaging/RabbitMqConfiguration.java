@@ -1,6 +1,7 @@
 package nan.produced.prism.core.common.messaging;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Declarables;
 import org.springframework.amqp.core.ExchangeBuilder;
@@ -15,6 +16,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+@Slf4j
 @Configuration
 public class RabbitMqConfiguration {
 
@@ -40,6 +42,27 @@ public class RabbitMqConfiguration {
                 .durable(true).build();
     }
 
+    @Bean
+    public TopicExchange deviceEventsDlxExchange() {
+        return ExchangeBuilder
+                .topicExchange(MessagingConstants.Exchanges.DEVICE_EVENTS_DLX)
+                .durable(true).build();
+    }
+
+    @Bean
+    public TopicExchange coreNotificationsDlxExchange() {
+        return ExchangeBuilder
+                .topicExchange(MessagingConstants.Exchanges.CORE_NOTIFICATIONS_DLX)
+                .durable(true).build();
+    }
+
+    @Bean
+    public TopicExchange coreNotificationsErrorExchange() {
+        return ExchangeBuilder
+                .topicExchange(MessagingConstants.Exchanges.CORE_NOTIFICATIONS_ERROR)
+                .durable(true).build();
+    }
+
     /**
      * 创建设备在线状态队列
      * @return 设备在线状态队列
@@ -48,6 +71,8 @@ public class RabbitMqConfiguration {
     public Queue coreDeviceStatusQueue() {
         return QueueBuilder
                 .durable(MessagingConstants.Queues.DEVICE_STATUS)
+                .withArgument("x-dead-letter-exchange", MessagingConstants.Exchanges.DEVICE_EVENTS_DLX)
+                .withArgument("x-dead-letter-routing-key", MessagingConstants.RoutingKeys.DLQ_DEVICE_STATUS)
                 .build();
     }
 
@@ -59,6 +84,8 @@ public class RabbitMqConfiguration {
     public Queue coreDeviceCommandQueue() {
         return QueueBuilder
                 .durable(MessagingConstants.Queues.DEVICE_COMMAND)
+                .withArgument("x-dead-letter-exchange", MessagingConstants.Exchanges.DEVICE_EVENTS_DLX)
+                .withArgument("x-dead-letter-routing-key", MessagingConstants.RoutingKeys.DLQ_DEVICE_COMMAND)
                 .build();
     }
 
@@ -70,6 +97,8 @@ public class RabbitMqConfiguration {
     public Queue coreDeviceReportQueue() {
         return QueueBuilder
                 .durable(MessagingConstants.Queues.DEVICE_REPORT)
+                .withArgument("x-dead-letter-exchange", MessagingConstants.Exchanges.DEVICE_EVENTS_DLX)
+                .withArgument("x-dead-letter-routing-key", MessagingConstants.RoutingKeys.DLQ_DEVICE_REPORT)
                 .build();
     }
 
@@ -104,6 +133,8 @@ public class RabbitMqConfiguration {
     public Queue coreNotifyQueue() {
         return QueueBuilder
                 .durable(MessagingConstants.Queues.COMMON_NOTIFY)
+                .withArgument("x-dead-letter-exchange", MessagingConstants.Exchanges.CORE_NOTIFICATIONS_DLX)
+                .withArgument("x-dead-letter-routing-key", MessagingConstants.RoutingKeys.DLQ_NOTIFY)
                 .build();
     }
 
@@ -116,6 +147,50 @@ public class RabbitMqConfiguration {
                 .durable(MessagingConstants.Queues.REALTIME_NOTIFY)
                 .withArgument("x-message-ttl", 60000)
                 .withArgument("x-max-length", 10000)
+                .withArgument("x-dead-letter-exchange", MessagingConstants.Exchanges.CORE_NOTIFICATIONS_DLX)
+                .withArgument("x-dead-letter-routing-key", MessagingConstants.RoutingKeys.DLQ_REALTIME)
+                .build();
+    }
+
+    @Bean
+    public Queue coreDeviceStatusDlqQueue() {
+        return QueueBuilder
+                .durable(MessagingConstants.Queues.DEVICE_STATUS_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Queue coreDeviceCommandDlqQueue() {
+        return QueueBuilder
+                .durable(MessagingConstants.Queues.DEVICE_COMMAND_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Queue coreDeviceReportDlqQueue() {
+        return QueueBuilder
+                .durable(MessagingConstants.Queues.DEVICE_REPORT_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Queue coreNotifyDlqQueue() {
+        return QueueBuilder
+                .durable(MessagingConstants.Queues.COMMON_NOTIFY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Queue coreRealtimeDlqQueue() {
+        return QueueBuilder
+                .durable(MessagingConstants.Queues.REALTIME_NOTIFY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Queue coreTaskErrorQueue() {
+        return QueueBuilder
+                .durable(MessagingConstants.Queues.TASK_ERROR)
                 .build();
     }
 
@@ -142,6 +217,24 @@ public class RabbitMqConfiguration {
             BindingBuilder.bind(coreDeviceReportQueue)
                 .to(deviceEventsExchange)
                 .with(MessagingConstants.RoutingKeys.REPORT_ALL)
+        );
+    }
+
+    @Bean
+    public Declarables deviceEventsDlqBindings(@Qualifier("deviceEventsDlxExchange") TopicExchange deviceEventsDlxExchange,
+                                              @Qualifier("coreDeviceStatusDlqQueue") Queue coreDeviceStatusDlqQueue,
+                                              @Qualifier("coreDeviceCommandDlqQueue") Queue coreDeviceCommandDlqQueue,
+                                              @Qualifier("coreDeviceReportDlqQueue") Queue coreDeviceReportDlqQueue) {
+        return new Declarables(
+            BindingBuilder.bind(coreDeviceStatusDlqQueue)
+                .to(deviceEventsDlxExchange)
+                .with(MessagingConstants.RoutingKeys.DLQ_DEVICE_STATUS),
+            BindingBuilder.bind(coreDeviceCommandDlqQueue)
+                .to(deviceEventsDlxExchange)
+                .with(MessagingConstants.RoutingKeys.DLQ_DEVICE_COMMAND),
+            BindingBuilder.bind(coreDeviceReportDlqQueue)
+                .to(deviceEventsDlxExchange)
+                .with(MessagingConstants.RoutingKeys.DLQ_DEVICE_REPORT)
         );
     }
 
@@ -178,6 +271,30 @@ public class RabbitMqConfiguration {
     }
 
     @Bean
+    public Declarables coreNotificationDlqBindings(@Qualifier("coreNotificationsDlxExchange") TopicExchange coreNotificationsDlxExchange,
+                                                   @Qualifier("coreNotifyDlqQueue") Queue coreNotifyDlqQueue,
+                                                   @Qualifier("coreRealtimeDlqQueue") Queue coreRealtimeDlqQueue) {
+        return new Declarables(
+            BindingBuilder.bind(coreNotifyDlqQueue)
+                .to(coreNotificationsDlxExchange)
+                .with(MessagingConstants.RoutingKeys.DLQ_NOTIFY),
+            BindingBuilder.bind(coreRealtimeDlqQueue)
+                .to(coreNotificationsDlxExchange)
+                .with(MessagingConstants.RoutingKeys.DLQ_REALTIME)
+        );
+    }
+
+    @Bean
+    public Declarables coreTaskErrorBindings(@Qualifier("coreNotificationsErrorExchange") TopicExchange coreNotificationsErrorExchange,
+                                             @Qualifier("coreTaskErrorQueue") Queue coreTaskErrorQueue) {
+        return new Declarables(
+            BindingBuilder.bind(coreTaskErrorQueue)
+                .to(coreNotificationsErrorExchange)
+                .with(MessagingConstants.RoutingKeys.TASK_ERROR)
+        );
+    }
+
+    @Bean
     public MessageConverter rabbitMessageConverter(ObjectMapper objectMapper) {
         return new Jackson2JsonMessageConverter(objectMapper);
     }
@@ -187,6 +304,25 @@ public class RabbitMqConfiguration {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setMessageConverter(rabbitMessageConverter);
         rabbitTemplate.setMandatory(true);
+        rabbitTemplate.setConfirmCallback((correlationData, ack, cause) -> {
+            if (ack) {
+                if (log.isDebugEnabled()) {
+                    log.debug("RabbitMQ confirm ack: correlationId={}",
+                            correlationData != null ? correlationData.getId() : "null");
+                }
+                return;
+            }
+            log.warn("RabbitMQ confirm nack: correlationId={} cause={}",
+                    correlationData != null ? correlationData.getId() : "null",
+                    cause);
+        });
+        rabbitTemplate.setReturnsCallback(returned -> log.warn(
+                "RabbitMQ return: exchange={} routingKey={} replyCode={} replyText={}",
+                returned.getExchange(),
+                returned.getRoutingKey(),
+                returned.getReplyCode(),
+                returned.getReplyText()
+        ));
         return rabbitTemplate;
     }
 }

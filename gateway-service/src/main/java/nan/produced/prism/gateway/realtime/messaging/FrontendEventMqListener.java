@@ -14,7 +14,10 @@ public class FrontendEventMqListener {
 
     private final SseSessionRegistry sseSessionRegistry;
 
-    @RabbitListener(queues = GatewayMessagingConstants.Queues.COMMON_NOTIFY)
+    @RabbitListener(
+            queues = GatewayMessagingConstants.Queues.COMMON_NOTIFY,
+            containerFactory = "notificationRabbitListenerContainerFactory"
+    )
     public void onFrontendEvent(FrontendEventMessage message) {
         if (message == null || message.getScope() == null) {
             return;
@@ -28,4 +31,3 @@ public class FrontendEventMqListener {
         sseSessionRegistry.sendToUser(userId, message);
     }
 }
-

@@ -8,6 +8,7 @@ import nan.produced.prism.core.common.messaging.MessagingConstants;
 import nan.produced.prism.core.device.application.port.inbound.DeviceEventUseCase;
 import nan.produced.prism.core.device.infrastructure.messaging.idempotent.DeviceEventIdempotentHandler;
 
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
@@ -42,7 +43,10 @@ public class DeviceEventListener {
      *
      * @param message 设备事件消息
      */
-    @RabbitListener(queues = MessagingConstants.Queues.DEVICE_STATUS)
+    @RabbitListener(
+            queues = MessagingConstants.Queues.DEVICE_STATUS,
+            containerFactory = "deviceEventRabbitListenerContainerFactory"
+    )
     public void handleDeviceStatusEvent(DeviceEventMessage message) {
         handleEvent(STATUS_CATEGORY, message, () -> {
             // 提取事件类型（status.online 或 status.offline）
@@ -80,7 +84,10 @@ public class DeviceEventListener {
      *
      * @param message 设备事件消息
      */
-    @RabbitListener(queues = MessagingConstants.Queues.DEVICE_COMMAND)
+    @RabbitListener(
+            queues = MessagingConstants.Queues.DEVICE_COMMAND,
+            containerFactory = "deviceEventRabbitListenerContainerFactory"
+    )
     public void handleDeviceCommandEvent(DeviceEventMessage message) {
         handleEvent(COMMAND_CATEGORY, message, () -> deviceEventUseCase.handleCommandResult(message));
     }
@@ -98,7 +105,10 @@ public class DeviceEventListener {
      *
      * @param message 设备事件消息
      */
-    @RabbitListener(queues = MessagingConstants.Queues.DEVICE_REPORT)
+    @RabbitListener(
+            queues = MessagingConstants.Queues.DEVICE_REPORT,
+            containerFactory = "deviceEventRabbitListenerContainerFactory"
+    )
     public void handleDeviceReportEvent(DeviceEventMessage message) {
         handleEvent(REPORT_CATEGORY, message, () ->
                 deviceEventUseCase.handleDeviceEvent(message)
@@ -144,12 +154,12 @@ public class DeviceEventListener {
             if (isRetryableException(e) || message.isRetryable()) {
                 idempotentHandler.removeIdempotentRecord(eventCategory, deviceId, traceId);
                 log.warn("DeviceEventListener -mq- 删除幂等性记录允许重试: deviceId={}, traceId={}", deviceId, traceId);
+                // 重新抛出异常，让 RabbitMQ 处理（可配置重试）
+                throw new InfraException(MQ_MESSAGE_CONSUMING_FAILED, "设备事件处理失败: " + e.getMessage(), e);
             }
 
-
-
-            // 重新抛出异常，让 RabbitMQ 处理（可配置重试）
-            throw new InfraException(MQ_MESSAGE_CONSUMING_FAILED, "设备事件处理失败: " + e.getMessage(), e);
+            // Non-retryable: reject and route to DLQ (do not requeue).
+            throw new AmqpRejectAndDontRequeueException("Non-retryable device event failure", e);
         }
     }
 

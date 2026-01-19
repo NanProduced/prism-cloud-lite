@@ -25,9 +25,19 @@ public class RabbitMqConfiguration {
     }
 
     @Bean
+    public TopicExchange coreNotificationsDlxExchange() {
+        return ExchangeBuilder
+                .topicExchange(GatewayMessagingConstants.Exchanges.CORE_NOTIFICATIONS_DLX)
+                .durable(true)
+                .build();
+    }
+
+    @Bean
     public Queue gatewayNotifyQueue() {
         return QueueBuilder
                 .durable(GatewayMessagingConstants.Queues.COMMON_NOTIFY)
+                .withArgument("x-dead-letter-exchange", GatewayMessagingConstants.Exchanges.CORE_NOTIFICATIONS_DLX)
+                .withArgument("x-dead-letter-routing-key", GatewayMessagingConstants.RoutingKeys.DLQ_NOTIFY)
                 .build();
     }
 
@@ -37,6 +47,22 @@ public class RabbitMqConfiguration {
                 .durable(GatewayMessagingConstants.Queues.REALTIME_NOTIFY)
                 .withArgument("x-message-ttl", 60000)
                 .withArgument("x-max-length", 10000)
+                .withArgument("x-dead-letter-exchange", GatewayMessagingConstants.Exchanges.CORE_NOTIFICATIONS_DLX)
+                .withArgument("x-dead-letter-routing-key", GatewayMessagingConstants.RoutingKeys.DLQ_REALTIME)
+                .build();
+    }
+
+    @Bean
+    public Queue gatewayNotifyDlqQueue() {
+        return QueueBuilder
+                .durable(GatewayMessagingConstants.Queues.COMMON_NOTIFY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Queue gatewayRealtimeDlqQueue() {
+        return QueueBuilder
+                .durable(GatewayMessagingConstants.Queues.REALTIME_NOTIFY_DLQ)
                 .build();
     }
 
@@ -51,6 +77,20 @@ public class RabbitMqConfiguration {
                 BindingBuilder.bind(gatewayRealtimeQueue)
                         .to(coreNotificationsExchange)
                         .with(GatewayMessagingConstants.RoutingKeys.REALTIME_ALL)
+        );
+    }
+
+    @Bean
+    public Declarables gatewayNotifyDlqBindings(TopicExchange coreNotificationsDlxExchange,
+                                                @Qualifier("gatewayNotifyDlqQueue") Queue gatewayNotifyDlqQueue,
+                                                @Qualifier("gatewayRealtimeDlqQueue") Queue gatewayRealtimeDlqQueue) {
+        return new Declarables(
+                BindingBuilder.bind(gatewayNotifyDlqQueue)
+                        .to(coreNotificationsDlxExchange)
+                        .with(GatewayMessagingConstants.RoutingKeys.DLQ_NOTIFY),
+                BindingBuilder.bind(gatewayRealtimeDlqQueue)
+                        .to(coreNotificationsDlxExchange)
+                        .with(GatewayMessagingConstants.RoutingKeys.DLQ_REALTIME)
         );
     }
 

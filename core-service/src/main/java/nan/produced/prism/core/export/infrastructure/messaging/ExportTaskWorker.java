@@ -16,7 +16,8 @@ public class ExportTaskWorker {
 
     @RabbitListener(
             queues = MessagingConstants.Queues.EXPORT_WORKER,
-            concurrency = "${prism.export.worker-concurrency:1}"
+            concurrency = "${prism.export.worker-concurrency:1}",
+            containerFactory = "taskRabbitListenerContainerFactory"
     )
     public void onTask(ExportTaskPendingMessage message) {
         if (message == null) {
@@ -25,4 +26,3 @@ public class ExportTaskWorker {
         exportWorkerService.handle(message);
     }
 }
-

@@ -18,7 +18,10 @@ public class RealtimeEventMqListener {
 
     private final SseSessionRegistry sseSessionRegistry;
 
-    @RabbitListener(queues = GatewayMessagingConstants.Queues.REALTIME_NOTIFY)
+    @RabbitListener(
+            queues = GatewayMessagingConstants.Queues.REALTIME_NOTIFY,
+            containerFactory = "notificationRabbitListenerContainerFactory"
+    )
     public void onRealtimeEvent(FrontendEventMessage message) {
         if (message == null || message.getScope() == null) {
             return;
@@ -42,4 +45,3 @@ public class RealtimeEventMqListener {
         log.debug("SSE - skip unknown realtime event: type={}, traceId={}", type, message.getTraceId());
     }
 }
-

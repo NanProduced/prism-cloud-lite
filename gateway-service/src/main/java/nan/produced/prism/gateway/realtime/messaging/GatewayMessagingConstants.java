@@ -11,6 +11,7 @@ public final class GatewayMessagingConstants {
     public static final class Exchanges {
 
         public static final String CORE_NOTIFICATIONS = "core.notifications";
+        public static final String CORE_NOTIFICATIONS_DLX = "core.notifications.dlx";
 
         private Exchanges() {
         }
@@ -22,11 +23,13 @@ public final class GatewayMessagingConstants {
          * core-service 推送给 SPA 的通知队列（gateway 消费并通过 SSE 下发）
          */
         public static final String COMMON_NOTIFY = "core-notify-q";
+        public static final String COMMON_NOTIFY_DLQ = "core-notify-dlq";
 
         /**
          * core-service 推送给 SPA 的高频实时数据队列（gateway 消费并通过页面级 SSE 下发）
          */
         public static final String REALTIME_NOTIFY = "core-realtime-q";
+        public static final String REALTIME_NOTIFY_DLQ = "core-realtime-dlq";
 
         private Queues() {
         }
@@ -37,6 +40,10 @@ public final class GatewayMessagingConstants {
         public static final String NOTIFY_ALL = "notify.#";
 
         public static final String REALTIME_ALL = "realtime.#";
+
+        public static final String DLQ_NOTIFY = "dlq.notify";
+
+        public static final String DLQ_REALTIME = "dlq.realtime";
 
         private RoutingKeys() {
         }

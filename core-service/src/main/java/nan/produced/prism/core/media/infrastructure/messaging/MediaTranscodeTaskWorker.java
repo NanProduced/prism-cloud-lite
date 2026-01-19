@@ -14,8 +14,11 @@ public class MediaTranscodeTaskWorker {
 
     private final MediaTranscodeWorkerService mediaTranscodeWorkerService;
 
-    @RabbitListener(queues = MessagingConstants.Queues.TASK_WORKER,
-        concurrency = "${prism.media.transcode.worker-concurrency:1}")
+    @RabbitListener(
+        queues = MessagingConstants.Queues.TASK_WORKER,
+        concurrency = "${prism.media.transcode.worker-concurrency:1}",
+        containerFactory = "taskRabbitListenerContainerFactory"
+    )
     public void onTask(TranscodeTaskPendingMessage message) {
         if (message == null) {
             return;
