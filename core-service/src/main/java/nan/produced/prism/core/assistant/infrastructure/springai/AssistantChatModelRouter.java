@@ -9,6 +9,10 @@ import org.springframework.util.StringUtils;
 import java.util.Locale;
 import java.util.UUID;
 
+/**
+ * LLM 模型路由
+ * <p>根据不同用户的配置或权限，动态决定使用哪个大模型（LLM）后端</p>
+ */
 @Component
 @RequiredArgsConstructor
 public class AssistantChatModelRouter {

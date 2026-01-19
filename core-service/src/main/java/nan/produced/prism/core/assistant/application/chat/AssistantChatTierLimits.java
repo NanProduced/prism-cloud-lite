@@ -5,13 +5,21 @@ import org.springframework.util.StringUtils;
 import java.util.Locale;
 
 public record AssistantChatTierLimits(
+        // 本次请求送进模型的“历史消息”最多保留多少条；从最后一条 user 往前截断
         int historyMaxMessages,
+        // 保留的历史消息内容总字符数上限（按 content().length() 累加）；超出就丢更早的消息，但会尽量保住最后一条 user
         int historyMaxChars,
+        // 该档位是否允许启用 RAG；实际生效还要同时满足全局开关 assistant.chat.rag.enabled
         boolean ragEnabled,
+        // RAG检索时取相似度最高的K个 chunk
         int ragTopK,
+        // 拼进系统 Prompt 的 RAG context 最大字符数（会截断到该长度）
         int ragMaxContextChars,
+        // 单次请求内“模型↔工具”的最大往返轮次（达到后中止）
         int toolMaxRounds,
+        // 每一轮里最多允许执行多少个 tool call；超过会停止继续执行并返回 toolLimit 错误
         int toolMaxCallsPerRound,
+        // 工具执行结果（JSON）回填给模型/ToolResponse 时的最大字符数，用于截断防止 prompt 过大
         int toolResultMaxChars
 ) {
 

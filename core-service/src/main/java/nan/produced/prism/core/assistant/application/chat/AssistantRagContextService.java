@@ -37,11 +37,14 @@ public class AssistantRagContextService {
     public RagContext buildContext(String userText, int topK, int maxContextChars, String preferLangSetting) {
         int effectiveTopK = Math.max(1, topK);
         int effectiveMaxChars = Math.max(1, maxContextChars);
+        // 根据用户输入和设置决定首选搜索语言（中文或英文）。这确保了检索到的知识与用户的提问语言尽可能匹配。
         String preferLang = normalizePreferLang(preferLangSetting, userText);
 
+        // 将文本转化为高维浮点数数组（向量）
         float[] embedding = embeddingClient.embedAll(List.of(userText)).get(0);
         String queryVector = VectorLiterals.toPgVectorLiteral(embedding);
 
+        // 双重搜索策略（带语言退避）
         List<RagDocsRepository.RagChunkHit> hits = new ArrayList<>();
         hits.addAll(ragDocsRepository.searchTopChunks(queryVector, preferLang, effectiveTopK));
         if (hits.isEmpty()) {
@@ -57,6 +60,7 @@ public class AssistantRagContextService {
         Map<String, RagSource> sourcesBySlug = new LinkedHashMap<>();
         StringBuilder context = new StringBuilder(Math.min(effectiveMaxChars, 16_000));
 
+        // 上下文组装与去重
         for (RagDocsRepository.RagChunkHit hit : hits) {
             String slug = hit.slug();
             sourcesBySlug.putIfAbsent(slug, new RagSource(

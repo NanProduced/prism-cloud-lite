@@ -56,6 +56,13 @@ public class AiUiMessageSseWriter {
         toolInputAvailable(toolCallId, toolName, input, false);
     }
 
+    /**
+     * 工具输入可用
+     * @param toolCallId 工具调用id
+     * @param toolName 工具名称
+     * @param input 工具调用输入
+     * @param providerExecuted 是否由提供者执行
+     */
     public void toolInputAvailable(String toolCallId, String toolName, Object input, boolean providerExecuted) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("type", "tool-input-available");
@@ -89,6 +96,12 @@ public class AiUiMessageSseWriter {
         toolOutputAvailable(toolCallId, output, false);
     }
 
+    /**
+     * 工具输出可用
+     * @param toolCallId 工具调用id
+     * @param output 工具调用结果
+     * @param providerExecuted 是否由提供者执行
+     */
     public void toolOutputAvailable(String toolCallId, Object output, boolean providerExecuted) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("type", "tool-output-available");
@@ -190,6 +203,16 @@ public class AiUiMessageSseWriter {
         }
     }
 
+    /*
+    SSE 是一种基于文本的协议。浏览器或前端 SDK（如 Vercel AI SDK）在读取流时，需要知道一个完整的数据块（Event Block）何时结束。
+    单个 \n：用于分隔一个事件内部的不同字段。 例如，一个事件可以包含 id、event 类型和 data：
+    双个 \n\n：用于标记整个事件的结束。 只有当解析器看到一个空行（即第二个 \n）时，它才会认为“好，这个消息接收完整了”，然后将其触发给前端代码处理。
+     */
+
+    /**
+     * 写入数据
+     * @param payload  数据
+     */
     private void writeData(Object payload) {
         try {
             String encoded = encodeJson(payload);

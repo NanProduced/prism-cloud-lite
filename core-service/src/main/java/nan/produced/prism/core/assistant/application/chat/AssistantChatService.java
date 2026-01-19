@@ -58,10 +58,26 @@ public class AssistantChatService {
         doHandle(userId, tier, request, writer);
     }
 
+    /**
+     * <p>
+     *     <li>把前端的 UIMessage 请求解析成可控的对话输入（裁剪历史 + 清洗 tokens + 处理 tool output 回传）。</li>
+     *     <li>决定是否触发工具/导航/交互选择器（必要时提前结束本轮并等待下一次请求）。</li>
+     *     <li>拼装系统 Prompt + RAG 上下文，并调用 LLM（AssistantChatLlmClient）。</li>
+     *     <li>把 LLM 输出、tool 事件、sources、quota 信息以 UI SDK 6 能消费的 SSE JSON 事件流写回前端。</li>
+     *     <li>在 local-vllm 场景下做 token 预算治理（每日额度、单次 max completion tokens、落库统计）。</li>
+     * </p>
+     *
+     * @param userId 用户 ID
+     * @param tier 订阅等级
+     * @param request 请求
+     * @param writer SSE writer
+     */
     private void doHandle(UUID userId, String tier, JsonNode request, AiUiMessageSseWriter writer) {
+        // 获取用户订阅限制
         AssistantChatTierLimits limits = resolveLimits(userId, tier);
         QuotaSnapshot quota = null;
 
+        // 会话裁剪
         List<AiSdkChatRequestParser.ChatMessage> conversation = trimConversation(
                 AiSdkChatRequestParser.parseUserAndAssistantMessages(request),
                 limits.historyMaxMessages(),
@@ -69,19 +85,24 @@ public class AssistantChatService {
         );
         String rawUserText = lastUserText(conversation);
 
+        // 解析最后一条用户请求中的选择token
         AssistantSelectionTokenParser.ParseResult selection = selectionTokenParser.parse(rawUserText);
+        // 清洗用户消息中的Token
         conversation = sanitizeUserMessages(conversation);
         String userText = lastUserText(conversation);
         userText = StringUtils.hasText(userText) ? userText : null;
 
         String lastRole = AiSdkChatRequestParser.lastNonSystemRole(request);
+        // 后端上一轮发了 pickDevice/pickCommandLog，前端用户选完后会通过 addToolOutput(...) 回传，回传内容存在 下一次请求的 messages[].parts[] 里
         AssistantPendingToolCallStore.PendingToolCall pending = pendingToolCallStore.get(userId);
 
         ToolSelection selectionFromTool = null;
         if (pending != null && pending.toolCallId() != null) {
+            // 处理前端回传的tool output
             AiSdkChatRequestParser.ToolOutput toolOutput =
                     AiSdkChatRequestParser.findToolOutput(request, pending.toolCallId(), pending.toolName());
             if (toolOutput != null) {
+                // 场景A: 用户成功选择了内容
                 if ("output-available".equalsIgnoreCase(toolOutput.state()) && toolOutput.output() != null) {
                     selectionFromTool = parseToolSelectionNode(toolOutput.output());
                     if (selectionFromTool == null) {
@@ -89,13 +110,17 @@ public class AssistantChatService {
                         return;
                     }
                     pendingToolCallStore.clear(userId);
-                } else if ("output-error".equalsIgnoreCase(toolOutput.state())) {
+                }
+                // 场景B: 前端执行出错或用户取消 (Error)
+                else if ("output-error".equalsIgnoreCase(toolOutput.state())) {
                     pendingToolCallStore.clear(userId);
                     writer.error(toolOutput.errorText() != null ? toolOutput.errorText() : "工具执行失败或用户取消");
                     writer.finish("error", null);
                     return;
                 }
-            } else if ("user".equals(lastRole)) {
+            }
+            // 场景C: 用户“无视”了选择器 (Skip/Override)
+            else if ("user".equals(lastRole)) {
                 // User skipped tool selection and typed a new message; clear pending state and continue.
                 pendingToolCallStore.clear(userId);
             }
@@ -123,6 +148,7 @@ public class AssistantChatService {
         try {
             Object toolResultForPrompt = null;
             if (selection.hasAnySelection()) {
+                // 尝试注入工具调用
                 AssistantToolCall injectedToolCall = selection.toInjectedToolCall(objectMapper);
                 if (injectedToolCall != null) {
                     writer.toolInputAvailable(injectedToolCall.toolCallId(), injectedToolCall.toolName(), injectedToolCall.input(), true);
@@ -136,7 +162,9 @@ public class AssistantChatService {
                 }
             }
 
+            // 判断是否是“带我去/打开…”类请求
             AssistantNavigationToolResolver.NavigationTarget nav = navigationToolResolver.resolve(userText);
+            // 命中后发出 navigateToPage 的 tool input，并直接 finish("stop") 结束本轮
             if (nav != null) {
                 String toolCallId = "tool-" + UUID.randomUUID();
                 writer.toolInputAvailable(toolCallId, "navigateToPage", Map.of("path", nav.path(), "label", nav.label()));
@@ -144,7 +172,10 @@ public class AssistantChatService {
                 return;
             }
 
+            // 处理“需要用户选择”的交互型工具
             if (!selection.hasAnySelection()) {
+
+                // 如果用户问“设备状态”但没指定具体设备 → 触发 pickDevice 列表；
                 AssistantCommandLogPickerResolver.PickPayload commandPick = commandLogPickerResolver.resolve(userId, userText);
                 if (commandPick != null) {
                     String toolCallId = "tool-" + UUID.randomUUID();
@@ -154,6 +185,7 @@ public class AssistantChatService {
                     return;
                 }
 
+                // 如果用户问“指令为什么没执行”但没指定具体指令 → 触发 pickCommandLog 列表；
                 AssistantDevicePickerResolver.PickPayload devicePick = devicePickerResolver.resolve(userId, userText);
                 if (devicePick != null) {
                     String toolCallId = "tool-" + UUID.randomUUID();
@@ -164,12 +196,14 @@ public class AssistantChatService {
                 }
             }
 
+            // 当 assistant.chat.engine 不是 spring-ai 时，使用 AssistantToolPlanner 的 规则式规划（例如“离线设备”触发 analyzeOfflineDevices）
             AssistantToolCall plannedToolCall = "spring-ai".equalsIgnoreCase(properties.engine())
                     ? null
                     : toolPlanner.plan(userText);
             if (toolResultForPrompt == null && !"spring-ai".equalsIgnoreCase(properties.engine()) && plannedToolCall != null) {
                 writer.toolInputAvailable(plannedToolCall.toolCallId(), plannedToolCall.toolName(), plannedToolCall.input(), true);
                 var exec = toolExecutor.execute(userId, plannedToolCall);
+                // 若命中则执行工具，结果同样进入 toolResultForPrompt。
                 if (exec.success()) {
                     toolResultForPrompt = truncateJson(exec.output(), limits.toolResultMaxChars());
                     writer.toolOutputAvailable(plannedToolCall.toolCallId(), exec.output(), true);
@@ -178,7 +212,9 @@ public class AssistantChatService {
                 }
             }
 
+            // 构建 RAG 上下文与系统 Prompt
             AssistantRagContextService.RagContext rag = limits.ragEnabled() && properties.rag().enabled()
+                    // 若 RAG 开启，调用 AssistantRagContextService.buildContext 拉取帮助中心片段；
                     ? ragContextService.buildContext(userText, limits.ragTopK(), limits.ragMaxContextChars(), properties.rag().preferLang())
                     : AssistantRagContextService.RagContext.empty();
 
@@ -262,7 +298,7 @@ public class AssistantChatService {
 
     /**
      * Per-request streaming splitter for local-model {@code <think>...</think>} outputs.
-     *
+     * <p>用于处理本地模型的流式输出分割</p>
      * <p>Implementation detail: stored in a ThreadLocal so it can be referenced from the delta callback without
      * additional closure wiring.</p>
      */
@@ -369,6 +405,11 @@ public class AssistantChatService {
         }
     }
 
+    /**
+     * 会对所有 user 消息调用 stripKnownTokens，把这些 token 从 user 文本中剥离掉
+     * @param messages 用户消息
+     * @return 修剪后的用户消息
+     */
     private List<AiSdkChatRequestParser.ChatMessage> sanitizeUserMessages(List<AiSdkChatRequestParser.ChatMessage> messages) {
         if (messages == null || messages.isEmpty()) {
             return List.of();
@@ -387,12 +428,15 @@ public class AssistantChatService {
 
     private String buildSystemPrompt(AssistantRagContextService.RagContext rag, Object toolResult) {
         StringBuilder sb = new StringBuilder(2048);
+        // 基础设定 - 系统提示词
         sb.append(systemPromptTemplate.base()).append("\n");
+        // 服务器端工具结果
         if (toolResult != null) {
             sb.append("\n# Tool result (server-side)\n");
             sb.append(toolResult);
             sb.append("\n");
         }
+        // RAG 检索知识
         if (!rag.contextText().isBlank()) {
             sb.append("\n# Retrieved context (Help Center)\n");
             sb.append(rag.contextText());
@@ -400,6 +444,12 @@ public class AssistantChatService {
         return sb.toString();
     }
 
+    /**
+     * 根据订阅获取默认聊天限制（history/RAG/tools）
+     * @param userId 用户ID
+     * @param tier 订阅
+     * @return 聊天限制
+     */
     private AssistantChatTierLimits resolveLimits(UUID userId, String tier) {
         String tierKey = AssistantChatTierLimits.normalizeTierKey(tier);
         if ("spring-ai".equalsIgnoreCase(properties.engine()) && modelRouter != null) {
@@ -409,6 +459,7 @@ public class AssistantChatService {
                         && StringUtils.hasText(target.provider())
                         && !"local-vllm".equalsIgnoreCase(target.provider())
                         && StringUtils.hasText(target.apiKey());
+                // 如果用户使用 BYOK 模型，则使用 BYOK 模型对应的免费
                 if (byok && AssistantChatTierLimits.TIER_FREE.equalsIgnoreCase(tierKey)) {
                     tierKey = AssistantChatTierLimits.TIER_FREE_BYOK;
                 }
@@ -553,15 +604,25 @@ public class AssistantChatService {
         }
     }
 
+    /**
+     * 只保留最后一段到“最后一条 user 消息”为止，并从尾部往前累计字符数，超出上限就丢更早的消息。
+     * <P>目的：控制 prompt 大小，避免对话无限增长。</P>
+     * @param messages 聊天消息（用户/助手）
+     * @param maxMessages 最多消息数
+     * @param maxChars 最大字符数
+     * @return 截断后的消息列表
+     */
     private static List<AiSdkChatRequestParser.ChatMessage> trimConversation(List<AiSdkChatRequestParser.ChatMessage> messages,
                                                                              int maxMessages,
                                                                              int maxChars) {
         if (messages == null || messages.isEmpty()) {
             return List.of();
         }
-        int mm = maxMessages <= 0 ? Integer.MAX_VALUE : Math.max(1, maxMessages);
-        int mc = maxChars <= 0 ? Integer.MAX_VALUE : Math.max(1, maxChars);
+        // 0或-1视为不限制
+        int mm = maxMessages <= 0 ? Integer.MAX_VALUE : maxMessages;
+        int mc = maxChars <= 0 ? Integer.MAX_VALUE : maxChars;
 
+        // 定位最后一条用户消息
         int lastUserIdx = -1;
         for (int i = messages.size() - 1; i >= 0; i--) {
             if ("user".equals(messages.get(i).role())) {
@@ -573,6 +634,7 @@ public class AssistantChatService {
             return List.of();
         }
 
+        // 以 lastUserIdx 为终点，向前保留最多 mm 条消息
         int start = Math.max(0, (lastUserIdx + 1) - mm);
         List<AiSdkChatRequestParser.ChatMessage> tail = messages.subList(start, lastUserIdx + 1);
 
@@ -581,6 +643,8 @@ public class AssistantChatService {
         for (int i = tail.size() - 1; i >= 0; i--) {
             AiSdkChatRequestParser.ChatMessage m = tail.get(i);
             int len = m != null && m.content() != null ? m.content().length() : 0;
+            // 循环条件中 i != tail.size() - 1 说明最后一条消息（当前的提问）即使超过 maxChars 也会被保留（为了保证请求有效）
+            // 从倒数第二条开始累加。一旦总长度 total + len 超过了 mc，就停止增加，并确定 keepFrom 的位置
             if (i != tail.size() - 1 && total + len > mc) {
                 keepFrom = i + 1;
                 break;
@@ -588,9 +652,15 @@ public class AssistantChatService {
             total += len;
             keepFrom = i;
         }
+        // 使用 List.copyOf 和 List.of 返回不可变列表，防止外部修改影响内部状态，这在多线程（特别是你使用的虚拟线程）环境下非常安全
         return List.copyOf(tail.subList(keepFrom, tail.size()));
     }
 
+    /**
+     * 获取最后一条用户消息的文本
+     * @param messages 聊天消息（用户/助手）
+     * @return 最后一条用户消息的文本
+     */
     private static String lastUserText(List<AiSdkChatRequestParser.ChatMessage> messages) {
         if (messages == null || messages.isEmpty()) {
             return null;
@@ -604,16 +674,23 @@ public class AssistantChatService {
         return null;
     }
 
+    /**
+     * 将前端协议格式的消息（AiSdkChatRequestParser.ChatMessage）转换为大模型客户端（LLM Client）能够识别的标准消息格式（Message）
+     * @param conversation 聊天消息（用户/助手）
+     * @return 标准消息格式
+     */
     private static List<Message> toLlmMessages(List<AiSdkChatRequestParser.ChatMessage> conversation) {
         if (conversation == null || conversation.isEmpty()) {
             return List.of();
         }
         List<Message> result = new ArrayList<>(conversation.size());
         for (AiSdkChatRequestParser.ChatMessage m : conversation) {
+            // 如果某条消息没有角色（role）或者没有内容（content），直接跳过
             if (m == null || !StringUtils.hasText(m.role()) || !StringUtils.hasText(m.content())) {
                 continue;
             }
             String role = m.role().trim().toLowerCase();
+            // 只允许 user 和 assistant 角色通过
             if (!"user".equals(role) && !"assistant".equals(role)) {
                 continue;
             }
@@ -622,6 +699,12 @@ public class AssistantChatService {
         return result;
     }
 
+    /**
+     * 截断 Json
+     * @param node  Json
+     * @param maxChars 最大字符数
+     * @return 截断后的 Json
+     */
     private Object truncateJson(com.fasterxml.jackson.databind.JsonNode node, int maxChars) {
         if (node == null || maxChars <= 0) {
             return node;
@@ -655,6 +738,11 @@ public class AssistantChatService {
         }
     }
 
+    /**
+     * 解析工具选择
+     * @param node 工具选择节点
+     * @return 工具选择
+     */
     private ToolSelection parseToolSelectionNode(JsonNode node) {
         if (node == null || !node.isObject()) {
             return null;
