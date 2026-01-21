@@ -2,10 +2,14 @@ package nan.produced.prism.core.assistant.application.ingest;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.core.assistant.application.rag.RagMetadataKeys;
 import nan.produced.prism.core.assistant.infrastructure.config.AssistantRagProperties;
-import nan.produced.prism.core.assistant.infrastructure.embeddings.OpenAiEmbeddingClient;
-import nan.produced.prism.core.assistant.infrastructure.persistence.RagDocsRepository;
+import nan.produced.prism.core.assistant.infrastructure.persistence.AssistantRagParentRepository;
+import org.springframework.ai.document.Document;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,11 +18,13 @@ import java.time.OffsetDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.Locale;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -28,8 +34,8 @@ import java.util.UUID;
 public class DocsRagIngestService {
 
     private final AssistantRagProperties properties;
-    private final OpenAiEmbeddingClient embeddingClient;
-    private final RagDocsRepository repository;
+    private final VectorStore vectorStore;
+    private final AssistantRagParentRepository parentRepository;
 
     public record IngestResult(int docsIngested, int chunksIngested, long elapsedMs) {
     }
@@ -72,46 +78,142 @@ public class DocsRagIngestService {
                 continue;
             }
 
-            List<MarkdownChunker.Chunk> chunks = MarkdownChunker.chunk(
+            List<MarkdownRagChunker.ParentChunk> parents = MarkdownRagChunker.splitParents(
                     doc.body(),
                     fm.title(),
-                    properties.chunk().maxChars(),
-                    properties.chunk().overlapChars()
+                    properties.parent().maxChars(),
+                    properties.parent().overlapChars()
             );
 
-            if (chunks.isEmpty()) {
+            if (parents.isEmpty()) {
                 log.warn("[assistant.rag.ingest] skip empty doc: path={}, slug={}", doc.sourcePath(), fm.slug());
                 continue;
             }
 
-            List<RagDocsRepository.ChunkRow> chunkRows = embedChunks(chunks);
+            String docHash = Hashing.sha256Hex(doc.body());
+            LocalDate lastUpdated = parseLocalDateOrNull(fm.lastUpdated());
+            List<AssistantRagParentRepository.ParentRow> parentRows = new ArrayList<>(parents.size());
+            List<Document> childDocs = new ArrayList<>();
+            int nextChunkIndex = 0;
 
-            UUID docId = repository.upsertDocument(new RagDocsRepository.UpsertDocumentParams(
-                    UUID.randomUUID(),
-                    fm.docKey(),
-                    fm.lang(),
-                    fm.slug(),
-                    fm.title(),
-                    fm.module(),
-                    fm.audience(),
-                    fm.status(),
-                    fm.owner(),
-                    parseLocalDateOrNull(fm.lastUpdated()),
-                    doc.sourcePath().toString().replace('\\', '/'),
-                    properties.ingest().docVersion(),
-                    Hashing.sha256Hex(doc.body())
-            ));
+            for (MarkdownRagChunker.ParentChunk parent : parents) {
+                UUID parentId = UUID.randomUUID();
+                String parentText = parent.text();
+                int parentCharCount = parentText != null ? parentText.length() : 0;
 
-            repository.replaceChunks(docId, chunkRows);
+                parentRows.add(new AssistantRagParentRepository.ParentRow(
+                        parentId,
+                        fm.docKey(),
+                        fm.lang(),
+                        fm.slug(),
+                        fm.title(),
+                        fm.module(),
+                        fm.audience(),
+                        fm.status(),
+                        fm.owner(),
+                        lastUpdated,
+                        normalizeSourcePath(doc.sourcePath()),
+                        properties.ingest().docVersion(),
+                        docHash,
+                        parent.headingPath(),
+                        parent.parentIndex(),
+                        parentText,
+                        parentCharCount
+                ));
+
+                List<MarkdownRagChunker.ChildChunk> children = MarkdownRagChunker.splitChildren(
+                        parentText,
+                        properties.chunk().maxChars(),
+                        properties.chunk().overlapChars(),
+                        nextChunkIndex
+                );
+
+                for (MarkdownRagChunker.ChildChunk child : children) {
+                    Map<String, Object> metadata = buildMetadata(
+                            fm,
+                            doc,
+                            docHash,
+                            lastUpdated,
+                            properties.ingest().docVersion(),
+                            parentId,
+                            parent,
+                            child
+                    );
+                    childDocs.add(Document.builder()
+                            .id(UUID.randomUUID().toString())
+                            .text(child.text())
+                            .metadata(metadata)
+                            .build());
+                }
+                if (!children.isEmpty()) {
+                    nextChunkIndex = children.get(children.size() - 1).chunkIndex() + 1;
+                }
+            }
+
+            parentRepository.replaceParents(fm.docKey(), fm.lang(), parentRows);
+            deleteVectorChunksForDoc(fm.docKey(), fm.lang());
+            if (!childDocs.isEmpty()) {
+                vectorStore.add(childDocs);
+            }
 
             docsIngested++;
-            chunksIngested += chunkRows.size();
+            chunksIngested += childDocs.size();
 
-            log.info("[assistant.rag.ingest] upserted: slug={}, lang={}, chunks={}, updatedAt={}",
-                    fm.slug(), fm.lang(), chunkRows.size(), OffsetDateTime.now());
+            log.info("[assistant.rag.ingest] upserted: slug={}, lang={}, parents={}, chunks={}, updatedAt={}",
+                    fm.slug(), fm.lang(), parentRows.size(), childDocs.size(), OffsetDateTime.now());
         }
 
         return new IngestResult(docsIngested, chunksIngested, System.currentTimeMillis() - startedAt);
+    }
+
+    private void deleteVectorChunksForDoc(String docKey, String lang) {
+        if (!StringUtils.hasText(docKey) || !StringUtils.hasText(lang)) {
+            return;
+        }
+        FilterExpressionBuilder builder = new FilterExpressionBuilder();
+        var expr = builder.and(
+                builder.eq(RagMetadataKeys.DOC_KEY, docKey),
+                builder.eq(RagMetadataKeys.LANG, lang)
+        );
+        vectorStore.delete(expr.build());
+    }
+
+    private static Map<String, Object> buildMetadata(MarkdownDocLoader.FrontMatter fm,
+                                                     MarkdownDocLoader.LoadedDoc doc,
+                                                     String docHash,
+                                                     LocalDate lastUpdated,
+                                                     String docVersion,
+                                                     UUID parentId,
+                                                     MarkdownRagChunker.ParentChunk parent,
+                                                     MarkdownRagChunker.ChildChunk child) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put(RagMetadataKeys.DOC_KEY, fm.docKey());
+        metadata.put(RagMetadataKeys.LANG, fm.lang());
+        metadata.put(RagMetadataKeys.SLUG, fm.slug());
+        metadata.put(RagMetadataKeys.TITLE, fm.title());
+        metadata.put(RagMetadataKeys.MODULE, fm.module());
+        metadata.put(RagMetadataKeys.AUDIENCE, fm.audience());
+        metadata.put(RagMetadataKeys.STATUS, fm.status());
+        metadata.put(RagMetadataKeys.OWNER, fm.owner());
+        if (lastUpdated != null) {
+            metadata.put(RagMetadataKeys.LAST_UPDATED, lastUpdated.toString());
+        }
+        metadata.put(RagMetadataKeys.SOURCE_PATH, normalizeSourcePath(doc.sourcePath()));
+        metadata.put(RagMetadataKeys.DOC_VERSION, docVersion);
+        metadata.put(RagMetadataKeys.DOC_HASH, docHash);
+        metadata.put(RagMetadataKeys.PARENT_ID, parentId.toString());
+        metadata.put(RagMetadataKeys.PARENT_INDEX, parent.parentIndex());
+        metadata.put(RagMetadataKeys.HEADING_PATH, parent.headingPath());
+        metadata.put(RagMetadataKeys.CHUNK_INDEX, child.chunkIndex());
+        metadata.put(RagMetadataKeys.CHAR_COUNT, child.text() != null ? child.text().length() : 0);
+        return metadata;
+    }
+
+    private static String normalizeSourcePath(Path sourcePath) {
+        if (sourcePath == null) {
+            return "";
+        }
+        return sourcePath.toString().replace('\\', '/');
     }
 
     private static List<Path> resolveExistingRoots(List<String> configuredRoots) {
@@ -149,38 +251,6 @@ public class DocsRagIngestService {
         }
 
         return List.copyOf(out);
-    }
-
-    private List<RagDocsRepository.ChunkRow> embedChunks(List<MarkdownChunker.Chunk> chunks) {
-        int batchSize = properties.embedding().batchSize();
-        List<RagDocsRepository.ChunkRow> rows = new ArrayList<>(chunks.size());
-
-        for (int i = 0; i < chunks.size(); i += batchSize) {
-            int end = Math.min(chunks.size(), i + batchSize);
-            List<MarkdownChunker.Chunk> batch = chunks.subList(i, end);
-            List<String> inputs = batch.stream().map(MarkdownChunker.Chunk::text).toList();
-            List<float[]> embeddings = embeddingClient.embedAll(inputs);
-
-            if (embeddings.size() != batch.size()) {
-                throw new IllegalStateException("Embeddings size mismatch: expected=%s actual=%s"
-                        .formatted(batch.size(), embeddings.size()));
-            }
-
-            for (int j = 0; j < batch.size(); j++) {
-                var chunk = batch.get(j);
-                float[] vector = embeddings.get(j);
-                rows.add(new RagDocsRepository.ChunkRow(
-                        chunk.chunkIndex(),
-                        chunk.headingPath(),
-                        chunk.text(),
-                        Hashing.sha256Hex(chunk.text()),
-                        chunk.text().length(),
-                        VectorLiterals.toPgVectorLiteral(vector)
-                ));
-            }
-        }
-
-        return rows;
     }
 
     private static LocalDate parseLocalDateOrNull(String value) {

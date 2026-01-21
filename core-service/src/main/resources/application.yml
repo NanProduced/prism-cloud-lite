@@ -16,6 +16,7 @@ assistant:
     embedding:
       base-url: ${ASSISTANT_RAG_EMBEDDING_BASE_URL:http://127.0.0.1:7997}
       model: ${ASSISTANT_RAG_EMBEDDING_MODEL:BAAI/bge-m3}
+      api-key: ${ASSISTANT_RAG_EMBEDDING_API_KEY:}
       dimension: ${ASSISTANT_RAG_EMBEDDING_DIMENSION:1024}
       batch-size: ${ASSISTANT_RAG_EMBEDDING_BATCH_SIZE:16}
     ingest:
@@ -28,9 +29,22 @@ assistant:
       require-audience: ${ASSISTANT_RAG_REQUIRE_AUDIENCE:user}
       require-status: ${ASSISTANT_RAG_REQUIRE_STATUS:stable}
       max-docs: ${ASSISTANT_RAG_MAX_DOCS:0}
+    parent:
+      max-chars: ${ASSISTANT_RAG_PARENT_MAX_CHARS:6000}
+      overlap-chars: ${ASSISTANT_RAG_PARENT_OVERLAP_CHARS:400}
     chunk:
       max-chars: ${ASSISTANT_RAG_CHUNK_MAX_CHARS:3200}
       overlap-chars: ${ASSISTANT_RAG_CHUNK_OVERLAP_CHARS:200}
+    search:
+      vector-top-k: ${ASSISTANT_RAG_VECTOR_TOP_K:0}
+      fts-top-k: ${ASSISTANT_RAG_FTS_TOP_K:0}
+      hybrid-top-n: ${ASSISTANT_RAG_HYBRID_TOP_N:0}
+      rrf-k: ${ASSISTANT_RAG_RRF_K:60}
+      rerank:
+        enabled: ${ASSISTANT_RAG_RERANK_ENABLED:true}
+        base-url: ${ASSISTANT_RAG_RERANK_BASE_URL:http://127.0.0.1:7998}
+        model: ${ASSISTANT_RAG_RERANK_MODEL:BAAI/bge-reranker-v2-m3}
+        top-n: ${ASSISTANT_RAG_RERANK_TOP_N:12}
 
   chat:
     engine: ${ASSISTANT_CHAT_ENGINE:spring-ai} # raw|spring-ai

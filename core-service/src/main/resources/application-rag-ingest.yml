@@ -16,8 +16,6 @@ spring:
 
 assistant:
   rag:
-    pgvector:
-      init-enabled: false
     ingest:
       enabled: true
       exit-after-run: true
