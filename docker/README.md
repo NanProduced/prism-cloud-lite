@@ -23,6 +23,12 @@ docker compose -f docker-compose.yml up -d
 docker compose -f ai-stack/docker-compose.yml up -d
 ```
 
+AI stack 现在包含 embeddings + rerank（Infinity）服务，容器内推荐配置：
+
+- `ASSISTANT_RAG_EMBEDDING_BASE_URL=http://embeddings:7997`
+- `ASSISTANT_RAG_RERANK_BASE_URL=http://rerank:7998`
+- `ASSISTANT_RAG_RERANK_MODEL=BAAI/bge-reranker-v2-m3`
+
 再启动应用服务（会自动 build 镜像）：
 
 ```bash
@@ -71,6 +77,47 @@ docker compose -f docker-compose.yml -f ai-stack/docker-compose.yml -f docker-co
 ```
 
 关闭 Debug：启动命令里去掉 `-f docker-compose.debug.yml` 即可。
+
+## 1.3) Postgres 镜像切换（pgvector + pg_jieba + HNSW）
+
+RAG 混合检索需要 **pgvector(HNSW)** 与 **pg_jieba**。建议用自定义镜像替换默认的 `pgvector/pgvector:pg16`。
+
+推荐方案：
+1. 基于 `pgvector/pgvector:pg16` 自建镜像，安装 `pg_jieba` 扩展。
+2. 在 initdb 脚本中创建扩展与分词配置（`CREATE EXTENSION vector; CREATE EXTENSION pg_jieba;`，并创建 `jieba_cfg`）。
+3. 修改 `docker-compose.yml` 的 Postgres 镜像为自建镜像。
+
+示例（仅示意，镜像名按你的实际构建结果替换）：
+
+```yaml
+  postgres:
+    image: prism-postgres:pg16-vector-jieba
+```
+
+注意：
+- pgvector 版本建议 **>= 0.5.x**（支持 HNSW）。
+- 若已有数据卷，切换镜像前建议备份或按“可重建”策略处理。
+
+构建命令（使用本仓库提供的 Dockerfile）：
+
+```bash
+docker build -t prism-postgres:pg16-vector-jieba docker/postgres/pgvector-jieba
+```
+
+如遇到 `apt-get` 网络问题（国内环境），可指定镜像源：
+
+```bash
+docker build \
+  --build-arg APT_MIRROR=mirrors.tuna.tsinghua.edu.cn \
+  --build-arg APT_SECURITY_MIRROR=mirrors.tuna.tsinghua.edu.cn \
+  -t prism-postgres:pg16-vector-jieba docker/postgres/pgvector-jieba
+```
+
+一条命令同时更新 Postgres 容器并启动 AI stack（含 rerank）：
+
+```bash
+docker compose -f docker-compose.yml -f ai-stack/docker-compose.yml up -d --build
+```
 
 ## 2) 常用环境变量（按需覆盖）
 
