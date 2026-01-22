@@ -3,6 +3,9 @@
 
 CREATE SCHEMA IF NOT EXISTS assistant;
 
+-- Ensure vector type is resolvable even if extension schema differs.
+SET search_path = assistant, public;
+
 CREATE TABLE IF NOT EXISTS assistant.rag_vector (
     id UUID PRIMARY KEY NOT NULL,
     content TEXT NOT NULL,

@@ -8,6 +8,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.retry.RepublishMessageRecoverer;
 import org.springframework.amqp.rabbit.retry.RejectAndDontRequeueRecoverer;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
@@ -97,7 +98,7 @@ public class RabbitListenerConfiguration {
     public SimpleRabbitListenerContainerFactory deviceEventRabbitListenerContainerFactory(
             SimpleRabbitListenerContainerFactoryConfigurer configurer,
             ConnectionFactory connectionFactory,
-            MethodInterceptor deviceEventRetryInterceptor) {
+            @Qualifier("deviceEventRetryInterceptor") MethodInterceptor deviceEventRetryInterceptor) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         configurer.configure(factory, connectionFactory);
         factory.setDefaultRequeueRejected(false);
@@ -112,7 +113,7 @@ public class RabbitListenerConfiguration {
     public SimpleRabbitListenerContainerFactory taskRabbitListenerContainerFactory(
             SimpleRabbitListenerContainerFactoryConfigurer configurer,
             ConnectionFactory connectionFactory,
-            MethodInterceptor taskRetryInterceptor) {
+            @Qualifier("taskRetryInterceptor") MethodInterceptor taskRetryInterceptor) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         configurer.configure(factory, connectionFactory);
         factory.setDefaultRequeueRejected(false);
