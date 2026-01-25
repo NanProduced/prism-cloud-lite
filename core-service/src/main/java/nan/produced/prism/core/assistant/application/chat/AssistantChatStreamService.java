@@ -3,7 +3,7 @@ package nan.produced.prism.core.assistant.application.chat;
 import lombok.RequiredArgsConstructor;
 import nan.produced.prism.core.assistant.api.uimessage.AiUiMessageSseWriter;
 import nan.produced.prism.core.assistant.infrastructure.llm.AssistantChatLlmClient;
-import nan.produced.prism.core.assistant.infrastructure.llm.OpenAiChatCompletionsClient.Message;
+import nan.produced.prism.core.assistant.infrastructure.llm.AssistantChatMessage;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,8 +18,7 @@ public class AssistantChatStreamService {
     private final AssistantChatTokenBudgetService tokenBudgetService;
 
     public void streamAndRespond(UUID userId,
-                                 List<Message> messages,
-                                 AssistantChatTierLimits limits,
+                                 List<AssistantChatMessage> messages,
                                  Integer maxCompletionTokens,
                                  AssistantRagContextService.RagContext rag,
                                  AssistantChatTokenBudgetService.QuotaSnapshot quota,
@@ -30,12 +29,8 @@ public class AssistantChatStreamService {
                 userId,
                 messages,
                 new AssistantChatLlmClient.StreamOptions(
-                        limits.toolMaxRounds(),
-                        limits.toolMaxCallsPerRound(),
-                        limits.toolResultMaxChars(),
                         maxCompletionTokens != null ? maxCompletionTokens : 0
                 ),
-                new AssistantChatToolEventForwarder(writer),
                 delta -> {
                     if (answerText != null && delta != null) {
                         answerText.append(delta);

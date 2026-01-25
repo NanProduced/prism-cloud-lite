@@ -1,7 +1,6 @@
 package nan.produced.prism.core.assistant.application.chat;
 
 import lombok.RequiredArgsConstructor;
-import nan.produced.prism.core.assistant.infrastructure.config.AssistantChatProperties;
 import nan.produced.prism.core.assistant.infrastructure.config.AssistantChatTierLimitsProperties;
 import nan.produced.prism.core.assistant.infrastructure.springai.AssistantChatModelRouter;
 import org.springframework.stereotype.Service;
@@ -13,13 +12,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AssistantChatRuntimePolicyService {
 
-    private final AssistantChatProperties properties;
     private final AssistantChatTierLimitsProperties tierLimits;
     private final AssistantChatModelRouter modelRouter;
 
     public AssistantChatTierLimits resolveLimits(UUID userId, String tier) {
         String tierKey = AssistantChatTierLimits.normalizeTierKey(tier);
-        if ("spring-ai".equalsIgnoreCase(properties.engine()) && modelRouter != null) {
+        if (modelRouter != null) {
             try {
                 AssistantChatModelRouter.LlmTarget target = modelRouter.resolveForUser(userId);
                 boolean byok = target != null
@@ -36,9 +34,6 @@ public class AssistantChatRuntimePolicyService {
     }
 
     public boolean isLocalVllmCall(UUID userId) {
-        if (!"spring-ai".equalsIgnoreCase(properties.engine())) {
-            return true;
-        }
         if (modelRouter == null) {
             return true;
         }

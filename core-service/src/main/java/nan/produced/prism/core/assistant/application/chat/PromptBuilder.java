@@ -1,7 +1,7 @@
 package nan.produced.prism.core.assistant.application.chat;
 
 import lombok.RequiredArgsConstructor;
-import nan.produced.prism.core.assistant.infrastructure.llm.OpenAiChatCompletionsClient.Message;
+import nan.produced.prism.core.assistant.infrastructure.llm.AssistantChatMessage;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -29,11 +29,11 @@ public class PromptBuilder {
         return sb.toString();
     }
 
-    public List<Message> toLlmMessages(List<AiSdkChatRequestParser.ChatMessage> conversation) {
+    public List<AssistantChatMessage> toLlmMessages(List<AiSdkChatRequestParser.ChatMessage> conversation) {
         if (conversation == null || conversation.isEmpty()) {
             return List.of();
         }
-        List<Message> result = new ArrayList<>(conversation.size());
+        List<AssistantChatMessage> result = new ArrayList<>(conversation.size());
         for (AiSdkChatRequestParser.ChatMessage m : conversation) {
             if (m == null || !StringUtils.hasText(m.role()) || !StringUtils.hasText(m.content())) {
                 continue;
@@ -42,7 +42,7 @@ public class PromptBuilder {
             if (!"user".equals(role) && !"assistant".equals(role)) {
                 continue;
             }
-            result.add(new Message(role, m.content().trim()));
+            result.add(new AssistantChatMessage(role, m.content().trim()));
         }
         return result;
     }

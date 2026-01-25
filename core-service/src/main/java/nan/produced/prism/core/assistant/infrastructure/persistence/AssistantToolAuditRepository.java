@@ -19,6 +19,9 @@ public class AssistantToolAuditRepository {
                        String toolCallId,
                        String toolName,
                        JsonNode inputJson,
+                       String traceId,
+                       String inputSummary,
+                       String outputSummary,
                        boolean success,
                        long elapsedMs,
                        String errorMessage) {
@@ -29,6 +32,9 @@ public class AssistantToolAuditRepository {
                   tool_call_id,
                   tool_name,
                   input_json,
+                  trace_id,
+                  input_summary,
+                  output_summary,
                   success,
                   elapsed_ms,
                   error_message,
@@ -39,6 +45,9 @@ public class AssistantToolAuditRepository {
                   :toolCallId,
                   :toolName,
                   CAST(:inputJson AS jsonb),
+                  :traceId,
+                  :inputSummary,
+                  :outputSummary,
                   :success,
                   :elapsedMs,
                   :errorMessage,
@@ -50,9 +59,11 @@ public class AssistantToolAuditRepository {
                 .addValue("toolCallId", toolCallId)
                 .addValue("toolName", toolName)
                 .addValue("inputJson", inputJson != null ? inputJson.toString() : null)
+                .addValue("traceId", traceId)
+                .addValue("inputSummary", inputSummary)
+                .addValue("outputSummary", outputSummary)
                 .addValue("success", success)
                 .addValue("elapsedMs", elapsedMs)
                 .addValue("errorMessage", errorMessage));
     }
 }
-

@@ -15,8 +15,6 @@ public record AssistantChatTierLimits(
         int ragTopK,
         // 拼进系统 Prompt 的 RAG context 最大字符数（会截断到该长度）
         int ragMaxContextChars,
-        // 单次请求内“模型↔工具”的最大往返轮次（达到后中止）
-        int toolMaxRounds,
         // 每一轮里最多允许执行多少个 tool call；超过会停止继续执行并返回 toolLimit 错误
         int toolMaxCallsPerRound,
         // 工具执行结果（JSON）回填给模型/ToolResponse 时的最大字符数，用于截断防止 prompt 过大
@@ -48,7 +46,6 @@ public record AssistantChatTierLimits(
                 true,
                 4,
                 5_000,
-                1,
                 2,
                 1_500
         );
@@ -61,7 +58,6 @@ public record AssistantChatTierLimits(
                 true,
                 8,
                 12_000,
-                3,
                 5,
                 6_000
         );
@@ -72,4 +68,3 @@ public record AssistantChatTierLimits(
         return proDefaults();
     }
 }
-

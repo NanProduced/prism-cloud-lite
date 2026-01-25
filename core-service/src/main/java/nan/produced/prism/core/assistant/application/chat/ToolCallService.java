@@ -3,23 +3,24 @@ package nan.produced.prism.core.assistant.application.chat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.core.assistant.api.uimessage.AiUiMessageSseWriter;
 import nan.produced.prism.core.assistant.application.tools.AssistantToolCall;
 import nan.produced.prism.core.assistant.application.tools.AssistantToolExecutor;
-import nan.produced.prism.core.assistant.infrastructure.config.AssistantChatProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class ToolCallService {
 
-    private final AssistantChatProperties properties;
-    private final AssistantToolPlanner toolPlanner;
     private final AssistantToolExecutor toolExecutor;
+    private final AssistantToolPlanService toolPlanService;
     private final AssistantNavigationToolResolver navigationToolResolver;
     private final AssistantCommandLogPickerResolver commandLogPickerResolver;
     private final AssistantDevicePickerResolver devicePickerResolver;
@@ -31,11 +32,11 @@ public class ToolCallService {
 
     public ToolCallOutcome handle(UUID userId,
                                   String userText,
+                                  List<AiSdkChatRequestParser.ChatMessage> conversation,
                                   AssistantSelectionTokenParser.ParseResult selection,
                                   AssistantChatTierLimits limits,
                                   AiUiMessageSseWriter writer) {
         Object toolResultForPrompt = null;
-
         if (selection.hasAnySelection()) {
             AssistantToolCall injectedToolCall = selection.toInjectedToolCall(objectMapper);
             if (injectedToolCall != null) {
@@ -78,21 +79,81 @@ public class ToolCallService {
             }
         }
 
-        AssistantToolCall plannedToolCall = "spring-ai".equalsIgnoreCase(properties.engine())
-                ? null
-                : toolPlanner.plan(userText);
-        if (toolResultForPrompt == null && !"spring-ai".equalsIgnoreCase(properties.engine()) && plannedToolCall != null) {
-            writer.toolInputAvailable(plannedToolCall.toolCallId(), plannedToolCall.toolName(), plannedToolCall.input(), true);
-            var exec = toolExecutor.execute(userId, plannedToolCall);
-            if (exec.success()) {
-                toolResultForPrompt = truncateJson(exec.output(), limits.toolResultMaxChars());
-                writer.toolOutputAvailable(plannedToolCall.toolCallId(), exec.output(), true);
-            } else {
-                writer.toolOutputError(plannedToolCall.toolCallId(), exec.errorText(), true);
-            }
+        if (toolResultForPrompt != null) {
+            return new ToolCallOutcome(toolResultForPrompt, false);
+        }
+
+        AssistantToolPlanService.ToolPlanDecision decision =
+                toolPlanService.plan(userId, limits, conversation, userText);
+        if (decision != null && decision.success()) {
+            toolResultForPrompt = executePlannedTools(userId, decision.plan(), limits, writer);
+        } else if (decision != null) {
+            log.info("tool plan skipped: userId={}, code={}, message={}", userId, decision.errorCode(), decision.errorMessage());
+        } else {
+            log.info("tool plan skipped: userId={}, reason=decision_missing", userId);
         }
 
         return new ToolCallOutcome(toolResultForPrompt, false);
+    }
+
+    private Object executePlannedTools(UUID userId,
+                                       AssistantToolPlan plan,
+                                       AssistantChatTierLimits limits,
+                                       AiUiMessageSseWriter writer) {
+        if (plan == null || !plan.hasToolCalls()) {
+            return null;
+        }
+        int maxCalls = limits != null ? limits.toolMaxCallsPerRound() : 0;
+        int maxChars = limits != null ? limits.toolResultMaxChars() : 0;
+        var results = objectMapper.createArrayNode();
+        int count = 0;
+        for (AssistantToolPlan.PlannedToolCall call : plan.toolCalls()) {
+            if (call == null || !StringUtils.hasText(call.name())) {
+                continue;
+            }
+            count++;
+            if (maxCalls > 0 && count > maxCalls) {
+                results.add(buildErrorResult("tool-limit", call.name(), "Too many tool calls in one request."));
+                break;
+            }
+            String toolCallId = "tool-" + UUID.randomUUID();
+            writer.toolInputAvailable(toolCallId, call.name(), call.arguments(), true);
+            var exec = toolExecutor.execute(userId, new AssistantToolCall(toolCallId, call.name(), call.arguments()));
+            if (exec.success()) {
+                writer.toolOutputAvailable(toolCallId, exec.output(), true);
+                results.add(buildSuccessResult(toolCallId, call.name(), call.arguments(), exec.output(), maxChars));
+            } else {
+                writer.toolOutputError(toolCallId, exec.errorText(), true);
+                results.add(buildErrorResult(toolCallId, call.name(), exec.errorText()));
+            }
+        }
+        return results.isEmpty() ? null : results;
+    }
+
+    private JsonNode buildSuccessResult(String toolCallId,
+                                        String toolName,
+                                        JsonNode input,
+                                        JsonNode output,
+                                        int maxChars) {
+        var item = objectMapper.createObjectNode();
+        item.put("toolCallId", toolCallId);
+        item.put("toolName", toolName);
+        if (input != null) {
+            item.set("input", input);
+        }
+        Object truncated = truncateJson(output, maxChars);
+        item.set("output", objectMapper.valueToTree(truncated));
+        return item;
+    }
+
+    private JsonNode buildErrorResult(String toolCallId, String toolName, String errorText) {
+        var item = objectMapper.createObjectNode();
+        item.put("toolCallId", toolCallId);
+        item.put("toolName", toolName);
+        var error = objectMapper.createObjectNode();
+        error.put("error", StringUtils.hasText(errorText) ? errorText : "Tool error");
+        item.set("error", error);
+        return item;
     }
 
     private Object truncateJson(JsonNode node, int maxChars) {

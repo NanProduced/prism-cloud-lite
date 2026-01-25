@@ -4,9 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "assistant.chat")
 public record AssistantChatProperties(
-        String engine,
         Prompt prompt,
-        Tools tools,
         Rag rag,
         Llm llm,
         Providers providers
@@ -14,12 +12,6 @@ public record AssistantChatProperties(
 
     public record Prompt(
             String systemTemplate
-    ) {
-    }
-
-    public record Tools(
-            int maxRounds,
-            int maxCallsPerRound
     ) {
     }
 

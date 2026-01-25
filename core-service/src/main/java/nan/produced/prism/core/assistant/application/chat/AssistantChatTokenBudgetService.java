@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import nan.produced.prism.core.assistant.api.uimessage.AiUiMessageSseWriter;
 import nan.produced.prism.core.assistant.infrastructure.config.AssistantChatTokenBudgetProperties;
 import nan.produced.prism.core.assistant.infrastructure.llm.AssistantChatLlmClient;
-import nan.produced.prism.core.assistant.infrastructure.llm.OpenAiChatCompletionsClient.Message;
+import nan.produced.prism.core.assistant.infrastructure.llm.AssistantChatMessage;
 import nan.produced.prism.core.assistant.infrastructure.persistence.AssistantChatTokenUsageRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -33,7 +33,7 @@ public class AssistantChatTokenBudgetService {
         return tokenBudget != null ? tokenBudget.resetZoneId() : ZoneId.of("UTC");
     }
 
-    public QuotaSnapshot resolveQuotaSnapshot(UUID userId, String tier, List<Message> messages, ZoneId zoneId) {
+    public QuotaSnapshot resolveQuotaSnapshot(UUID userId, String tier, List<AssistantChatMessage> messages, ZoneId zoneId) {
         String tierKey = normalizeTierOrFree(tier);
         long dailyLimit = tokenBudget.getDailyLimitOrUnlimited(tierKey);
         if (dailyLimit <= 0) {
@@ -68,7 +68,7 @@ public class AssistantChatTokenBudgetService {
                                     QuotaSnapshot quota,
                                     AssistantChatLlmClient.StreamResult llmResult,
                                     String answerText,
-                                    List<Message> messages) {
+                                    List<AssistantChatMessage> messages) {
         if (quota == null || !quota.trackTokens() || llmResult == null) {
             return quota;
         }
@@ -91,12 +91,12 @@ public class AssistantChatTokenBudgetService {
         ));
     }
 
-    private static int estimatePromptTokens(List<Message> messages) {
+    private static int estimatePromptTokens(List<AssistantChatMessage> messages) {
         if (messages == null || messages.isEmpty()) {
             return 0;
         }
         long total = 0;
-        for (Message m : messages) {
+        for (AssistantChatMessage m : messages) {
             if (m == null || m.content() == null) {
                 continue;
             }

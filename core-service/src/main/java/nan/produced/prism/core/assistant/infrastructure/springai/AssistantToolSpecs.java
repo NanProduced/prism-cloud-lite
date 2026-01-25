@@ -1,13 +1,19 @@
 package nan.produced.prism.core.assistant.infrastructure.springai;
 
+import nan.produced.prism.core.assistant.application.tools.AssistantToolPolicy;
+import nan.produced.prism.core.assistant.application.tools.AssistantToolPolicyCatalog;
+import nan.produced.prism.core.assistant.application.tools.AssistantToolRiskLevel;
+import nan.produced.prism.core.assistant.application.tools.AssistantToolSchemaCatalog;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @Component
-public class AssistantToolSpecs {
+public class AssistantToolSpecs implements AssistantToolSchemaCatalog, AssistantToolPolicyCatalog {
 
-    public record ToolSpec(String name, String description, String inputJsonSchema) {
+    public record ToolSpec(String name, String description, String inputJsonSchema, AssistantToolPolicy policy) {
     }
 
     private final Map<String, ToolSpec> specs = Map.of(
@@ -24,7 +30,8 @@ public class AssistantToolSpecs {
                               },
                               "additionalProperties": false
                             }
-                            """.trim()
+                            """.trim(),
+                    readOnly("searchDevices")
             ),
             "getDeviceDetail",
             new ToolSpec(
@@ -39,7 +46,8 @@ public class AssistantToolSpecs {
                               "required": ["deviceId"],
                               "additionalProperties": false
                             }
-                            """.trim()
+                            """.trim(),
+                    readOnly("getDeviceDetail")
             ),
             "analyzeOfflineDevices",
             new ToolSpec(
@@ -53,7 +61,8 @@ public class AssistantToolSpecs {
                               },
                               "additionalProperties": false
                             }
-                            """.trim()
+                            """.trim(),
+                    readOnly("analyzeOfflineDevices")
             ),
             "getErrorCodeHelp",
             new ToolSpec(
@@ -68,7 +77,8 @@ public class AssistantToolSpecs {
                               "required": ["errorCode"],
                               "additionalProperties": false
                             }
-                            """.trim()
+                            """.trim(),
+                    readOnly("getErrorCodeHelp")
             ),
             "getRecentPublishFailures",
             new ToolSpec(
@@ -84,7 +94,8 @@ public class AssistantToolSpecs {
                               },
                               "additionalProperties": false
                             }
-                            """.trim()
+                            """.trim(),
+                    readOnly("getRecentPublishFailures")
             ),
             "diagnoseDevice",
             new ToolSpec(
@@ -99,7 +110,8 @@ public class AssistantToolSpecs {
                               "required": ["deviceId"],
                               "additionalProperties": false
                             }
-                            """.trim()
+                            """.trim(),
+                    readOnly("diagnoseDevice")
             ),
             "diagnoseDeviceCommand",
             new ToolSpec(
@@ -119,7 +131,8 @@ public class AssistantToolSpecs {
                               },
                               "additionalProperties": false
                             }
-                            """.trim()
+                            """.trim(),
+                    readOnly("diagnoseDeviceCommand")
             ),
             "searchCommandLogs",
             new ToolSpec(
@@ -145,7 +158,8 @@ public class AssistantToolSpecs {
                               },
                               "additionalProperties": false
                             }
-                            """.trim()
+                            """.trim(),
+                    readOnly("searchCommandLogs")
             )
     );
 
@@ -156,7 +170,51 @@ public class AssistantToolSpecs {
         return specs.get(toolName);
     }
 
+    @Override
+    public String schemaFor(String toolName) {
+        ToolSpec spec = get(toolName);
+        return spec != null ? spec.inputJsonSchema() : null;
+    }
+
+    @Override
+    public List<ToolSchema> list() {
+        if (specs.isEmpty()) {
+            return List.of();
+        }
+        List<AssistantToolSchemaCatalog.ToolSchema> ordered = new ArrayList<>();
+        for (ToolSpec spec : specs.values()) {
+            ordered.add(new AssistantToolSchemaCatalog.ToolSchema(spec.name(), spec.description(), spec.inputJsonSchema()));
+        }
+        ordered.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
+        return List.copyOf(ordered);
+    }
+
+    @Override
+    public AssistantToolPolicy policyFor(String toolName) {
+        ToolSpec spec = get(toolName);
+        return spec != null ? spec.policy() : null;
+    }
+
+    @Override
+    public List<AssistantToolPolicy> listPolicies() {
+        if (specs.isEmpty()) {
+            return List.of();
+        }
+       List<AssistantToolPolicy> ordered = new ArrayList<>();
+        for (ToolSpec spec : specs.values()) {
+            if (spec.policy() != null) {
+                ordered.add(spec.policy());
+            }
+        }
+        ordered.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
+        return List.copyOf(ordered);
+    }
+
     public Map<String, ToolSpec> all() {
         return specs;
+    }
+
+    private static AssistantToolPolicy readOnly(String name) {
+        return new AssistantToolPolicy(name, AssistantToolRiskLevel.LOW, false, true);
     }
 }

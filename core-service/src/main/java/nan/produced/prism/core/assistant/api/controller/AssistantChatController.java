@@ -8,7 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import nan.produced.prism.core.assistant.application.chat.AssistantChatService;
+import nan.produced.prism.core.assistant.application.chat.AssistantChatFacade;
 import nan.produced.prism.core.security.api.CloudAuthContext;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -25,7 +25,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AssistantChatController {
 
-    private final AssistantChatService assistantChatService;
+    private final AssistantChatFacade assistantChatFacade;
 
     @Operation(
             summary = "AI 助手聊天（UIMessage Stream v1 / SSE）",
@@ -84,7 +84,7 @@ public class AssistantChatController {
         UUID userId = CloudAuthContext.getCurrentUserUuidAsUuid();
         String tier = user.tier();
 
-        StreamingResponseBody body = outputStream -> assistantChatService.handle(userId, tier, request, outputStream);
+        StreamingResponseBody body = outputStream -> assistantChatFacade.handle(userId, tier, request, outputStream);
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("x-vercel-ai-ui-message-stream", "v1");
