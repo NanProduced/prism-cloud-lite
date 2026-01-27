@@ -67,7 +67,7 @@ public class RabbitMqConfiguration {
     }
 
     @Bean
-    public Declarables gatewayNotifyBindings(TopicExchange coreNotificationsExchange,
+    public Declarables gatewayNotifyBindings(@Qualifier("coreNotificationsExchange") TopicExchange coreNotificationsExchange,
                                              @Qualifier("gatewayNotifyQueue") Queue gatewayNotifyQueue,
                                              @Qualifier("gatewayRealtimeQueue") Queue gatewayRealtimeQueue) {
         return new Declarables(
@@ -81,7 +81,7 @@ public class RabbitMqConfiguration {
     }
 
     @Bean
-    public Declarables gatewayNotifyDlqBindings(TopicExchange coreNotificationsDlxExchange,
+    public Declarables gatewayNotifyDlqBindings(@Qualifier("coreNotificationsDlxExchange") TopicExchange coreNotificationsDlxExchange,
                                                 @Qualifier("gatewayNotifyDlqQueue") Queue gatewayNotifyDlqQueue,
                                                 @Qualifier("gatewayRealtimeDlqQueue") Queue gatewayRealtimeDlqQueue) {
         return new Declarables(
