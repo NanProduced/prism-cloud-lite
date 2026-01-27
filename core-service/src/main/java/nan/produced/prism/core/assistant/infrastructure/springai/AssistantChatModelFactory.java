@@ -42,12 +42,16 @@ public class AssistantChatModelFactory {
     public OpenAiChatOptions buildChatOptions(AssistantChatModelRouter.LlmTarget target,
                                               String model,
                                               AssistantChatLlmClient.StreamOptions streamOptions) {
+        boolean localVllm = target != null && "local-vllm".equalsIgnoreCase(target.provider());
         OpenAiChatOptions.Builder builder = OpenAiChatOptions.builder()
                 .model(model)
                 .temperature(target.temperature())
-                .internalToolExecutionEnabled(false)
-                .parallelToolCalls(false)
-                .toolChoice("none");
+                .internalToolExecutionEnabled(false);
+
+        if (!localVllm) {
+            builder.parallelToolCalls(false)
+                    .toolChoice("none");
+        }
 
         Integer maxCompletionTokens = streamOptions != null && streamOptions.maxCompletionTokens() > 0
                 ? streamOptions.maxCompletionTokens()
@@ -55,7 +59,9 @@ public class AssistantChatModelFactory {
         if (maxCompletionTokens != null) {
             // vLLM is OpenAI-compatible and typically supports max_tokens; OpenAI may prefer max_completion_tokens.
             builder.maxTokens(maxCompletionTokens);
-            builder.maxCompletionTokens(maxCompletionTokens);
+            if (!localVllm) {
+                builder.maxCompletionTokens(maxCompletionTokens);
+            }
         }
 
         return builder.build();

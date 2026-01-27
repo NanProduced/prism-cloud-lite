@@ -5,6 +5,9 @@ spring:
     active: ${profileActive:dev}
   jackson:
     time-zone: UTC
+  datasource:
+    hikari:
+      connection-init-sql: SET search_path TO public, assistant;
   jpa:
     properties:
       hibernate:
