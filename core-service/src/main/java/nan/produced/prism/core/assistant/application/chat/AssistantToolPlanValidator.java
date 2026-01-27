@@ -2,12 +2,15 @@ package nan.produced.prism.core.assistant.application.chat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import nan.produced.prism.core.assistant.application.tools.AssistantToolRegistry;
 import nan.produced.prism.core.assistant.application.tools.AssistantToolSchemaCatalog;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 @Component
@@ -16,6 +19,7 @@ public class AssistantToolPlanValidator {
 
     private final AssistantToolRegistry toolRegistry;
     private final AssistantToolSchemaCatalog schemaCatalog;
+    private final ObjectMapper objectMapper;
 
     public ToolPlanValidationResult validate(AssistantToolPlan plan) {
         if (plan == null) {
@@ -40,6 +44,8 @@ public class AssistantToolPlanValidator {
                 JsonNode arguments = call.arguments();
                 if (arguments != null && !arguments.isObject()) {
                     errors.add(new ToolPlanValidationError("invalid_arguments", toolName, "Tool arguments must be an object."));
+                } else {
+                    errors.addAll(validateArgumentsAgainstSchema(toolName, arguments));
                 }
             }
         }
@@ -66,5 +72,85 @@ public class AssistantToolPlanValidator {
     }
 
     public record ToolPlanValidationError(String code, String toolName, String message) {
+    }
+
+    private List<ToolPlanValidationError> validateArgumentsAgainstSchema(String toolName, JsonNode arguments) {
+        String schemaJson = schemaCatalog.schemaFor(toolName);
+        if (!StringUtils.hasText(schemaJson)) {
+            return List.of();
+        }
+
+        JsonNode schema;
+        try {
+            schema = objectMapper.readTree(schemaJson);
+        } catch (Exception e) {
+            return List.of(new ToolPlanValidationError("invalid_schema", toolName, "Tool schema is invalid JSON."));
+        }
+
+        if (schema == null || !schema.isObject()) {
+            return List.of(new ToolPlanValidationError("invalid_schema", toolName, "Tool schema must be a JSON object."));
+        }
+
+        List<ToolPlanValidationError> errors = new ArrayList<>();
+
+        JsonNode required = schema.get("required");
+        if (required != null && required.isArray()) {
+            for (JsonNode req : required) {
+                if (req == null || !req.isTextual()) {
+                    continue;
+                }
+                String field = req.asText();
+                if (!StringUtils.hasText(field)) {
+                    continue;
+                }
+                if (arguments == null || !arguments.hasNonNull(field)) {
+                    errors.add(new ToolPlanValidationError("missing_required_argument", toolName,
+                            "Missing required argument: " + field));
+                }
+            }
+        }
+
+        JsonNode properties = schema.get("properties");
+        if (properties != null && properties.isObject() && arguments != null && arguments.isObject()) {
+            Iterator<String> fields = arguments.fieldNames();
+            while (fields.hasNext()) {
+                String field = fields.next();
+                JsonNode propSchema = properties.get(field);
+                if (propSchema == null || !propSchema.isObject()) {
+                    continue;
+                }
+                JsonNode typeNode = propSchema.get("type");
+                if (typeNode == null || !typeNode.isTextual()) {
+                    continue;
+                }
+                String expectedType = typeNode.asText();
+                JsonNode value = arguments.get(field);
+                if (value == null || value.isNull()) {
+                    continue;
+                }
+                if (!isTypeCompatible(expectedType, value)) {
+                    errors.add(new ToolPlanValidationError("invalid_argument_type", toolName,
+                            "Argument '" + field + "' must be " + expectedType + "."));
+                }
+            }
+        }
+
+        return errors;
+    }
+
+    private static boolean isTypeCompatible(String expectedType, JsonNode value) {
+        if (value == null) {
+            return true;
+        }
+        return switch (expectedType) {
+            case "integer" -> value.isNumber();
+            case "number" -> value.isNumber();
+            case "string" -> value.isTextual();
+            case "boolean" -> value.isBoolean();
+            case "object" -> value.isObject();
+            case "array" -> value.isArray();
+            case "null" -> value.isNull();
+            default -> true;
+        };
     }
 }

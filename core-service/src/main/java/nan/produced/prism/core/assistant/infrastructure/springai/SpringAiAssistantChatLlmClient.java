@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import nan.produced.prism.core.assistant.infrastructure.llm.AssistantChatLlmClient;
 import nan.produced.prism.core.assistant.infrastructure.llm.AssistantChatMessage;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -49,16 +50,49 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
         String model = modelFactory.resolveModel(target, localVllmModelOverride);
         ChatModelState chatState = buildChatModelState(userId, target, api, model, streamOptions);
 
-        List<org.springframework.ai.chat.messages.Message> history = toSpringAiMessages(messages);
+        List<Message> history = toSpringAiMessages(messages);
 
-        long promptTokensSum = 0;
-        long completionTokensSum = 0;
         boolean modelFallbackAttempted = false;
 
         while (true) {
-            ChatResponse response;
+            long promptTokens = -1;
+            long completionTokens = -1;
+            long totalTokens = -1;
+            String finishReason = null;
+            boolean receivedAny = false;
+
             try {
-                response = chatState.model().call(new Prompt(history, chatState.options()));
+                var flux = chatState.model().stream(new Prompt(history, chatState.options()));
+                for (ChatResponse response : flux.toIterable()) {
+                    if (response == null) {
+                        continue;
+                    }
+                    receivedAny = true;
+
+                    var usage = response.getMetadata() != null ? response.getMetadata().getUsage() : null;
+                    if (usage != null) {
+                        if (usage.getPromptTokens() != null) {
+                            promptTokens = usage.getPromptTokens();
+                        }
+                        if (usage.getCompletionTokens() != null) {
+                            completionTokens = usage.getCompletionTokens();
+                        }
+                        if (usage.getTotalTokens() != null) {
+                            totalTokens = usage.getTotalTokens();
+                        }
+                    }
+
+                    var result = response.getResult();
+                    if (result != null && result.getMetadata() != null && StringUtils.hasText(result.getMetadata().getFinishReason())) {
+                        finishReason = result.getMetadata().getFinishReason();
+                    }
+
+                    var assistant = result != null ? result.getOutput() : null;
+                    String content = assistant != null ? assistant.getText() : null;
+                    if (StringUtils.hasText(content) && onDelta != null) {
+                        onDelta.accept(content);
+                    }
+                }
             } catch (Exception ex) {
                 if (!modelFallbackAttempted
                         && "local-vllm".equalsIgnoreCase(target.provider())
@@ -77,30 +111,16 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
                 throw ex;
             }
 
-            if (response == null || response.getResult() == null || response.getResult().getOutput() == null) {
+            if (!receivedAny) {
                 return new StreamResult("error", null, null, null);
             }
 
-            var usage = response.getMetadata() != null ? response.getMetadata().getUsage() : null;
-            if (usage != null) {
-                if (usage.getPromptTokens() != null) {
-                    promptTokensSum += usage.getPromptTokens();
-                }
-                if (usage.getCompletionTokens() != null) {
-                    completionTokensSum += usage.getCompletionTokens();
-                }
+            Integer pt = safeIntOrNull(promptTokens);
+            Integer ct = safeIntOrNull(completionTokens);
+            Integer tt = safeIntOrNull(totalTokens);
+            if (tt == null && promptTokens > 0 && completionTokens > 0) {
+                tt = safeIntOrNull(promptTokens + completionTokens);
             }
-
-            var assistant = response.getResult().getOutput();
-            String content = assistant.getText();
-            if (StringUtils.hasText(content) && onDelta != null) {
-                onDelta.accept(content);
-            }
-
-            String finishReason = response.getResult().getMetadata() != null ? response.getResult().getMetadata().getFinishReason() : null;
-            Integer pt = safeIntOrNull(promptTokensSum);
-            Integer ct = safeIntOrNull(completionTokensSum);
-            Integer tt = safeIntOrNull(promptTokensSum + completionTokensSum);
             return new StreamResult(finishReason, pt, ct, tt);
         }
     }
@@ -176,8 +196,8 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
         return (int) v;
     }
 
-    private static List<org.springframework.ai.chat.messages.Message> toSpringAiMessages(List<AssistantChatMessage> messages) {
-        List<org.springframework.ai.chat.messages.Message> result = new ArrayList<>();
+    private static List<Message> toSpringAiMessages(List<AssistantChatMessage> messages) {
+        List<Message> result = new ArrayList<>();
         if (messages == null) {
             return result;
         }

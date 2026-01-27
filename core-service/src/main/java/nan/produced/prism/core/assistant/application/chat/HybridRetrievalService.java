@@ -7,6 +7,8 @@ import nan.produced.prism.core.assistant.infrastructure.persistence.AssistantRag
 import nan.produced.prism.core.assistant.infrastructure.rag.AssistantRerankClient;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.filter.Filter;
+import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -109,7 +111,7 @@ public class HybridRetrievalService {
     }
 
     private SearchRequest buildVectorSearch(String query, String lang, int topK) {
-        String filterExpression = buildVectorFilter(lang);
+        Filter.Expression filterExpression = buildVectorFilterExpression(lang);
         return SearchRequest.builder()
                 .query(query)
                 .topK(topK)
@@ -117,18 +119,21 @@ public class HybridRetrievalService {
                 .build();
     }
 
-    private String buildVectorFilter(String lang) {
+    private Filter.Expression buildVectorFilterExpression(String lang) {
+        FilterExpressionBuilder builder = new FilterExpressionBuilder();
+        FilterExpressionBuilder.Op exp = builder.eq(RagMetadataKeys.LANG, lang);
+
         String audience = ragProperties.ingest().requireAudience();
-        String status = ragProperties.ingest().requireStatus();
-        StringBuilder sb = new StringBuilder("WHERE ");
-        sb.append(RagMetadataKeys.LANG).append(" == '").append(lang).append("'");
         if (StringUtils.hasText(audience)) {
-            sb.append(" AND ").append(RagMetadataKeys.AUDIENCE).append(" == '").append(audience).append("'");
+            exp = builder.and(exp, builder.eq(RagMetadataKeys.AUDIENCE, audience));
         }
+
+        String status = ragProperties.ingest().requireStatus();
         if (StringUtils.hasText(status)) {
-            sb.append(" AND ").append(RagMetadataKeys.STATUS).append(" == '").append(status).append("'");
+            exp = builder.and(exp, builder.eq(RagMetadataKeys.STATUS, status));
         }
-        return sb.toString();
+
+        return exp.build();
     }
 
     private Map<UUID, AssistantRagParentRepository.ParentDoc> loadParents(List<Document> vectorHits) {
