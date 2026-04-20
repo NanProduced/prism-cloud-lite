@@ -29,13 +29,46 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "内部接口-订阅", description = "仅供服务间调用（core-service/管理平台），前端勿用")
+@Tag(name = "内部接口-订阅", description = "仅供服务间调用（core-service/管理平台/payment-service），前端勿用")
 @RestController
 @RequestMapping("/internal/subscription")
 @RequiredArgsConstructor
 public class InternalSubscriptionController {
 
     private final SubscriptionService subscriptionService;
+
+    @PostMapping("/sync-from-payment")
+    @Operation(
+        summary = "同步支付订阅",
+        description = """
+            供 payment-service 同步订阅状态到 auth-service。
+
+            - 鉴权：service-signature + IP 白名单；
+            - 响应体：`ApiResponse<Void>`。
+            """)
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(
+        responseCode = "200",
+        description = "同步成功")
+    public ResponseEntity<ApiResponse<Void>> syncFromPayment(
+        @RequestBody InternalSubscriptionSyncFromPaymentRequest request) {
+
+        try {
+            UUID userId = UUID.fromString(request.userId());
+            subscriptionService.syncFromPayment(
+                userId,
+                request.tier(),
+                request.startAt(),
+                request.endAt(),
+                request.status()
+            );
+            return ResponseEntity.ok(ApiResponse.<Void>success().withMeta(TraceUtils.getTraceId(), null));
+        } catch (Exception ex) {
+            log.error("Failed to sync subscription from payment", ex);
+            return ResponseEntity.status(500)
+                .body(ApiResponse.<Void>error(ErrorCode.INTERNAL_SERVER_ERROR, ex.getMessage())
+                    .withMeta(TraceUtils.getTraceId(), null));
+        }
+    }
 
     @GetMapping
     @Operation(

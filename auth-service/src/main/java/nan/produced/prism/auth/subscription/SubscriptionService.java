@@ -210,6 +210,94 @@ public class SubscriptionService {
         return "PR" + raw.substring(0, 14);
     }
 
+    @Transactional
+    public void syncFromPayment(UUID userId, String tier, Instant startAt, Instant endAt, String status) {
+        Instant now = Instant.now();
+
+        SubscriptionTier targetTier = parseTier(tier);
+        boolean isActive = isSubscriptionActive(status, endAt, now);
+
+        UserSubscriptionEntity subscription = userSubscriptionRepository.findByUserId(userId).orElse(null);
+
+        if (!isActive) {
+            if (subscription != null) {
+                subscription.setTier(SubscriptionTier.FREE);
+                userSubscriptionRepository.save(subscription);
+
+                Map<String, Object> metadata = new HashMap<>();
+                metadata.put("oldTier", subscription.getTier().name());
+                metadata.put("newTier", SubscriptionTier.FREE.name());
+                metadata.put("reason", "payment_sync");
+                metadata.put("status", status);
+                recordSubscriptionEvent(userId, SubscriptionEventType.SYNC_FROM_PAYMENT, true, metadata);
+            }
+            return;
+        }
+
+        if (subscription == null) {
+            subscription = new UserSubscriptionEntity();
+            subscription.setUserId(userId);
+        }
+
+        SubscriptionTier oldTier = subscription.getTier() == null ? SubscriptionTier.FREE : subscription.getTier();
+        Instant oldEndAt = subscription.getEndAt();
+
+        subscription.setTier(targetTier);
+        subscription.setStartAt(startAt != null ? startAt : now);
+        subscription.setEndAt(endAt != null ? endAt : now.plus(Duration.ofDays(30)));
+
+        userSubscriptionRepository.save(subscription);
+
+        Map<String, Object> metadata = new HashMap<>();
+        metadata.put("oldTier", oldTier.name());
+        metadata.put("newTier", targetTier.name());
+        metadata.put("oldEndAt", oldEndAt);
+        metadata.put("newEndAt", subscription.getEndAt());
+        metadata.put("status", status);
+        recordSubscriptionEvent(userId, SubscriptionEventType.SYNC_FROM_PAYMENT, true, metadata);
+
+        log.info("Synced subscription from payment: userId={}, tier={}, endAt={}", userId, targetTier, subscription.getEndAt());
+    }
+
+    private SubscriptionTier parseTier(String tier) {
+        if (tier == null || tier.isBlank()) {
+            return SubscriptionTier.FREE;
+        }
+        String upperTier = tier.toUpperCase(Locale.ROOT);
+        return switch (upperTier) {
+            case "PRO" -> SubscriptionTier.PRO;
+            case "FREE" -> SubscriptionTier.FREE;
+            default -> SubscriptionTier.FREE;
+        };
+    }
+
+    private boolean isSubscriptionActive(String status, Instant endAt, Instant now) {
+        if (status == null) {
+            return endAt != null && endAt.isAfter(now);
+        }
+        String upperStatus = status.toUpperCase(Locale.ROOT);
+        return switch (upperStatus) {
+            case "ACTIVE", "TRIALING" -> true;
+            case "CANCELED", "PAST_DUE", "PAUSED" -> false;
+            default -> endAt != null && endAt.isAfter(now);
+        };
+    }
+
+    private void recordSubscriptionEvent(UUID userId, SubscriptionEventType eventType, boolean success, Map<String, Object> metadata) {
+        try {
+            SubscriptionEventEntity event = new SubscriptionEventEntity();
+            event.setUserId(userId);
+            event.setEventType(eventType);
+            event.setSuccess(success);
+            if (metadata != null && !metadata.isEmpty()) {
+                event.setMetadata(JsonUtils.toJson(metadata));
+            }
+            subscriptionEventRepository.save(event);
+        } catch (Exception ex) {
+            log.warn("Failed to record subscription event: {}", ex.getMessage());
+        }
+    }
+
     public record SubscriptionSnapshot(SubscriptionTier tier, Instant startAt, Instant endAt, boolean active) {
         public static SubscriptionSnapshot free() {
             return new SubscriptionSnapshot(SubscriptionTier.FREE, null, null, false);
