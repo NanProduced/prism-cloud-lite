@@ -1,10 +1,10 @@
 package nan.produced.prism.core.assistant.application.tools;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import nan.produced.prism.core.assistant.infrastructure.persistence.AssistantToolAuditRepository;
+import nan.produced.prism.core.assistant.application.audit.AssistantAuditEventPublisher;
+import nan.produced.prism.core.assistant.application.audit.AssistantToolCallAuditEvent;
 import nan.produced.prism.core.common.util.TraceUtils;
 import org.springframework.stereotype.Service;
 
@@ -15,12 +15,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AssistantToolExecutor {
 
-    private static final int AUDIT_SUMMARY_MAX_CHARS = 2_000;
-
     private final AssistantToolRegistry registry;
-    private final AssistantToolAuditRepository auditRepository;
     private final AssistantToolPolicyGate policyGate;
-    private final ObjectMapper objectMapper;
+    private final AssistantAuditEventPublisher auditEventPublisher;
 
     public record ToolExecutionResult(boolean success, JsonNode output, String errorText, long elapsedMs) {
     }
@@ -58,40 +55,25 @@ public class AssistantToolExecutor {
                 if ("unknown".equalsIgnoreCase(traceId)) {
                     traceId = null;
                 }
-                String inputSummary = summarizeJson(call.input());
-                String outputSummary = summarizeJson(output);
                 long auditElapsed = elapsedMs > 0 ? elapsedMs : (System.currentTimeMillis() - startedAt);
-                auditRepository.insert(
-                        UUID.randomUUID(),
+
+                AssistantToolCallAuditEvent event = AssistantToolCallAuditEvent.create(
                         userId,
                         call.toolCallId(),
                         call.toolName(),
                         call.input(),
-                        traceId,
-                        inputSummary,
-                        outputSummary,
+                        output,
                         success,
                         auditElapsed,
-                        errorText
+                        errorText,
+                        traceId
                 );
-            } catch (Exception e) {
-                log.debug("assistant tool audit insert failed", e);
-            }
-        }
-    }
 
-    private String summarizeJson(JsonNode node) {
-        if (node == null) {
-            return null;
-        }
-        try {
-            String json = objectMapper.writeValueAsString(node);
-            if (json.length() <= AUDIT_SUMMARY_MAX_CHARS) {
-                return json;
+                auditEventPublisher.publishToolCallEvent(event);
+
+            } catch (Exception e) {
+                log.debug("assistant tool audit event publish failed", e);
             }
-            return json.substring(0, AUDIT_SUMMARY_MAX_CHARS) + "...(truncated)";
-        } catch (Exception e) {
-            return null;
         }
     }
 }

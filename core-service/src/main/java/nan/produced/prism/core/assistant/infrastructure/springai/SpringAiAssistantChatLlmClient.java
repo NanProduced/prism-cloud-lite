@@ -112,7 +112,7 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
             }
 
             if (!receivedAny) {
-                return new StreamResult("error", null, null, null);
+                return new StreamResult("error", null, null, null, target.provider(), model);
             }
 
             Integer pt = safeIntOrNull(promptTokens);
@@ -121,7 +121,7 @@ public class SpringAiAssistantChatLlmClient implements AssistantChatLlmClient {
             if (tt == null && promptTokens > 0 && completionTokens > 0) {
                 tt = safeIntOrNull(promptTokens + completionTokens);
             }
-            return new StreamResult(finishReason, pt, ct, tt);
+            return new StreamResult(finishReason, pt, ct, tt, target.provider(), model);
         }
     }
 
