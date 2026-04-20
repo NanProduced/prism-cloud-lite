@@ -105,6 +105,7 @@
         <module>core-service</module>
         <module>gateway-service</module>
         <module>device-service</module>
+        <module>payment-service</module>
     </modules>
 
     <dependencies>
