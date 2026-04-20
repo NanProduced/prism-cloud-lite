@@ -3,9 +3,6 @@ package nan.produced.prism.core.assistant.application.tools;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import nan.produced.prism.core.assistant.application.audit.AssistantAuditEventPublisher;
-import nan.produced.prism.core.assistant.application.audit.AssistantToolCallAuditEvent;
-import nan.produced.prism.core.common.util.TraceUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -17,7 +14,6 @@ public class AssistantToolExecutor {
 
     private final AssistantToolRegistry registry;
     private final AssistantToolPolicyGate policyGate;
-    private final AssistantAuditEventPublisher auditEventPublisher;
 
     public record ToolExecutionResult(boolean success, JsonNode output, String errorText, long elapsedMs) {
     }
@@ -49,31 +45,6 @@ public class AssistantToolExecutor {
             log.warn("assistant tool failed: toolName={}, toolCallId={}", call.toolName(), call.toolCallId(), e);
             elapsedMs = System.currentTimeMillis() - startedAt;
             return new ToolExecutionResult(false, null, errorText, elapsedMs);
-        } finally {
-            try {
-                String traceId = TraceUtils.getTraceId();
-                if ("unknown".equalsIgnoreCase(traceId)) {
-                    traceId = null;
-                }
-                long auditElapsed = elapsedMs > 0 ? elapsedMs : (System.currentTimeMillis() - startedAt);
-
-                AssistantToolCallAuditEvent event = AssistantToolCallAuditEvent.create(
-                        userId,
-                        call.toolCallId(),
-                        call.toolName(),
-                        call.input(),
-                        output,
-                        success,
-                        auditElapsed,
-                        errorText,
-                        traceId
-                );
-
-                auditEventPublisher.publishToolCallEvent(event);
-
-            } catch (Exception e) {
-                log.debug("assistant tool audit event publish failed", e);
-            }
         }
     }
 }
