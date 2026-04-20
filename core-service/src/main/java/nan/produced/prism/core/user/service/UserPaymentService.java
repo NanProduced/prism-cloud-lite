@@ -9,16 +9,10 @@ import nan.produced.prism.core.common.response.ApiResponse;
 import nan.produced.prism.core.integration.payment.client.PaymentInternalClient;
 import nan.produced.prism.core.integration.payment.client.PaymentInternalClient.CancelSubscriptionRequest;
 import nan.produced.prism.core.integration.payment.client.PaymentInternalClient.CreateOrderRequest;
-import nan.produced.prism.core.integration.payment.client.PaymentInternalClient.GetSubscriptionRequest;
 import nan.produced.prism.core.integration.payment.client.PaymentInternalClient.SubscriptionActionRequest;
-import nan.produced.prism.core.integration.payment.dto.PaymentCreateOrderResponse;
-import nan.produced.prism.core.integration.payment.dto.PaymentOrderDetailResponse;
-import nan.produced.prism.core.integration.payment.dto.PaymentSubscriptionResponse;
 import nan.produced.prism.core.security.api.CloudAuthContext;
 import nan.produced.prism.core.user.dto.PaymentCancelSubscriptionRequest;
 import nan.produced.prism.core.user.dto.PaymentCreateOrderRequest;
-import nan.produced.prism.core.user.dto.PaymentCreateOrderResponse;
-import nan.produced.prism.core.user.dto.PaymentOrderDetailResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -31,14 +25,14 @@ public class UserPaymentService {
 
     private final PaymentInternalClient paymentInternalClient;
 
-    public PaymentCreateOrderResponse createOrder(PaymentCreateOrderRequest request) {
+    public nan.produced.prism.core.user.dto.PaymentCreateOrderResponse createOrder(PaymentCreateOrderRequest request) {
         UUID userId = requireCurrentUserUuid();
 
         if (request == null || !StringUtils.hasText(request.priceId())) {
             throw new InfraException(ErrorCode.INVALID_REQUEST, "priceId is required");
         }
 
-        ApiResponse<PaymentCreateOrderResponse> response = paymentInternalClient.createOrder(
+        ApiResponse<nan.produced.prism.core.integration.payment.dto.PaymentCreateOrderResponse> response = paymentInternalClient.createOrder(
             new CreateOrderRequest(
                 userId,
                 request.priceId(),
@@ -48,9 +42,9 @@ public class UserPaymentService {
             )
         );
 
-        PaymentCreateOrderResponse remote = requirePaymentSuccess(response, "创建订单失败");
+        nan.produced.prism.core.integration.payment.dto.PaymentCreateOrderResponse remote = requirePaymentSuccess(response, "创建订单失败");
 
-        return new PaymentCreateOrderResponse(
+        return new nan.produced.prism.core.user.dto.PaymentCreateOrderResponse(
             remote.orderId(),
             remote.orderNo(),
             remote.externalOrderNo(),
@@ -59,13 +53,13 @@ public class UserPaymentService {
         );
     }
 
-    public PaymentOrderDetailResponse getOrder(UUID orderId) {
+    public nan.produced.prism.core.user.dto.PaymentOrderDetailResponse getOrder(UUID orderId) {
         UUID userId = requireCurrentUserUuid();
 
-        ApiResponse<PaymentOrderDetailResponse> response = paymentInternalClient.getOrder(orderId);
-        PaymentOrderDetailResponse remote = requirePaymentSuccess(response, "查询订单失败");
+        ApiResponse<nan.produced.prism.core.integration.payment.dto.PaymentOrderDetailResponse> response = paymentInternalClient.getOrder(orderId);
+        nan.produced.prism.core.integration.payment.dto.PaymentOrderDetailResponse remote = requirePaymentSuccess(response, "查询订单失败");
 
-        return new PaymentOrderDetailResponse(
+        return new nan.produced.prism.core.user.dto.PaymentOrderDetailResponse(
             remote.id(),
             remote.userId(),
             remote.orderNo(),
@@ -81,13 +75,13 @@ public class UserPaymentService {
         );
     }
 
-    public PaymentOrderDetailResponse cancelOrder(UUID orderId) {
+    public nan.produced.prism.core.user.dto.PaymentOrderDetailResponse cancelOrder(UUID orderId) {
         UUID userId = requireCurrentUserUuid();
 
-        ApiResponse<PaymentOrderDetailResponse> response = paymentInternalClient.cancelOrder(orderId);
-        PaymentOrderDetailResponse remote = requirePaymentSuccess(response, "取消订单失败");
+        ApiResponse<nan.produced.prism.core.integration.payment.dto.PaymentOrderDetailResponse> response = paymentInternalClient.cancelOrder(orderId);
+        nan.produced.prism.core.integration.payment.dto.PaymentOrderDetailResponse remote = requirePaymentSuccess(response, "取消订单失败");
 
-        return new PaymentOrderDetailResponse(
+        return new nan.produced.prism.core.user.dto.PaymentOrderDetailResponse(
             remote.id(),
             remote.userId(),
             remote.orderNo(),

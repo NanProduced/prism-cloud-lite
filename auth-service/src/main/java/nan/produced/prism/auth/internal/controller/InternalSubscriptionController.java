@@ -9,7 +9,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import nan.produced.prism.auth.common.exception.BizException;
+import nan.produced.prism.auth.common.exception.ErrorCode;
 import nan.produced.prism.auth.common.response.ApiResponse;
 import nan.produced.prism.auth.domain.subscription.SubscriptionEventEntity;
 import nan.produced.prism.auth.domain.subscription.SubscriptionTier;
@@ -17,6 +19,7 @@ import nan.produced.prism.auth.internal.dto.InternalRedeemCodeBatchCreateRequest
 import nan.produced.prism.auth.internal.dto.InternalSubscriptionEventView;
 import nan.produced.prism.auth.internal.dto.InternalSubscriptionHistoryPageView;
 import nan.produced.prism.auth.internal.dto.InternalSubscriptionRedeemRequest;
+import nan.produced.prism.auth.internal.dto.InternalSubscriptionSyncFromPaymentRequest;
 import nan.produced.prism.auth.internal.dto.InternalSubscriptionView;
 import nan.produced.prism.auth.subscription.SubscriptionService;
 import nan.produced.prism.auth.utils.TraceUtils;
@@ -29,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Slf4j
 @Tag(name = "内部接口-订阅", description = "仅供服务间调用（core-service/管理平台/payment-service），前端勿用")
 @RestController
 @RequestMapping("/internal/subscription")
