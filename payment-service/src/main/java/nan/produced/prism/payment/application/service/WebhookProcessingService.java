@@ -48,36 +48,34 @@ public class WebhookProcessingService {
 
         try {
             JsonNode root = objectMapper.readTree(payload);
-            JsonNode dataNode = root.get("data");
+            JsonNode eventNode = root.get("data");
 
-            if (dataNode == null || !dataNode.isArray()) {
-                log.warn("Invalid webhook payload format: missing data array");
+            if (eventNode == null) {
+                log.warn("Invalid webhook payload format: missing data object");
                 return;
             }
 
-            for (JsonNode eventNode : dataNode) {
-                String eventId = eventNode.path("event_id").asText();
-                String eventType = eventNode.path("event_type").asText();
+            String eventId = eventNode.path("event_id").asText();
+            String eventType = eventNode.path("event_type").asText();
 
-                if (webhookEventRepository.existsByEventId(eventId)) {
-                    log.info("Webhook event already processed: eventId={}", eventId);
-                    continue;
-                }
+            if (webhookEventRepository.existsByEventId(eventId)) {
+                log.info("Webhook event already processed: eventId={}", eventId);
+                return;
+            }
 
-                WebhookEventEntity event = new WebhookEventEntity();
-                event.setEventId(eventId);
-                event.setEventType(eventType);
-                event.setPayload(eventNode.toString());
-                event.setProcessed(false);
-                webhookEventRepository.save(event);
+            WebhookEventEntity event = new WebhookEventEntity();
+            event.setEventId(eventId);
+            event.setEventType(eventType);
+            event.setPayload(eventNode.toString());
+            event.setProcessed(false);
+            webhookEventRepository.save(event);
 
-                try {
-                    processEvent(eventType, eventNode.path("data"));
-                    webhookEventRepository.markProcessed(eventId);
-                    log.info("Processed webhook event: eventId={}, eventType={}", eventId, eventType);
-                } catch (Exception e) {
-                    log.error("Failed to process webhook event: eventId={}, eventType={}", eventId, eventType, e);
-                }
+            try {
+                processEvent(eventType, eventNode.path("data"));
+                webhookEventRepository.markProcessed(eventId);
+                log.info("Processed webhook event: eventId={}, eventType={}", eventId, eventType);
+            } catch (Exception e) {
+                log.error("Failed to process webhook event: eventId={}, eventType={}", eventId, eventType, e);
             }
 
         } catch (JsonProcessingException e) {

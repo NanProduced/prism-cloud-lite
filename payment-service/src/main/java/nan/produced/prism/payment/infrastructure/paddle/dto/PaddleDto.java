@@ -73,10 +73,17 @@ public class PaddleDto {
         @JsonProperty("invoice_number")
         private String invoiceNumber;
         private TransactionDetails details;
+        private TransactionCheckout checkout;
         @JsonProperty("created_at")
         private Instant createdAt;
         @JsonProperty("updated_at")
         private Instant updatedAt;
+    }
+
+    @Data
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class TransactionCheckout {
+        private String url;
     }
 
     @Data
@@ -178,7 +185,7 @@ public class PaddleDto {
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class WebhookPayload {
-        private List<WebhookEvent> data;
+        private WebhookEvent data;
         private PaddleMeta meta;
     }
 

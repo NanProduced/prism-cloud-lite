@@ -1,4 +1,4 @@
-package nan.produced.prism.payment.interface_feign;
+package nan.produced.prism.payment.interface_.feign;
 
 import java.time.Instant;
 import java.util.Map;
