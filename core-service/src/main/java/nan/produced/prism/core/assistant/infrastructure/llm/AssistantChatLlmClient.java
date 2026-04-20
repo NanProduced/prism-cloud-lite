@@ -15,7 +15,9 @@ public interface AssistantChatLlmClient {
             String finishReason,
             Integer promptTokens,
             Integer completionTokens,
-            Integer totalTokens
+            Integer totalTokens,
+            String provider,
+            String model
     ) {
     }
 
