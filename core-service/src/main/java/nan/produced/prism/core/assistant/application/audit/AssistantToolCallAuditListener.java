@@ -2,16 +2,16 @@ package nan.produced.prism.core.assistant.application.audit;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import nan.produced.prism.core.assistant.infrastructure.persistence.AssistantToolAuditRepository;
+import nan.produced.prism.core.assistant.domain.AssistantToolCallAuditEntity;
+import nan.produced.prism.core.assistant.infrastructure.persistence.AssistantToolCallAuditRepositoryJpa;
 import nan.produced.prism.core.common.util.TraceUtils;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
-import org.springframework.transaction.event.TransactionalEventListener;
-
-import java.util.UUID;
 
 @Slf4j
 @Component
@@ -20,12 +20,12 @@ public class AssistantToolCallAuditListener {
 
     private static final int AUDIT_SUMMARY_MAX_CHARS = 2_000;
 
-    private final AssistantToolAuditRepository auditRepository;
+    private final AssistantToolCallAuditRepositoryJpa auditRepository;
     private final AuditSensitiveDataMasker sensitiveDataMasker;
     private final ObjectMapper objectMapper;
 
     @Async("backgroundTaskExecutor")
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMPLETION)
+    @EventListener
     public void onToolCallAuditEvent(AssistantToolCallAuditEvent event) {
         if (event == null) {
             return;
@@ -45,20 +45,24 @@ public class AssistantToolCallAuditListener {
 
             String inputSummary = summarizeJson(maskedInput);
             String outputSummary = summarizeJson(maskedOutput);
+            String inputJsonString = (maskedInput != null) ? maskedInput.toString() : null;
 
-            auditRepository.insert(
-                    UUID.randomUUID(),
-                    event.userId(),
-                    event.toolCallId(),
-                    event.toolName(),
-                    maskedInput,
-                    traceId,
-                    inputSummary,
-                    outputSummary,
-                    event.success(),
-                    event.elapsedMs(),
-                    event.errorMessage()
-            );
+            AssistantToolCallAuditEntity entity = AssistantToolCallAuditEntity.builder()
+                    .id(event.eventId())
+                    .userId(event.userId())
+                    .toolCallId(event.toolCallId())
+                    .toolName(event.toolName())
+                    .inputJson(inputJsonString)
+                    .traceId(traceId)
+                    .inputSummary(inputSummary)
+                    .outputSummary(outputSummary)
+                    .success(event.success())
+                    .elapsedMs(event.elapsedMs())
+                    .errorMessage(event.errorMessage())
+                    .createdAt(event.timestamp().atOffset(ZoneOffset.UTC))
+                    .build();
+
+            auditRepository.save(entity);
 
             log.debug("Tool call audit persisted: toolCallId={}, toolName={}, success={}",
                     event.toolCallId(), event.toolName(), event.success());
