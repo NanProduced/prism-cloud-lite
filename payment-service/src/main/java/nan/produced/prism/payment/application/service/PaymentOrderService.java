@@ -66,6 +66,10 @@ public class PaymentOrderService {
                 order.setCurrency(transaction.getDetails().getTotals().getCurrency());
             }
 
+            if (transaction.getCheckout() != null && transaction.getCheckout().getUrl() != null) {
+                order.setCheckoutUrl(transaction.getCheckout().getUrl());
+            }
+
             if (transaction.getDetails() != null &&
                 transaction.getDetails().getPaymentAttempt() != null &&
                 transaction.getDetails().getPaymentAttempt().getStatus() != null) {
