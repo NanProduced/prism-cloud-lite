@@ -3,11 +3,12 @@ package nan.produced.prism.payment.interface_.feign;
 import java.time.Instant;
 import java.util.Map;
 import lombok.Data;
+import nan.produced.prism.payment.infrastructure.signature.ServiceSignatureFeignConfig;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
-@FeignClient(name = "auth-service")
+@FeignClient(name = "auth-service", configuration = ServiceSignatureFeignConfig.class)
 public interface AuthServiceFeignClient {
 
     @PostMapping("/auth/internal/subscription/sync-from-payment")
