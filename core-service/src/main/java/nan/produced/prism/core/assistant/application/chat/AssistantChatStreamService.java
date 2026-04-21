@@ -26,8 +26,12 @@ public class AssistantChatStreamService {
                                  AssistantChatTokenBudgetService.QuotaSnapshot quota,
                                  AiUiMessageSseWriter writer) {
 
-        long frozenTokens = 0;
+        UUID freezeReqId = null;
         boolean quotaManaged = quota != null && quota.trackTokens();
+
+        if (quotaManaged && quota != null) {
+            quota = quota.withUserId(userId);
+        }
 
         try {
             if (quotaManaged) {
@@ -37,8 +41,9 @@ public class AssistantChatStreamService {
                     tokenBudgetService.sendQuotaExceededAndFinish(writer, quota);
                     return;
                 }
-                frozenTokens = freezeResult.frozenTokens();
-                log.debug("Frozen {} tokens for user {}, proceeding with stream", frozenTokens, userId);
+                freezeReqId = freezeResult.reqId();
+                log.debug("Frozen {} tokens for user {}, reqId={}, proceeding with stream",
+                        freezeResult.frozenTokens(), userId, freezeReqId);
             }
 
             StringBuilder answerText = quotaManaged ? new StringBuilder() : null;
@@ -61,10 +66,10 @@ public class AssistantChatStreamService {
                 );
             } catch (Exception e) {
                 log.warn("LLM stream interrupted for user {}: {}", userId, e.getMessage());
-                if (quotaManaged && frozenTokens > 0) {
-                    log.info("Releasing {} frozen tokens for user {} due to stream interruption", frozenTokens, userId);
-                    tokenBudgetService.releaseFrozenQuota(userId, quota, frozenTokens);
-                    frozenTokens = 0;
+                if (quotaManaged && freezeReqId != null) {
+                    log.info("Releasing frozen tokens for user {} due to stream interruption, reqId={}", userId, freezeReqId);
+                    tokenBudgetService.releaseFrozenQuota(freezeReqId);
+                    freezeReqId = null;
                 }
                 throw e;
             }
@@ -75,17 +80,16 @@ public class AssistantChatStreamService {
                 writer.sourceUrl(source.sourceId(), source.url(), source.title());
             }
 
-            if (quotaManaged) {
+            if (quotaManaged && freezeReqId != null) {
                 quota = tokenBudgetService.settleAndRelease(
-                        userId,
+                        freezeReqId,
                         quota,
-                        frozenTokens,
                         llmResult,
                         answerText != null ? answerText.toString() : null,
                         messages
                 );
-                frozenTokens = 0;
-            } else {
+                freezeReqId = null;
+            } else if (!quotaManaged) {
                 quota = tokenBudgetService.trackUsage(
                         userId,
                         quota,
@@ -104,12 +108,12 @@ public class AssistantChatStreamService {
             writer.finish(normalizedFinishReason, messageMetadata);
 
         } catch (Exception e) {
-            if (quotaManaged && frozenTokens > 0) {
-                log.warn("Exception occurred during chat, releasing {} frozen tokens for user {}", frozenTokens, userId, e);
+            if (quotaManaged && freezeReqId != null) {
+                log.warn("Exception occurred during chat, releasing frozen tokens for user {}, reqId={}", userId, freezeReqId, e);
                 try {
-                    tokenBudgetService.releaseFrozenQuota(userId, quota, frozenTokens);
+                    tokenBudgetService.releaseFrozenQuota(freezeReqId);
                 } catch (Exception releaseEx) {
-                    log.error("Failed to release frozen tokens for user {}", userId, releaseEx);
+                    log.error("Failed to release frozen tokens for user {}, reqId={}", userId, freezeReqId, releaseEx);
                 }
             }
             throw e;
