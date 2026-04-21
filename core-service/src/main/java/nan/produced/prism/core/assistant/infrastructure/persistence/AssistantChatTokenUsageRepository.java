@@ -2,6 +2,7 @@ package nan.produced.prism.core.assistant.infrastructure.persistence;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import nan.produced.prism.core.assistant.domain.AssistantChatTokenFreezeEntity;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -9,6 +10,7 @@ import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
@@ -19,17 +21,7 @@ import java.util.UUID;
 public class AssistantChatTokenUsageRepository {
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
-
-    public record FreezeRecord(
-            UUID id,
-            UUID userId,
-            LocalDate day,
-            UUID reqId,
-            long frozenTokens,
-            String status,
-            java.time.Instant createdAt,
-            java.time.Instant updatedAt
-    ) {}
+    private final AssistantChatTokenFreezeRepository freezeRepository;
 
     public long getUsedTokens(UUID userId, LocalDate day) {
         try {
@@ -60,46 +52,15 @@ public class AssistantChatTokenUsageRepository {
     }
 
     public long getActiveFrozenTokens(UUID userId, LocalDate day) {
-        try {
-            Long v = jdbcTemplate.getJdbcTemplate().queryForObject(
-                    "SELECT COALESCE(SUM(frozen_tokens), 0) FROM assistant.assistant_chat_token_freeze WHERE user_id = ? AND day = ? AND status = 'ACTIVE'",
-                    Long.class,
-                    userId,
-                    day
-            );
-            return v != null ? v : 0L;
-        } catch (EmptyResultDataAccessException ignored) {
-            return 0L;
-        }
+        return freezeRepository.sumActiveFrozenTokensByUserIdAndDay(userId, day);
     }
 
     public long getTotalCommittedAndFrozen(UUID userId, LocalDate day) {
         return getUsedTokens(userId, day) + getActiveFrozenTokens(userId, day);
     }
 
-    public Optional<FreezeRecord> findFreezeRecordByReqId(UUID reqId) {
-        try {
-            return jdbcTemplate.queryForObject(
-                    """
-                    SELECT id, user_id, day, req_id, frozen_tokens, status, created_at, updated_at
-                    FROM assistant.assistant_chat_token_freeze
-                    WHERE req_id = :reqId
-                    """,
-                    new MapSqlParameterSource().addValue("reqId", reqId),
-                    (rs, rowNum) -> new FreezeRecord(
-                            UUID.fromString(rs.getString("id")),
-                            UUID.fromString(rs.getString("user_id")),
-                            rs.getDate("day").toLocalDate(),
-                            UUID.fromString(rs.getString("req_id")),
-                            rs.getLong("frozen_tokens"),
-                            rs.getString("status"),
-                            rs.getTimestamp("created_at").toInstant(),
-                            rs.getTimestamp("updated_at").toInstant()
-                    )
-            ).map(Optional::of).orElse(Optional.empty());
-        } catch (EmptyResultDataAccessException ignored) {
-            return Optional.empty();
-        }
+    public Optional<AssistantChatTokenFreezeEntity> findFreezeRecordByReqId(UUID reqId) {
+        return freezeRepository.findByReqId(reqId);
     }
 
     @Transactional
@@ -172,25 +133,20 @@ public class AssistantChatTokenUsageRepository {
 
     @Transactional
     public void settleAndRelease(UUID reqId, long actualTokensUsed) {
-        Optional<FreezeRecord> recordOpt = findFreezeRecordByReqId(reqId);
+        Optional<AssistantChatTokenFreezeEntity> recordOpt = freezeRepository.findByReqId(reqId);
         if (recordOpt.isEmpty()) {
             log.warn("Cannot settle: freeze record not found for reqId={}", reqId);
             return;
         }
 
-        FreezeRecord record = recordOpt.get();
-        if (!"ACTIVE".equals(record.status())) {
+        AssistantChatTokenFreezeEntity record = recordOpt.get();
+        if (!AssistantChatTokenFreezeEntity.STATUS_ACTIVE.equals(record.getStatus())) {
             log.warn("Cannot settle: freeze record {} has status '{}', expected 'ACTIVE'",
-                    reqId, record.status());
+                    reqId, record.getStatus());
             return;
         }
 
-        int updated = jdbcTemplate.update("""
-                UPDATE assistant.assistant_chat_token_freeze
-                SET status = 'SETTLED', updated_at = NOW()
-                WHERE req_id = :reqId AND status = 'ACTIVE'
-                """, new MapSqlParameterSource().addValue("reqId", reqId));
-
+        int updated = freezeRepository.markAsSettledByReqId(reqId);
         if (updated <= 0) {
             log.warn("Failed to update freeze record status for reqId={}", reqId);
             return;
@@ -208,10 +164,10 @@ public class AssistantChatTokenUsageRepository {
                         frozen_tokens = GREATEST(0, assistant.assistant_chat_token_usage_daily.frozen_tokens - :frozenToRelease),
                         updated_at = NOW()
                     """, new MapSqlParameterSource()
-                    .addValue("userId", record.userId())
-                    .addValue("day", record.day())
+                    .addValue("userId", record.getUserId())
+                    .addValue("day", record.getDay())
                     .addValue("actualUsed", actualTokensUsed)
-                    .addValue("frozenToRelease", record.frozenTokens()));
+                    .addValue("frozenToRelease", record.getFrozenTokens()));
         } else {
             jdbcTemplate.update("""
                     UPDATE assistant.assistant_chat_token_usage_daily
@@ -219,36 +175,31 @@ public class AssistantChatTokenUsageRepository {
                         updated_at = NOW()
                     WHERE user_id = :userId AND day = :day
                     """, new MapSqlParameterSource()
-                    .addValue("userId", record.userId())
-                    .addValue("day", record.day())
-                    .addValue("frozenToRelease", record.frozenTokens()));
+                    .addValue("userId", record.getUserId())
+                    .addValue("day", record.getDay())
+                    .addValue("frozenToRelease", record.getFrozenTokens()));
         }
 
         log.debug("Settled freeze record {}: actualUsed={}, frozenReleased={}",
-                reqId, actualTokensUsed, record.frozenTokens());
+                reqId, actualTokensUsed, record.getFrozenTokens());
     }
 
     @Transactional
     public void releaseFrozenTokens(UUID reqId) {
-        Optional<FreezeRecord> recordOpt = findFreezeRecordByReqId(reqId);
+        Optional<AssistantChatTokenFreezeEntity> recordOpt = freezeRepository.findByReqId(reqId);
         if (recordOpt.isEmpty()) {
             log.warn("Cannot release: freeze record not found for reqId={}", reqId);
             return;
         }
 
-        FreezeRecord record = recordOpt.get();
-        if (!"ACTIVE".equals(record.status())) {
+        AssistantChatTokenFreezeEntity record = recordOpt.get();
+        if (!AssistantChatTokenFreezeEntity.STATUS_ACTIVE.equals(record.getStatus())) {
             log.warn("Cannot release: freeze record {} has status '{}', expected 'ACTIVE'",
-                    reqId, record.status());
+                    reqId, record.getStatus());
             return;
         }
 
-        int updated = jdbcTemplate.update("""
-                UPDATE assistant.assistant_chat_token_freeze
-                SET status = 'RELEASED', updated_at = NOW()
-                WHERE req_id = :reqId AND status = 'ACTIVE'
-                """, new MapSqlParameterSource().addValue("reqId", reqId));
-
+        int updated = freezeRepository.markAsReleasedByReqId(reqId);
         if (updated <= 0) {
             log.warn("Failed to update freeze record status for reqId={}", reqId);
             return;
@@ -260,26 +211,18 @@ public class AssistantChatTokenUsageRepository {
                     updated_at = NOW()
                 WHERE user_id = :userId AND day = :day
                 """, new MapSqlParameterSource()
-                .addValue("userId", record.userId())
-                .addValue("day", record.day())
-                .addValue("frozenToRelease", record.frozenTokens()));
+                .addValue("userId", record.getUserId())
+                .addValue("day", record.getDay())
+                .addValue("frozenToRelease", record.getFrozenTokens()));
 
         log.info("Released frozen tokens for reqId={}, user={}, day={}, tokens={}",
-                reqId, record.userId(), record.day(), record.frozenTokens());
+                reqId, record.getUserId(), record.getDay(), record.getFrozenTokens());
     }
 
     @Transactional
     public int cleanupExpiredFrozenTokens(Duration maxAge) {
-        var params = new MapSqlParameterSource()
-                .addValue("maxAgeSeconds", maxAge.toSeconds())
-                .addValue("cutoff", java.time.Instant.now().minus(maxAge));
-
-        int updatedFreeze = jdbcTemplate.update("""
-                UPDATE assistant.assistant_chat_token_freeze
-                SET status = 'RELEASED', updated_at = NOW()
-                WHERE status = 'ACTIVE'
-                  AND created_at < :cutoff
-                """, params);
+        Instant cutoff = Instant.now().minus(maxAge);
+        int updatedFreeze = freezeRepository.markAsReleasedForExpired(cutoff);
 
         if (updatedFreeze > 0) {
             log.warn("Marked {} expired freeze records as RELEASED (age > {})", updatedFreeze, maxAge);
