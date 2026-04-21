@@ -89,14 +89,6 @@ public class AssistantChatStreamService {
                         messages
                 );
                 freezeReqId = null;
-            } else if (!quotaManaged) {
-                quota = tokenBudgetService.trackUsage(
-                        userId,
-                        quota,
-                        llmResult,
-                        answerText != null ? answerText.toString() : null,
-                        messages
-                );
             }
 
             String finishReason = llmResult != null ? llmResult.finishReason() : null;
