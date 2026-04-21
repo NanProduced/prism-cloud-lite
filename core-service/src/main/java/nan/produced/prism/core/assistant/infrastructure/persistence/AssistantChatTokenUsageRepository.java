@@ -58,9 +58,12 @@ public class AssistantChatTokenUsageRepository {
         }
     }
 
-    public boolean tryFreezeTokens(UUID userId, LocalDate day, long tokensToFreeze) {
+    public boolean tryFreezeTokens(UUID userId, LocalDate day, long tokensToFreeze, long dailyLimit) {
         if (tokensToFreeze <= 0) {
             return true;
+        }
+        if (dailyLimit > 0 && tokensToFreeze > dailyLimit) {
+            return false;
         }
         int updated = jdbcTemplate.update("""
                 INSERT INTO assistant.assistant_chat_token_usage_daily (
@@ -70,22 +73,28 @@ public class AssistantChatTokenUsageRepository {
                   frozen_tokens,
                   last_frozen_at,
                   updated_at
-                ) VALUES (
+                )
+                SELECT
                   :userId,
                   :day,
                   0,
                   :tokensToFreeze,
                   NOW(),
                   NOW()
-                )
+                WHERE :dailyLimit <= 0 OR :tokensToFreeze <= :dailyLimit
                 ON CONFLICT (user_id, day) DO UPDATE SET
                   frozen_tokens = assistant.assistant_chat_token_usage_daily.frozen_tokens + :tokensToFreeze,
                   last_frozen_at = NOW(),
                   updated_at = NOW()
+                WHERE :dailyLimit <= 0
+                   OR (assistant.assistant_chat_token_usage_daily.used_tokens
+                       + assistant.assistant_chat_token_usage_daily.frozen_tokens
+                       + :tokensToFreeze) <= :dailyLimit
                 """, new MapSqlParameterSource()
                 .addValue("userId", userId)
                 .addValue("day", day)
-                .addValue("tokensToFreeze", tokensToFreeze));
+                .addValue("tokensToFreeze", tokensToFreeze)
+                .addValue("dailyLimit", dailyLimit));
         return updated > 0;
     }
 

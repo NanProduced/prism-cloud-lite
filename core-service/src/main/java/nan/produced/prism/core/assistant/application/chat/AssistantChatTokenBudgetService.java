@@ -82,11 +82,19 @@ public class AssistantChatTokenBudgetService {
             return FreezeResult.notRequired();
         }
 
-        boolean success = tokenUsageRepository.tryFreezeTokens(userId, quota.day(), quota.frozenTokensForThisRequest());
+        boolean success = tokenUsageRepository.tryFreezeTokens(
+                userId,
+                quota.day(),
+                quota.frozenTokensForThisRequest(),
+                quota.dailyLimit()
+        );
         if (success) {
-            log.debug("Frozen {} tokens for user {} on {}", quota.frozenTokensForThisRequest(), userId, quota.day());
+            log.debug("Frozen {} tokens for user {} on {} (dailyLimit={})",
+                    quota.frozenTokensForThisRequest(), userId, quota.day(), quota.dailyLimit());
             return FreezeResult.success(quota.frozenTokensForThisRequest());
         } else {
+            log.warn("Failed to freeze {} tokens for user {} on {} (dailyLimit={}), concurrent request may have consumed quota",
+                    quota.frozenTokensForThisRequest(), userId, quota.day(), quota.dailyLimit());
             return FreezeResult.failed();
         }
     }
