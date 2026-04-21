@@ -142,38 +142,6 @@ public class AssistantChatTokenBudgetService {
         return cleaned;
     }
 
-    @Deprecated
-    public void releaseFrozenQuota(UUID userId, QuotaSnapshot quota, long frozenTokens) {
-        throw new UnsupportedOperationException("Use releaseFrozenQuota with reqId instead");
-    }
-
-    @Deprecated
-    public QuotaSnapshot settleAndRelease(UUID userId,
-                                            QuotaSnapshot quota,
-                                            long frozenTokens,
-                                            AssistantChatLlmClient.StreamResult llmResult,
-                                            String answerText,
-                                            List<AssistantChatMessage> messages) {
-        throw new UnsupportedOperationException("Use settleAndRelease with reqId instead");
-    }
-
-    @Deprecated
-    public QuotaSnapshot trackUsage(UUID userId,
-                                    QuotaSnapshot quota,
-                                    AssistantChatLlmClient.StreamResult llmResult,
-                                    String answerText,
-                                    List<AssistantChatMessage> messages) {
-        if (quota == null || !quota.trackTokens() || llmResult == null) {
-            return quota;
-        }
-        Integer totalTokens = llmResult.totalTokens();
-        long deltaTokens = totalTokens != null && totalTokens > 0
-                ? totalTokens
-                : Math.max(1, estimatePromptTokens(messages) + estimateTokensFromText(answerText));
-        long usedAfter = tokenUsageRepository.addTokens(userId, quota.day(), deltaTokens);
-        return quota.withUsedTokens(usedAfter);
-    }
-
     public void sendQuotaExceededAndFinish(AiUiMessageSseWriter writer, QuotaSnapshot quota) {
         if (writer == null || quota == null) {
             return;
