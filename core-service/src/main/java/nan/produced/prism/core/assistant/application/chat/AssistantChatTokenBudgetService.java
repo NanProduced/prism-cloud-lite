@@ -18,6 +18,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -45,7 +46,7 @@ public class AssistantChatTokenBudgetService {
 
         LocalDate day = LocalDate.now(zoneId);
         long used = tokenUsageRepository.getUsedTokens(userId, day);
-        long frozen = tokenUsageRepository.getFrozenTokens(userId, day);
+        long frozen = tokenUsageRepository.getActiveFrozenTokens(userId, day);
         long totalCommitted = used + frozen;
         long remaining = Math.max(0, dailyLimit - totalCommitted);
         OffsetDateTime resetAt = day.plusDays(1).atStartOfDay(zoneId).toOffsetDateTime();
@@ -82,16 +83,18 @@ public class AssistantChatTokenBudgetService {
             return FreezeResult.notRequired();
         }
 
-        boolean success = tokenUsageRepository.tryFreezeTokens(
+        Optional<UUID> reqIdOpt = tokenUsageRepository.tryFreezeTokens(
                 userId,
                 quota.day(),
                 quota.frozenTokensForThisRequest(),
                 quota.dailyLimit()
         );
-        if (success) {
-            log.debug("Frozen {} tokens for user {} on {} (dailyLimit={})",
-                    quota.frozenTokensForThisRequest(), userId, quota.day(), quota.dailyLimit());
-            return FreezeResult.success(quota.frozenTokensForThisRequest());
+
+        if (reqIdOpt.isPresent()) {
+            UUID reqId = reqIdOpt.get();
+            log.debug("Frozen {} tokens for user {} on {} (dailyLimit={}), reqId={}",
+                    quota.frozenTokensForThisRequest(), userId, quota.day(), quota.dailyLimit(), reqId);
+            return FreezeResult.success(reqId, quota.frozenTokensForThisRequest());
         } else {
             log.warn("Failed to freeze {} tokens for user {} on {} (dailyLimit={}), concurrent request may have consumed quota",
                     quota.frozenTokensForThisRequest(), userId, quota.day(), quota.dailyLimit());
@@ -99,21 +102,19 @@ public class AssistantChatTokenBudgetService {
         }
     }
 
-    public void releaseFrozenQuota(UUID userId, QuotaSnapshot quota, long frozenTokens) {
-        if (quota == null || !quota.trackTokens() || frozenTokens <= 0) {
+    public void releaseFrozenQuota(UUID reqId) {
+        if (reqId == null) {
             return;
         }
-        tokenUsageRepository.releaseFrozenTokens(userId, quota.day(), frozenTokens);
-        log.debug("Released {} frozen tokens for user {} on {}", frozenTokens, userId, quota.day());
+        tokenUsageRepository.releaseFrozenTokens(reqId);
     }
 
-    public QuotaSnapshot settleAndRelease(UUID userId,
+    public QuotaSnapshot settleAndRelease(UUID reqId,
                                             QuotaSnapshot quota,
-                                            long frozenTokens,
                                             AssistantChatLlmClient.StreamResult llmResult,
                                             String answerText,
                                             List<AssistantChatMessage> messages) {
-        if (quota == null || !quota.trackTokens()) {
+        if (quota == null || !quota.trackTokens() || reqId == null) {
             return quota;
         }
 
@@ -124,12 +125,12 @@ public class AssistantChatTokenBudgetService {
             actualTokensUsed = Math.max(1, estimatePromptTokens(messages) + estimateTokensFromText(answerText));
         }
 
-        tokenUsageRepository.settleAndRelease(userId, quota.day(), actualTokensUsed, frozenTokens);
-        log.debug("Settled {} tokens, released {} frozen tokens for user {} on {}",
-                actualTokensUsed, frozenTokens, userId, quota.day());
+        tokenUsageRepository.settleAndRelease(reqId, actualTokensUsed);
+        log.debug("Settled {} tokens for reqId={}, user={}, day={}",
+                actualTokensUsed, reqId, quota.day(), quota.dailyLimit());
 
-        long usedAfter = tokenUsageRepository.getUsedTokens(userId, quota.day());
-        long frozenAfter = tokenUsageRepository.getFrozenTokens(userId, quota.day());
+        long usedAfter = tokenUsageRepository.getUsedTokens(quota.userId() != null ? quota.userId() : UUID.randomUUID(), quota.day());
+        long frozenAfter = tokenUsageRepository.getActiveFrozenTokens(quota.userId() != null ? quota.userId() : UUID.randomUUID(), quota.day());
         return quota.withUsedAndFrozenTokens(usedAfter, frozenAfter);
     }
 
@@ -139,6 +140,21 @@ public class AssistantChatTokenBudgetService {
             log.warn("Cleaned up {} expired frozen token records (age > {})", cleaned, maxAge);
         }
         return cleaned;
+    }
+
+    @Deprecated
+    public void releaseFrozenQuota(UUID userId, QuotaSnapshot quota, long frozenTokens) {
+        throw new UnsupportedOperationException("Use releaseFrozenQuota with reqId instead");
+    }
+
+    @Deprecated
+    public QuotaSnapshot settleAndRelease(UUID userId,
+                                            QuotaSnapshot quota,
+                                            long frozenTokens,
+                                            AssistantChatLlmClient.StreamResult llmResult,
+                                            String answerText,
+                                            List<AssistantChatMessage> messages) {
+        throw new UnsupportedOperationException("Use settleAndRelease with reqId instead");
     }
 
     @Deprecated
@@ -210,18 +226,19 @@ public class AssistantChatTokenBudgetService {
     public record FreezeResult(
             boolean required,
             boolean success,
+            UUID reqId,
             long frozenTokens
     ) {
         public static FreezeResult notRequired() {
-            return new FreezeResult(false, true, 0);
+            return new FreezeResult(false, true, null, 0);
         }
 
-        public static FreezeResult success(long tokens) {
-            return new FreezeResult(true, true, tokens);
+        public static FreezeResult success(UUID reqId, long tokens) {
+            return new FreezeResult(true, true, reqId, tokens);
         }
 
         public static FreezeResult failed() {
-            return new FreezeResult(true, false, 0);
+            return new FreezeResult(true, false, null, 0);
         }
     }
 
@@ -236,7 +253,8 @@ public class AssistantChatTokenBudgetService {
             OffsetDateTime resetAt,
             Integer maxCompletionTokensForThisRequest,
             Integer estimatedPromptTokens,
-            Integer maxCompletionConfigured
+            Integer maxCompletionConfigured,
+            UUID userId
     ) {
         public long frozenTokensForThisRequest() {
             if (!trackTokens || blocked || estimatedPromptTokens == null || maxCompletionConfigured == null) {
@@ -246,23 +264,27 @@ public class AssistantChatTokenBudgetService {
         }
 
         static QuotaSnapshot unlimited() {
-            return new QuotaSnapshot(false, false, LocalDate.now(ZoneOffset.UTC), "PRO", 0, 0, 0, OffsetDateTime.now(ZoneOffset.UTC), null, null, null);
+            return new QuotaSnapshot(false, false, LocalDate.now(ZoneOffset.UTC), "PRO", 0, 0, 0, OffsetDateTime.now(ZoneOffset.UTC), null, null, null, null);
         }
 
         static QuotaSnapshot blocked(LocalDate day, String tier, long dailyLimit, long usedTokens, long frozenTokens, OffsetDateTime resetAt) {
-            return new QuotaSnapshot(true, true, day, tier, dailyLimit, usedTokens, frozenTokens, resetAt, 0, 0, 0);
+            return new QuotaSnapshot(true, true, day, tier, dailyLimit, usedTokens, frozenTokens, resetAt, 0, 0, 0, null);
         }
 
         static QuotaSnapshot allowed(LocalDate day, String tier, long dailyLimit, long usedTokens, long frozenTokens, OffsetDateTime resetAt, int maxCompletionTokens, int estimatedPrompt, int maxCompletionConfigured) {
-            return new QuotaSnapshot(true, false, day, tier, dailyLimit, usedTokens, frozenTokens, resetAt, maxCompletionTokens, estimatedPrompt, maxCompletionConfigured);
+            return new QuotaSnapshot(true, false, day, tier, dailyLimit, usedTokens, frozenTokens, resetAt, maxCompletionTokens, estimatedPrompt, maxCompletionConfigured, null);
+        }
+
+        public QuotaSnapshot withUserId(UUID userId) {
+            return new QuotaSnapshot(trackTokens, blocked, day, tier, dailyLimit, usedTokens, frozenTokens, resetAt, maxCompletionTokensForThisRequest, estimatedPromptTokens, maxCompletionConfigured, userId);
         }
 
         QuotaSnapshot withUsedTokens(long usedTokens) {
-            return new QuotaSnapshot(trackTokens, blocked, day, tier, dailyLimit, usedTokens, frozenTokens, resetAt, maxCompletionTokensForThisRequest, estimatedPromptTokens, maxCompletionConfigured);
+            return new QuotaSnapshot(trackTokens, blocked, day, tier, dailyLimit, usedTokens, frozenTokens, resetAt, maxCompletionTokensForThisRequest, estimatedPromptTokens, maxCompletionConfigured, userId);
         }
 
         QuotaSnapshot withUsedAndFrozenTokens(long usedTokens, long frozenTokens) {
-            return new QuotaSnapshot(trackTokens, blocked, day, tier, dailyLimit, usedTokens, frozenTokens, resetAt, maxCompletionTokensForThisRequest, estimatedPromptTokens, maxCompletionConfigured);
+            return new QuotaSnapshot(trackTokens, blocked, day, tier, dailyLimit, usedTokens, frozenTokens, resetAt, maxCompletionTokensForThisRequest, estimatedPromptTokens, maxCompletionConfigured, userId);
         }
 
         Map<String, Object> toFrontendPayload() {
